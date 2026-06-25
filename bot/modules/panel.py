@@ -1,3 +1,8 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
+from bot.modules.locks import locks
+
+# پنل مدیریت (در PV و گروه کار می‌کند)
 async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
@@ -23,6 +28,20 @@ async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    # این خط باعث می‌شود /panel در PV هم کار کند
     await update.message.reply_text("پنل مدیریت:", reply_markup=reply_markup)
+
+# هندلر دکمه‌ها
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    action = query.data.split("_")[0]      # lock یا unlock
+    lock_type = query.data.split("_")[1]   # links, photos, videos...
+
+    if lock_type not in locks:
+        await query.edit_message_text("❌ خطا: قفل نامعتبر است.")
+        return
+
+    if action == "lock":
+        locks[lock_type] = True
+       
