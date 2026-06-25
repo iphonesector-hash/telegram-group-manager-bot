@@ -1,7 +1,3 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
-from bot.modules.locks import locks
-
 async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
@@ -27,29 +23,6 @@ async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("پنل مدیریت گروه:", reply_markup=reply_markup)
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    action = query.data.split("_")[0]
-    lock_type = query.data.split("_")[1]
-
-    if lock_type not in locks:
-        await query.edit_message_text("خطا: قفل نامعتبر است.")
-        return
-
-    if action == "lock":
-        locks[lock_type] = True
-        await query.edit_message_text(f"🔒 قفل {lock_type} فعال شد")
-    else:
-        locks[lock_type] = False
-        await query.edit_message_text(f"🔓 قفل {lock_type} غیرفعال شد")
-
-def get_panel_handlers():
-    return [
-        CommandHandler("panel", panel),
-        CallbackQueryHandler(button_handler),
-    ]
-
+    # این خط باعث می‌شود /panel در PV هم کار کند
+    await update.message.reply_text("پنل مدیریت:", reply_markup=reply_markup)
