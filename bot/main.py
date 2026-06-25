@@ -18,7 +18,7 @@ from bot.modules.welcome import get_welcome_handlers
 from bot.modules.antispam import get_antispam_handlers
 from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
-from bot.modules.moderation import get_moderation_handlers
+from bot.modules.warnings import get_handlers as get_warning_handlers
 
 # استفاده از متغیر محیطی برای امنیت بیشتر
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8819957944:AAFVCeFQ3RXPImvhF3jjL1D418xIg9B9JLs")
@@ -55,7 +55,7 @@ def main():
         else:
             app.add_handler(handler, group=4)
 
-    for handler in get_moderation_handlers():
+    for handler in get_warning_handlers():
         if isinstance(handler, CommandHandler):
             app.add_handler(handler, group=1)
         else:

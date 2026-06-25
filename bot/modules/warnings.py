@@ -8,6 +8,10 @@ from bot.database.models import User, Group, Warning, Mute
 def parse_time(time_str):
     if not time_str:
         return None
+    # Support numeric minutes as default per requirement, or suffix
+    if time_str.isdigit():
+        return datetime.timedelta(minutes=int(time_str))
+
     match = re.match(r"(\d+)([smhd])", time_str.lower())
     if not match:
         return None
@@ -24,12 +28,14 @@ def parse_time(time_str):
     return None
 
 async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type == "private":
+    if not update.effective_chat or update.effective_chat.type == "private":
         return True
 
-    # Check if user is an admin in the group
-    member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-    return member.status in ["administrator", "creator"]
+    try:
+        member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
+        return member.status in ["administrator", "creator"]
+    except:
+        return False
 
 async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.reply_to_message:
@@ -61,10 +67,13 @@ async def warn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Check if target is admin
-    target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
-    if target_member.status in ["administrator", "creator"]:
-        await update.message.reply_text("❌ شما نمی‌توانید ادمین را اخطار دهید.")
-        return
+    try:
+        target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
+        if target_member.status in ["administrator", "creator"]:
+            await update.message.reply_text("❌ شما نمی‌توانید ادمین را اخطار دهید.")
+            return
+    except:
+        pass
 
     reason = "بدون دلیل"
     if len(context.args) > 1:
@@ -146,15 +155,18 @@ async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Check if target is admin
-    target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
-    if target_member.status in ["administrator", "creator"]:
-        await update.message.reply_text("❌ شما نمی‌توانید ادمین را بی‌صدا کنید.")
-        return
+    try:
+        target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
+        if target_member.status in ["administrator", "creator"]:
+            await update.message.reply_text("❌ شما نمی‌توانید ادمین را بی‌صدا کنید.")
+            return
+    except:
+        pass
 
-    duration_str = context.args[1] if len(context.args) > 1 else "1h"
+    duration_str = context.args[1] if len(context.args) > 1 else "60" # Default 60 minutes
     delta = parse_time(duration_str)
     if not delta:
-        await update.message.reply_text("❌ زمان نامعتبر است (مثال: 10m, 1h, 1d)")
+        await update.message.reply_text("❌ زمان نامعتبر است (مثال: 60 یا 1h)")
         return
 
     until = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + delta
@@ -171,9 +183,9 @@ async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         await update.effective_chat.restrict_member(user_id, ChatPermissions(can_send_messages=False), until_date=until)
-        await update.message.reply_text(f"🔇 کاربر {name} تا {duration_str} دیگر بی‌صدا شد.")
+        await update.message.reply_text(f"🔇 کاربر {name} تا {duration_str} دقیقه دیگر بی‌صدا شد.")
     except Exception as e:
-        await update.message.reply_text(f"❌ خطا در محدودسازی (ربات باید ادمین باشد): {e}")
+        await update.message.reply_text(f"❌ خطا در محدودسازی: {e}")
 
 async def unmute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
@@ -212,10 +224,13 @@ async def ban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Check if target is admin
-    target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
-    if target_member.status in ["administrator", "creator"]:
-        await update.message.reply_text("❌ شما نمی‌توانید ادمین را اخراج کنید.")
-        return
+    try:
+        target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
+        if target_member.status in ["administrator", "creator"]:
+            await update.message.reply_text("❌ شما نمی‌توانید ادمین را اخراج کنید.")
+            return
+    except:
+        pass
 
     try:
         await update.effective_chat.ban_member(user_id)
@@ -266,7 +281,7 @@ async def mute_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
             session.commit()
     session.close()
 
-def get_moderation_handlers():
+def get_handlers():
     return [
         CommandHandler("warn", warn_cmd),
         CommandHandler("warns", warns_cmd),
