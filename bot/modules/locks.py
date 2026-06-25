@@ -10,6 +10,9 @@ locks = {
 }
 
 async def lock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     if not context.args:
         await update.message.reply_text("مثال:\n/lock links")
         return
@@ -24,6 +27,9 @@ async def lock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔒 قفل {lock_type} فعال شد")
 
 async def unlock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     if not context.args:
         await update.message.reply_text("مثال:\n/unlock links")
         return
@@ -38,28 +44,46 @@ async def unlock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔓 قفل {lock_type} غیرفعال شد")
 
 async def lock_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     msg = update.message
 
     if locks["links"] and msg.entities:
         for e in msg.entities:
             if e.type in ["url", "text_link"]:
-                await msg.delete()
+                try:
+                    await msg.delete()
+                except:
+                    pass
                 return
 
     if locks["photos"] and msg.photo:
-        await msg.delete()
+        try:
+            await msg.delete()
+        except:
+            pass
         return
 
     if locks["videos"] and msg.video:
-        await msg.delete()
+        try:
+            await msg.delete()
+        except:
+            pass
         return
 
     if locks["stickers"] and msg.sticker:
-        await msg.delete()
+        try:
+            await msg.delete()
+        except:
+            pass
         return
 
-    if locks["forward"] and msg.forward_from:
-        await msg.delete()
+    if locks["forward"] and (msg.forward_from or msg.forward_from_chat):
+        try:
+            await msg.delete()
+        except:
+            pass
         return
 
 def get_handlers():

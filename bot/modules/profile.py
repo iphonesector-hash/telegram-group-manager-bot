@@ -11,6 +11,9 @@ def ensure_user(user_id):
         }
 
 async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.from_user:
+        return
+
     msg = update.message
     user_id = msg.from_user.id
     ensure_user(user_id)
@@ -18,6 +21,9 @@ async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users[user_id]["coins"] += 1
 
 async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.from_user:
+        return
+
     user = update.message.from_user
     user_id = user.id
     ensure_user(user_id)
@@ -31,6 +37,9 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     if not users:
         await update.message.reply_text("هنوز کسی امتیاز نگرفته.")
         return
@@ -44,7 +53,7 @@ async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_profile_handlers():
     return [
-        MessageHandler(filters.ALL, count_message),
         CommandHandler("profile", profile_cmd),
         CommandHandler("top", top_cmd),
+        MessageHandler(filters.ALL, count_message),
     ]
