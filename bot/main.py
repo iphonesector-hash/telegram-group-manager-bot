@@ -20,19 +20,20 @@ from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
 
 # استفاده از متغیر محیطی برای امنیت بیشتر
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8819957944:AAFVCeFQ3RXPImvhF3jjL1D418xIg9B9JLs")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
 def main():
+    if not BOT_TOKEN:
+        print("❌ Error: BOT_TOKEN environment variable not set.")
+        sys.exit(1)
+
     # Initialize Database
     init_db()
 
-    if BOT_TOKEN == "8819957944:AAFVCeFQ3RXPImvhF3jjL1D418xIg9B9JLs":
-        print("⚠️ Warning: Using default bot token. Set BOT_TOKEN environment variable for production.")
-
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # گروه 0: ثبت‌نام (Registration) - باید اولین چیزی باشد که اجرا می‌شود
+    # گروه 0: ثبت‌نام (Registration)
     for handler in get_registration_handlers():
         app.add_handler(handler, group=0)
 

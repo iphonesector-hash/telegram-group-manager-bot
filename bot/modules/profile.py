@@ -4,7 +4,11 @@ from bot.database.session import get_session
 from bot.database.models import User
 
 async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_user:
+    if not update.effective_user or not update.message:
+        return
+
+    # Do not count commands as regular messages
+    if update.message.text and update.message.text.startswith('/'):
         return
 
     session = get_session()
@@ -20,9 +24,13 @@ async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         new_level = (user.xp // 100) + 1
         if new_level > user.level:
             user.level = new_level
-            # Optionally notify user about level up
 
-        session.commit()
+        try:
+            session.commit()
+        except Exception as e:
+            print(f"❌ Error updating user stats: {e}")
+            session.rollback()
+
     session.close()
 
 async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,20 +62,24 @@ async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     session = get_session()
-    top_users = session.query(User).order_by(User.coins.desc()).limit(10).all()
+    try:
+        top_users = session.query(User).order_by(User.coins.desc()).limit(10).all()
 
-    if not top_users:
-        await update.message.reply_text("هنوز کسی امتیاز نگرفته.")
+        if not top_users:
+            await update.message.reply_text("هنوز کسی امتیاز نگرفته.")
+            return
+
+        lines = []
+        for i, user in enumerate(top_users, start=1):
+            name = user.first_name or "نامشخص"
+            lines.append(f"{i}. {name} ({user.id}) — 🪙 {user.coins} (Lvl {user.level})")
+
+        await update.message.reply_text("🏆 برترین‌ها (بر اساس سکه):\n\n" + "\n".join(lines))
+    except Exception as e:
+        print(f"❌ Error fetching top users: {e}")
+        await update.message.reply_text("❌ خطا در دریافت اطلاعات.")
+    finally:
         session.close()
-        return
-
-    lines = []
-    for i, user in enumerate(top_users, start=1):
-        name = user.first_name or "نامشخص"
-        lines.append(f"{i}. {name} ({user.id}) — 🪙 {user.coins} (Lvl {user.level})")
-
-    await update.message.reply_text("🏆 برترین‌ها (بر اساس سکه):\n\n" + "\n".join(lines))
-    session.close()
 
 def get_profile_handlers():
     return [
