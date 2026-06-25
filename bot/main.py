@@ -17,29 +17,29 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
     # /start
-    app.add_handler(start_handler)
+    app.add_handler(start_handler, group=0)
 
-    # پنل مدیریت (باید قبل از filters.ALL باشد)
+    # پنل مدیریت (اول اجرا شود)
     for handler in get_panel_handlers():
-        app.add_handler(handler)
+        app.add_handler(handler, group=0)
 
-    # قفل‌ها
+    # قفل‌ها (بعد از دستورات)
     for handler in get_lock_handlers():
-        app.add_handler(handler)
+        app.add_handler(handler, group=1)
 
     # خوشامدگویی
     for handler in get_welcome_handlers():
-        app.add_handler(handler)
+        app.add_handler(handler, group=0)
 
     # ضد اسپم
     for handler in get_antispam_handlers():
-        app.add_handler(handler)
+        app.add_handler(handler, group=1)
 
-    # پروفایل و سکه
+    # پروفایل
     for handler in get_profile_handlers():
-        app.add_handler(handler)
+        app.add_handler(handler, group=0)
 
-    # مدیریت خطاها
+    # خطاها
     app.add_error_handler(error_handler)
 
     print("ربات روشن شد... منتظر پیام هستم.")
