@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import datetime
@@ -26,11 +26,28 @@ class Group(Base):
     id = Column(BigInteger, primary_key=True)  # Telegram Chat ID
     title = Column(String)
 
+    # Locks
     lock_links = Column(Boolean, default=False)
+    lock_usernames = Column(Boolean, default=False)
+    lock_forward = Column(Boolean, default=False)
     lock_photos = Column(Boolean, default=False)
     lock_videos = Column(Boolean, default=False)
+    lock_files = Column(Boolean, default=False)
     lock_stickers = Column(Boolean, default=False)
-    lock_forward = Column(Boolean, default=False)
+    lock_gifs = Column(Boolean, default=False)
+    lock_voice = Column(Boolean, default=False)
+    lock_contacts = Column(Boolean, default=False)
+
+    # Welcome
+    welcome_enabled = Column(Boolean, default=True)
+    welcome_text = Column(Text, default="خوش اومدی به گروه 🌟\nلطفاً قوانین رو رعایت کن.")
+
+    # Rules
+    rules = Column(Text, nullable=True)
+
+    # Anti-spam
+    antispam_enabled = Column(Boolean, default=True)
+    antispam_limit = Column(Integer, default=5) # messages per 10s
 
     is_active = Column(Boolean, default=True)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)

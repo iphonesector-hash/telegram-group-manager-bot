@@ -27,6 +27,7 @@ from bot.modules.antispam import get_antispam_handlers
 from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
 from bot.modules.warnings import get_handlers as get_warning_handlers
+from bot.modules.rules import get_rules_handlers
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -44,29 +45,29 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
 
-    # گروه 0 - ثبت کاربران
+    # گروه 0 - ثبت کاربران (Middleware)
     for handler in get_registration_handlers():
         app.add_handler(handler, group=0)
 
 
-    # گروه 1 - دستورات
+    # گروه 1 - دستورات (Commands)
     app.add_handler(start_handler, group=1)
 
     for handler in get_panel_handlers():
         app.add_handler(handler, group=1)
 
-
     for handler in get_profile_handlers():
         if isinstance(handler, CommandHandler):
             app.add_handler(handler, group=1)
         else:
+            # message counter
             app.add_handler(handler, group=5)
-
 
     for handler in get_lock_handlers():
         if isinstance(handler, CommandHandler):
             app.add_handler(handler, group=1)
         else:
+            # content filter
             app.add_handler(handler, group=4)
 
     for handler in get_warning_handlers():
@@ -76,15 +77,22 @@ def main():
             # mute_checker
             app.add_handler(handler, group=4)
 
+    for handler in get_rules_handlers():
+        app.add_handler(handler, group=1)
 
-    # گروه 2 - خوش آمد
     for handler in get_welcome_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
+        else:
+            # join handler
+            app.add_handler(handler, group=2)
 
-
-    # گروه 3 - ضد اسپم
     for handler in get_antispam_handlers():
-        app.add_handler(handler, group=3)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
+        else:
+            # flood filter
+            app.add_handler(handler, group=3)
 
 
     app.add_error_handler(error_handler)
