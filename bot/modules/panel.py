@@ -2,7 +2,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 from bot.modules.locks import locks
 
-# پنل مدیریت (در PV و گروه کار می‌کند)
 async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
@@ -31,32 +30,27 @@ async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message:
         await update.message.reply_text("پنل مدیریت:", reply_markup=reply_markup)
-    elif update.callback_query:
-        await update.callback_query.message.reply_text("پنل مدیریت:", reply_markup=reply_markup)
     else:
         chat_id = update.effective_chat.id
         await context.bot.send_message(chat_id, "پنل مدیریت:", reply_markup=reply_markup)
 
-# هندلر دکمه‌ها
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    action = query.data.split("_")[0]      # lock یا unlock
-    lock_type = query.data.split("_")[1]   # links, photos, videos...
+    action, lock_type = query.data.split("_")
 
     if lock_type not in locks:
-        await query.edit_message_text("❌ خطا: قفل نامعتبر است.")
+        await query.edit_message_text("❌ قفل نامعتبر است.")
         return
 
+    locks[lock_type] = (action == "lock")
+
     if action == "lock":
-        locks[lock_type] = True
         await query.edit_message_text(f"🔒 قفل {lock_type} فعال شد")
     else:
-        locks[lock_type] = False
         await query.edit_message_text(f"🔓 قفل {lock_type} غیرفعال شد")
 
-# خروجی هندلرها برای main.py
 def get_panel_handlers():
     return [
         CommandHandler("panel", panel),
