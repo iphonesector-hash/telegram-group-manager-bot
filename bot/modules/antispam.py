@@ -6,6 +6,9 @@ user_messages = {}
 MAX_MSG_PER_10S = 5
 
 async def antispam_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.from_user:
+        return
+
     msg = update.message
     user_id = msg.from_user.id
     now = time.time()
@@ -26,4 +29,3 @@ def get_antispam_handlers():
     return [
         MessageHandler(filters.ALL, antispam_filter),
     ]
-

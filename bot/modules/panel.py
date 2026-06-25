@@ -1,9 +1,13 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
-from bot.modules.locks import locks
-
+from bot.database.session import get_session
+from bot.database.models import Group
 
 async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.effective_chat or update.effective_chat.type not in ["group", "supergroup"]:
+        await update.message.reply_text("این دستور فقط در گروه‌ها کاربرد دارد.")
+        return
+
     keyboard = [
         [
             InlineKeyboardButton("🔒 قفل لینک‌ها", callback_data="lock_links"),
@@ -29,32 +33,41 @@ async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # هم در PV هم در گروه کار می‌کند
     if update.message:
-        await update.message.reply_text("پنل مدیریت:", reply_markup=reply_markup)
+        await update.message.reply_text("پنل مدیریت گروه:", reply_markup=reply_markup)
     else:
         chat_id = update.effective_chat.id
-        await context.bot.send_message(chat_id, "پنل مدیریت:", reply_markup=reply_markup)
+        await context.bot.send_message(chat_id, "پنل مدیریت گروه:", reply_markup=reply_markup)
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    data = query.data  # مثل lock_links
-    action, lock_type = data.split("_")  # action=lock / unlock, lock_type=links,...
+    data = query.data
+    action, lock_type = data.split("_")
 
-    if lock_type not in locks:
-        await query.edit_message_text("❌ قفل نامعتبر است.")
+    session = get_session()
+    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
+
+    if not group:
+        await query.edit_message_text("❌ گروه در پایگاه داده یافت نشد.")
+        session.close()
         return
 
-    # تنظیم وضعیت قفل
-    locks[lock_type] = (action == "lock")
+    attr = f"lock_{lock_type}"
+    if not hasattr(group, attr):
+        await query.edit_message_text("❌ قفل نامعتبر است.")
+        session.close()
+        return
 
-    if action == "lock":
-        await query.edit_message_text(f"🔒 قفل {lock_type} فعال شد")
-    else:
-        await query.edit_message_text(f"🔓 قفل {lock_type} غیرفعال شد")
+    setattr(group, attr, (action == "lock"))
+    session.commit()
+
+    status = "فعال" if action == "lock" else "غیرفعال"
+    icon = "🔒" if action == "lock" else "🔓"
+    await query.edit_message_text(f"{icon} قفل {lock_type} {status} شد.")
+    session.close()
 
 
 def get_panel_handlers():
