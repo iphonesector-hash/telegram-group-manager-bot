@@ -31,7 +31,10 @@ async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("📜 قوانین", callback_data="panel_rules"),
         ],
         [
+            InlineKeyboardButton("💰 سیستم مالی", callback_data="panel_economy"),
             InlineKeyboardButton("👤 مدیریت کاربران", callback_data="panel_users"),
+        ],
+        [
             InlineKeyboardButton("❌ بستن پنل", callback_data="panel_close"),
         ]
     ]
@@ -89,7 +92,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         status = "✅ فعال" if group.welcome_enabled else "❌ غیرفعال"
 
         keyboard = [
-            [InlineKeyboardButton(f"وضعیت: {status}", callback_data="toggle_welcome")],
+            [InlineKeyboardButton(f"وضعیت: {status}", callback_data="toggle_welcome_enabled")],
             [InlineKeyboardButton("📝 تغییر متن خوشامد", callback_data="panel_setwelcome")],
             [InlineKeyboardButton("🔙 بازگشت", callback_data="panel_main")]
         ]
@@ -102,10 +105,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         status = "✅ فعال" if group.antispam_enabled else "❌ غیرفعال"
 
         keyboard = [
-            [InlineKeyboardButton(f"وضعیت: {status}", callback_data="toggle_antispam")],
+            [InlineKeyboardButton(f"وضعیت: {status}", callback_data="toggle_antispam_enabled")],
             [InlineKeyboardButton("🔙 بازگشت", callback_data="panel_main")]
         ]
         await query.edit_message_text("🛡 **تنظیمات ضد اسپم:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        session.close()
+
+    elif data == "panel_economy":
+        session = get_session()
+        group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
+        status = "✅ فعال" if group.economy_enabled else "❌ غیرفعال"
+
+        keyboard = [
+            [InlineKeyboardButton(f"وضعیت سیستم مالی: {status}", callback_data="toggle_economy_enabled")],
+            [InlineKeyboardButton("🔙 بازگشت", callback_data="panel_main")]
+        ]
+        await query.edit_message_text("💰 **تنظیمات سیستم مالی و سکه:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         session.close()
 
     elif data.startswith("toggle_"):
@@ -120,12 +135,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
         # Refresh the current sub-menu
         if "lock" in data:
-            await button_handler(update, context) # Re-trigger the same logic to update UI
+            query.data = "panel_locks"
+            await button_handler(update, context)
         elif "welcome" in data:
             query.data = "panel_welcome"
             await button_handler(update, context)
         elif "antispam" in data:
             query.data = "panel_antispam"
+            await button_handler(update, context)
+        elif "economy" in data:
+            query.data = "panel_economy"
             await button_handler(update, context)
 
     elif data == "panel_rules":
@@ -134,11 +153,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "panel_users":
         keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="panel_main")]]
-        await query.edit_message_text("👤 برای مدیریت کاربران از دستورات زیر استفاده کنید:\n\n/warn - اخطار\n/mute - بی‌صدا\n/ban - اخراج\n/unmute - آزاد کردن", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await query.edit_message_text("👤 **مدیریت کاربران**\nبرای مدیریت کاربران از دستورات زیر استفاده کنید:\n\n/warn - اخطار به کاربر\n/mute - بی‌صدا کردن (دقیقه)\n/ban - اخراج و مسدود کردن\n/unmute - آزاد کردن کاربر", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
     elif data == "panel_setwelcome":
         keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="panel_main")]]
-        await query.edit_message_text("📝 برای تغییر متن خوشامد از دستور زیر استفاده کنید:\n\n`/setwelcome متن جدید`", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await query.edit_message_text("📝 **تنظیم متن خوشامد**\nبرای تغییر متن خوشامد از دستور زیر استفاده کنید:\n\n`/setwelcome متن جدید`", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 def get_panel_handlers():
     return [

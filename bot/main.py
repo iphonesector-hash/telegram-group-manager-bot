@@ -28,6 +28,8 @@ from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
 from bot.modules.warnings import get_handlers as get_warning_handlers
 from bot.modules.rules import get_rules_handlers
+from bot.modules.economy import get_handlers as get_economy_handlers
+from bot.modules.entertainment import get_handlers as get_entertainment_handlers
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -49,56 +51,75 @@ def main():
     for handler in get_registration_handlers():
         app.add_handler(handler, group=0)
 
+    # گروه 1 - فیلترهای مسدودکننده (Mute & Antispam)
+    # این‌ها باید قبل از دستورات باشند تا کاربران محدود شده نتوانند از دستورات استفاده کنند
+    for handler in get_warning_handlers():
+        if not isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
 
-    # گروه 1 - دستورات (Commands)
-    app.add_handler(start_handler, group=1)
+    for handler in get_antispam_handlers():
+        if not isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
+
+
+    # گروه 2 - دستورات (Commands)
+    app.add_handler(start_handler, group=2)
 
     for handler in get_panel_handlers():
-        app.add_handler(handler, group=1)
+        app.add_handler(handler, group=2)
 
     for handler in get_profile_handlers():
         if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-        else:
-            # message counter
-            app.add_handler(handler, group=5)
+            app.add_handler(handler, group=2)
 
     for handler in get_lock_handlers():
         if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-        else:
-            # content filter
-            app.add_handler(handler, group=4)
+            app.add_handler(handler, group=2)
 
     for handler in get_warning_handlers():
         if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-        else:
-            # mute_checker
-            app.add_handler(handler, group=4)
+            app.add_handler(handler, group=2)
 
     for handler in get_rules_handlers():
-        app.add_handler(handler, group=1)
+        app.add_handler(handler, group=2)
 
     for handler in get_welcome_handlers():
         if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-        else:
-            # join handler
             app.add_handler(handler, group=2)
 
     for handler in get_antispam_handlers():
         if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-        else:
-            # flood filter
+            app.add_handler(handler, group=2)
+
+    for handler in get_economy_handlers():
+        app.add_handler(handler, group=2)
+
+    for handler in get_entertainment_handlers():
+        app.add_handler(handler, group=2)
+
+
+    # گروه 3 - خوش آمدگویی (پیام‌های سیستمی)
+    for handler in get_welcome_handlers():
+        if not isinstance(handler, CommandHandler):
             app.add_handler(handler, group=3)
+
+
+    # گروه 4 - قفل‌های محتوا (حذف پیام‌های غیرمجاز)
+    for handler in get_lock_handlers():
+        if not isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=4)
+
+
+    # گروه 5 - آمار و اقتصاد (XP/Coins)
+    for handler in get_profile_handlers():
+        if not isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=5)
 
 
     app.add_error_handler(error_handler)
 
 
-    print("✅ SectorBot روشن شد... منتظر پیام هستم.")
+    print("✅ ربات SectorBot با موفقیت روشن شد و آماده به کار است.")
 
     app.run_polling()
 

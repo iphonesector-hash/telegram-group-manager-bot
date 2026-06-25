@@ -2,15 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, MessageHandler, filters, CommandHandler
 from bot.database.session import get_session
 from bot.database.models import Group
-
-async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return True
-    try:
-        member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-        return member.status in ["administrator", "creator"]
-    except:
-        return False
+from bot.utils.helpers import is_admin
 
 async def lock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or update.effective_chat.type not in ["group", "supergroup"]:
@@ -33,7 +25,6 @@ async def lock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
         session.add(group)
 
-    # Map mapping user friendly names to db columns
     mapping = {
         "links": "lock_links",
         "usernames": "lock_usernames",
@@ -137,7 +128,6 @@ async def lock_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type not in ["group", "supergroup"]:
         return
 
-    # Skip admins
     if await is_admin(update, context):
         return
 
@@ -151,14 +141,12 @@ async def lock_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     deleted = False
 
-    # Check Links
     if group.lock_links and msg.entities:
         for e in msg.entities:
             if e.type in ["url", "text_link"]:
                 deleted = True
                 break
 
-    # Check Usernames
     if not deleted and group.lock_usernames and (msg.entities or msg.caption_entities):
         ents = (msg.entities or []) + (msg.caption_entities or [])
         for e in ents:
@@ -166,11 +154,9 @@ async def lock_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 deleted = True
                 break
 
-    # Check Forward
     if not deleted and group.lock_forward and (msg.forward_from or msg.forward_from_chat):
         deleted = True
 
-    # Check Media types
     if not deleted and group.lock_photos and msg.photo:
         deleted = True
     if not deleted and group.lock_videos and msg.video:

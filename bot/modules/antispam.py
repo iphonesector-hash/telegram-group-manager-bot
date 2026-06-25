@@ -1,26 +1,17 @@
 from telegram import Update, ChatPermissions
-from telegram.ext import ContextTypes, MessageHandler, filters, CommandHandler
+from telegram.ext import ContextTypes, MessageHandler, filters, CommandHandler, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import Group, Mute
+from bot.utils.helpers import is_admin
 import time
 import datetime
 
 user_messages = {} # {(group_id, user_id): [timestamps]}
 
-async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return True
-    try:
-        member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-        return member.status in ["administrator", "creator"]
-    except:
-        return False
-
 async def antispam_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_user or not update.effective_chat:
         return
 
-    # Skip admins
     if await is_admin(update, context):
         return
 
@@ -39,7 +30,6 @@ async def antispam_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if key not in user_messages:
         user_messages[key] = []
 
-    # Keep only messages from last 10 seconds
     user_messages[key] = [t for t in user_messages[key] if now - t < 10]
     user_messages[key].append(now)
 
@@ -47,10 +37,8 @@ async def antispam_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await update.message.delete()
 
-            # Temporary mute for 15 minutes as punishment
             until = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + datetime.timedelta(minutes=15)
 
-            # Save to DB
             mute = session.query(Mute).filter(Mute.user_id == user_id, Mute.group_id == group_id).first()
             if not mute:
                 mute = Mute(user_id=user_id, group_id=group_id, until=until)
@@ -61,6 +49,11 @@ async def antispam_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await update.effective_chat.restrict_member(user_id, ChatPermissions(can_send_messages=False), until_date=until)
             await update.message.reply_text(f"⚠️ کاربر {update.effective_user.first_name} به دلیل اسپم به مدت ۱۵ دقیقه بی‌صدا شد.")
+
+            session.close()
+            raise ApplicationHandlerStop()
+        except ApplicationHandlerStop:
+            raise
         except:
             pass
 
@@ -103,5 +96,5 @@ async def antispam_toggle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE
 def get_antispam_handlers():
     return [
         CommandHandler("antispam", antispam_toggle_cmd),
-        MessageHandler(filters.ALL & ~filters.COMMAND, antispam_filter),
+        MessageHandler(filters.ALL, antispam_filter), # Remove ~filters.COMMAND to block spammy commands
     ]

@@ -2,15 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
 from bot.database.session import get_session
 from bot.database.models import Group
-
-async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return True
-    try:
-        member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-        return member.status in ["administrator", "creator"]
-    except:
-        return False
+from bot.utils.helpers import is_admin
 
 async def rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or update.effective_chat.type not in ["group", "supergroup"]:

@@ -1,14 +1,14 @@
 import re
 import datetime
 from telegram import Update, ChatPermissions
-from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import User, Group, Warning, Mute
+from bot.utils.helpers import is_admin
 
 def parse_time(time_str):
     if not time_str:
         return None
-    # Support numeric minutes as default per requirement, or suffix
     if time_str.isdigit():
         return datetime.timedelta(minutes=int(time_str))
 
@@ -27,16 +27,6 @@ def parse_time(time_str):
         return datetime.timedelta(days=val)
     return None
 
-async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return True
-
-    try:
-        member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-        return member.status in ["administrator", "creator"]
-    except:
-        return False
-
 async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.reply_to_message:
         return update.message.reply_to_message.from_user.id, update.message.reply_to_message.from_user.full_name
@@ -44,7 +34,7 @@ async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         arg = context.args[0]
         if arg.isdigit():
-            return int(arg), f"User {arg}"
+            return int(arg), f"کاربر {arg}"
         if arg.startswith('@'):
             session = get_session()
             user = session.query(User).filter(User.username == arg[1:]).first()
@@ -66,7 +56,6 @@ async def warn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ کاربر مورد نظر یافت نشد. ریپلای کنید یا آیدی عددی/یوزرنیم بزنید.")
         return
 
-    # Check if target is admin
     try:
         target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
         if target_member.status in ["administrator", "creator"]:
@@ -154,7 +143,6 @@ async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ کاربر یافت نشد.")
         return
 
-    # Check if target is admin
     try:
         target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
         if target_member.status in ["administrator", "creator"]:
@@ -163,7 +151,7 @@ async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         pass
 
-    duration_str = context.args[1] if len(context.args) > 1 else "60" # Default 60 minutes
+    duration_str = context.args[1] if len(context.args) > 1 else "60"
     delta = parse_time(duration_str)
     if not delta:
         await update.message.reply_text("❌ زمان نامعتبر است (مثال: 60 یا 1h)")
@@ -223,7 +211,6 @@ async def ban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ کاربر یافت نشد.")
         return
 
-    # Check if target is admin
     try:
         target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
         if target_member.status in ["administrator", "creator"]:
@@ -263,6 +250,9 @@ async def mute_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user or not update.effective_chat:
         return
 
+    if await is_admin(update, context):
+        return
+
     session = get_session()
     mute = session.query(Mute).filter(
         Mute.user_id == update.effective_user.id,
@@ -274,6 +264,10 @@ async def mute_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if mute.until > now:
             try:
                 await update.message.delete()
+                session.close()
+                raise ApplicationHandlerStop()
+            except ApplicationHandlerStop:
+                raise
             except:
                 pass
         else:
@@ -290,5 +284,5 @@ def get_handlers():
         CommandHandler("unmute", unmute_cmd),
         CommandHandler("ban", ban_cmd),
         CommandHandler("unban", unban_cmd),
-        MessageHandler(filters.ALL & ~filters.COMMAND, mute_checker),
+        MessageHandler(filters.ALL, mute_checker),
     ]

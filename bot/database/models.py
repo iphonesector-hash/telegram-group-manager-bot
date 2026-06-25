@@ -17,6 +17,8 @@ class User(Base):
     level = Column(Integer, default=1)
     message_count = Column(BigInteger, default=0)
 
+    last_daily_claim = Column(DateTime, nullable=True)
+
     is_admin = Column(Boolean, default=False)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -49,6 +51,9 @@ class Group(Base):
     antispam_enabled = Column(Boolean, default=True)
     antispam_limit = Column(Integer, default=5) # messages per 10s
 
+    # Economy
+    economy_enabled = Column(Boolean, default=True)
+
     is_active = Column(Boolean, default=True)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -58,7 +63,7 @@ class Warning(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.id"))
     group_id = Column(BigInteger, ForeignKey("groups.id"))
-    reason = Column(String, default="No reason provided")
+    reason = Column(String, default="بدون دلیل")
     warned_by = Column(BigInteger)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
