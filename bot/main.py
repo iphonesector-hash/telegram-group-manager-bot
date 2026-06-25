@@ -18,18 +18,18 @@ from bot.modules.welcome import get_welcome_handlers
 from bot.modules.antispam import get_antispam_handlers
 from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
+from bot.modules.moderation import get_moderation_handlers
 
 # استفاده از متغیر محیطی برای امنیت بیشتر
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8819957944:AAFVCeFQ3RXPImvhF3jjL1D418xIg9B9JLs")
 
 
 def main():
-    if not BOT_TOKEN:
-        print("❌ Error: BOT_TOKEN environment variable not set.")
-        sys.exit(1)
-
     # Initialize Database
     init_db()
+
+    if BOT_TOKEN == "8819957944:AAFVCeFQ3RXPImvhF3jjL1D418xIg9B9JLs":
+        print("⚠️ Warning: Using default bot token. Set BOT_TOKEN environment variable for production.")
 
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -53,6 +53,13 @@ def main():
         if isinstance(handler, CommandHandler):
             app.add_handler(handler, group=1)
         else:
+            app.add_handler(handler, group=4)
+
+    for handler in get_moderation_handlers():
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
+        else:
+            # mute_checker
             app.add_handler(handler, group=4)
 
     # گروه 2: خوشامدگویی
