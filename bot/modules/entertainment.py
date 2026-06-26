@@ -1,71 +1,64 @@
 import random
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
-
-JOKES = [
-    "‏يه بار يه پسره ميخواست بره خواستگاری، باباش ميگه برو يه گل بگير. ميگه بابا گل كه دارم، ميگه نه احمق برو گلفروشی! 😂",
-    "‏طرف ميره دكتر، دكتر ميگه چرا اينجوری شدی؟ ميگه آقای دكتر من هر شب خواب ميبينم با پنگوئن‌ها فوتبال بازی ميكنم. دكتر ميگه برو اين قرص‌ها رو بخور، از فردا شب ديگه خواب پنگوئن نميبينی. ميگه آقای دكتر ميشه از پس‌فردا شب بخورم؟ آخه امشب فيناله! 🐧⚽️",
-    "‏ميدونيد چرا غواص‌ها از پشت ميوفتن تو آب؟ چون اگه از جلو بيافتن ميوفتن تو قايق! 😂",
-]
-
-FACTS = [
-    "آیا می‌دانستید که هشت‌پاها سه قلب دارند؟ 🐙",
-    "آیا می‌دانستید که عسل تنها ماده غذایی است که هرگز فاسد نمی‌شود؟ 🍯",
-    "آیا می‌دانستید که مورچه‌ها هرگز نمی‌خوابند؟ 🐜",
-]
-
-RIDDLES = [
-    {"q": "آن چیست که چشم دارد اما نمی‌بیند؟", "a": "سوزن 🪡"},
-    {"q": "آن چیست که پا دارد اما راه نمی‌رود؟", "a": "میز 🪑"},
-    {"q": "آن چیست که مال شماست اما دیگران بیشتر از آن استفاده می‌کنند؟", "a": "اسم شما 👤"},
-]
-
-STORIES = [
-    "روزی روزگاری در روستایی دورافتاده، مردی زندگی می‌کرد که معتقد بود می‌تواند با پرندگان صحبت کند...",
-    "در زمان‌های قدیم، پادشاهی عادل بود که برای فهمیدن مشکلات مردم، شب‌ها با لباس مبدل در شهر قدم می‌زد...",
-]
-
-HAFEZ = [
-    "الا یا ایها الساقی ادر کأسا و ناولها / که عشق آسان نمود اول ولی افتاد مشکل‌ها",
-    "دوش وقت سحر از غصه نجاتم دادند / واندر آن ظلمت شب آب حیاتم دادند",
-]
-
-async def joke_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(random.choice(JOKES))
-
-async def fact_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(f"💡 {random.choice(FACTS)}")
-
-async def riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    riddle = random.choice(RIDDLES)
-    await update.effective_message.reply_text(f"❓ {riddle['q']}\n\n.\n.\n.\n✅ پاسخ: {riddle['a']}")
-
-async def story_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(f"📖 {random.choice(STORIES)}")
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
+from bot.modules.ai import get_new_joke, get_new_riddle, get_new_fact, get_motivation, hafez_fortune
 
 async def dice_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_dice()
+    await update.message.reply_dice()
+    raise ApplicationHandlerStop()
 
 async def coin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = random.choice(["شیر 🦁", "خط 📏"])
-    await update.effective_message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
+    await update.message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
+    raise ApplicationHandlerStop()
 
-async def hafez_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(f"📜 نیت کنید و بشنوید:\n\n{random.choice(HAFEZ)}")
+async def challenge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    challenges = [
+        "همین الان ۳ بار بلند بگو: «چای داغ، دایی چاق»! 🍵",
+        "نام ۵ شهر ایران که با حرف «س» شروع می‌شوند را بگو. 🗺",
+        "یک سلفی خنده‌دار بگیر و تو گروه بفرست! 📸",
+        "اسم یک فیلم رو با ایموجی بنویس بقیه حدس بزنن. 🎭"
+    ]
+    await update.message.reply_text(f"🎯 **چالش سکتور:**\n\n{random.choice(challenges)}", parse_mode="Markdown")
+    raise ApplicationHandlerStop()
 
-async def rps_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    choices = ["سنگ 💎", "کاغذ 📄", "قیچی ✂️"]
+async def rps_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    choices = ["سنگ 🪨", "کاغذ 📄", "قیچی ✂️"]
     bot_choice = random.choice(choices)
-    await update.effective_message.reply_text(f"🎮 من انتخاب کردم:\n\n**{bot_choice}**\n\nحالا تو چی میگی؟", parse_mode="Markdown")
+    await update.message.reply_text(f"🎮 من انتخاب کردم: **{bot_choice}**\n\nحالا نوبت توئه! سنگ، کاغذ یا قیچی؟", parse_mode="Markdown")
+    raise ApplicationHandlerStop()
+
+async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if text == "😂 جوک":
+        await get_new_joke(update, context)
+    elif text == "💡 دانستنی":
+        await get_new_fact(update, context)
+    elif text == "❓ معما":
+        await get_new_riddle(update, context)
+    elif text == "📖 داستان":
+        await update.message.reply_text("📖 روزی روزگاری در قلمرو سکتور، رباتی متولد شد که هدفش نظم بخشیدن به گروه‌های تلگرامی بود...")
+    elif text == "🎲 تاس":
+        await dice_cmd(update, context)
+    elif text == "🪙 پرتاب سکه":
+        await coin_cmd(update, context)
+    elif text == "🎯 چالش":
+        await challenge_cmd(update, context)
+    elif text == "📜 فال حافظ":
+        await hafez_fortune(update, context)
+    elif text == "🎮 بازی‌ها":
+        from bot.utils.keyboards import get_games_menu
+        await update.message.reply_text("🎮 منوی بازی‌ها باز شد:", reply_markup=get_games_menu())
+    else:
+        return
+    raise ApplicationHandlerStop()
 
 def get_handlers():
     return [
-        CommandHandler("joke", joke_cmd),
-        CommandHandler("fact", fact_cmd),
-        CommandHandler("riddle", riddle_cmd),
-        CommandHandler("story", story_cmd),
+        CommandHandler("joke", get_new_joke),
+        CommandHandler("fact", get_new_fact),
+        CommandHandler("riddle", get_new_riddle),
         CommandHandler("dice", dice_cmd),
         CommandHandler("coin", coin_cmd),
-        CommandHandler("hafez", hafez_cmd),
-        CommandHandler("rps", rps_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|🎲 تاس|🪙 پرتاب سکه|🎯 چالش|📜 فال حافظ|🎮 بازی‌ها)$"), ent_button_handler),
     ]
