@@ -81,7 +81,8 @@ def main():
             app.add_handler(handler, group=2)
 
     for handler in get_rules_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
 
     for handler in get_welcome_handlers():
         if isinstance(handler, CommandHandler):
@@ -92,10 +93,12 @@ def main():
             app.add_handler(handler, group=2)
 
     for handler in get_economy_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
 
     for handler in get_entertainment_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
 
 
     # گروه 3 - خوش آمدگویی (پیام‌های سیستمی)
