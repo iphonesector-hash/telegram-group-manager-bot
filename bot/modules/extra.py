@@ -57,6 +57,7 @@ async def games_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "✂️ سنگ کاغذ قیچی":
         from bot.modules.entertainment import rps_game
         await rps_game(update, context)
+        # Note: rps_game already raises ApplicationHandlerStop
     elif text == "⚔️ دوئل":
         await update.effective_message.reply_text("⚔️ برای دوئل روی پیام رقیب خود ریپلای کنید و بنویسید: دوئل")
     else:

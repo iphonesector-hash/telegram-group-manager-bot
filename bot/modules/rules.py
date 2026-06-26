@@ -13,12 +13,13 @@ async def rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.effective_message.reply_text(f"📜 قوانین گروه {group.title}:\n\n{group.rules}", parse_mode=None)
     session.close()
+    raise ApplicationHandlerStop()
 
 async def set_rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     if not context.args:
         await update.effective_message.reply_text("💡 مثال: /setrules قوانین گروه ما...")
-        return
+        raise ApplicationHandlerStop()
     new_rules = " ".join(context.args)
     session = get_session()
     group = get_group(session, update.effective_chat.id, update.effective_chat.title)
@@ -27,6 +28,7 @@ async def set_rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session.commit()
     await update.effective_message.reply_text("✅ قوانین گروه بروزرسانی شد.")
     session.close()
+    raise ApplicationHandlerStop()
 
 async def rules_settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return

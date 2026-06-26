@@ -1,78 +1,27 @@
-import re
 import datetime
 from telegram import Update, ChatPermissions
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import User, Group, Warning, Mute
-from bot.utils.helpers import is_admin, get_group
+from bot.utils.helpers import is_admin, get_user_id, parse_time
 from bot.utils.keyboards import (
     get_warnings_mgmt_menu, get_mutes_mgmt_menu, get_bans_mgmt_menu,
     get_user_info_mgmt_menu, get_security_mgmt_menu, get_member_mgmt_menu
 )
 
-def parse_time(time_str):
-    if not time_str:
-        return None
-    if time_str.isdigit():
-        return datetime.timedelta(minutes=int(time_str))
-
-    match = re.match(r"(\d+)([smhd])", time_str.lower())
-    if not match:
-        return None
-    val, unit = match.groups()
-    val = int(val)
-    if unit == 's':
-        return datetime.timedelta(seconds=val)
-    elif unit == 'm':
-        return datetime.timedelta(minutes=val)
-    elif unit == 'h':
-        return datetime.timedelta(hours=val)
-    elif unit == 'd':
-        return datetime.timedelta(days=val)
-    return None
-
-async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.reply_to_message:
-        return update.message.reply_to_message.from_user.id, update.message.reply_to_message.from_user.full_name
-
-    if context.args:
-        arg = context.args[0]
-        if arg.isdigit():
-            return int(arg), f"کاربر {arg}"
-        if arg.startswith('@'):
-            session = get_session()
-            user = session.query(User).filter(User.username == arg[1:]).first()
-            session.close()
-            if user:
-                return user.id, user.first_name
-    return None, None
-
 async def warn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return
-
     if not await is_admin(update, context):
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id, name = await get_user_id(update, context)
     if not user_id:
-        await update.effective_message.reply_text("❌ کاربر مورد نظر یافت نشد. ریپلای کنید یا آیدی عددی/یوزرنیم بزنید.")
-        return
-
-    try:
-        target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
-        if target_member.status in ["administrator", "creator"]:
-            await update.effective_message.reply_text("❌ شما نمی‌توانید ادمین را اخطار دهید.")
-            return
-    except:
-        pass
-
-    reason = "بدون دلیل"
-    if len(context.args) > 1:
-        reason = " ".join(context.args[1:])
+        await update.effective_message.reply_text("❌ کاربر یافت نشد. روی پیام فرد ریپلای کنید یا آیدی عددی بزنید.")
+        raise ApplicationHandlerStop()
 
     session = get_session()
+    reason = " ".join(context.args[1:]) if len(context.args) > 1 else "بدون دلیل"
+
     new_warn = Warning(
         user_id=user_id,
         group_id=update.effective_chat.id,
@@ -80,28 +29,30 @@ async def warn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         warned_by=update.effective_user.id
     )
     session.add(new_warn)
+    session.commit()
 
     warn_count = session.query(Warning).filter(
         Warning.user_id == user_id,
         Warning.group_id == update.effective_chat.id
     ).count()
 
-    session.commit()
-    await update.effective_message.reply_text(f"⚠️ کاربر {name} اخطار دریافت کرد.\nتعداد اخطارها: {warn_count}\nدلیل: {reason}")
+    session.close()
+
+    await update.effective_message.reply_text(f"⚠️ کاربر {name} یک اخطار دریافت کرد.\nتعداد اخطارها: {warn_count}/3\nدلیل: {reason}")
 
     if warn_count >= 3:
-        await update.effective_message.reply_text("🚨 تعداد اخطارها به حد مجاز (۳) رسید. کاربر اخراج می‌شود.")
         try:
             await update.effective_chat.ban_member(user_id)
-        except Exception as e:
-            await update.effective_message.reply_text(f"❌ خطا در اخراج: {e}")
-
-    session.close()
+            await update.effective_message.reply_text(f"🚫 کاربر {name} به دلیل دریافت ۳ اخطار از گروه اخراج شد.")
+        except:
+            pass
+    raise ApplicationHandlerStop()
 
 async def warns_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id, name = await get_user_id(update, context)
     if not user_id:
-        user_id, name = update.effective_user.id, update.effective_user.first_name
+        await update.effective_message.reply_text("❌ کاربر یافت نشد.")
+        raise ApplicationHandlerStop()
 
     session = get_session()
     warns = session.query(Warning).filter(
@@ -112,21 +63,22 @@ async def warns_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not warns:
         await update.effective_message.reply_text(f"✅ کاربر {name} هیچ اخطاری ندارد.")
     else:
-        text = f"📋 لیست اخطارهای {name}:\n"
-        for i, w in enumerate(warns, 1):
-            text += f"{i}. {w.reason} ({w.created_at.strftime('%Y-%m-%d')})\n"
-        await update.effective_message.reply_text(text)
+        txt = f"📋 لیست اخطارهای {name}:\n\n"
+        for i, w in enumerate(warns):
+            txt += f"{i+1}. دلیل: {w.reason} | توسط: {w.warned_by}\n"
+        await update.effective_message.reply_text(txt, parse_mode=None)
     session.close()
+    raise ApplicationHandlerStop()
 
 async def clearwarn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id, name = await get_user_id(update, context)
     if not user_id:
         await update.effective_message.reply_text("❌ کاربر یافت نشد.")
-        return
+        raise ApplicationHandlerStop()
 
     session = get_session()
     session.query(Warning).filter(
@@ -136,30 +88,31 @@ async def clearwarn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session.commit()
     session.close()
     await update.effective_message.reply_text(f"✅ تمام اخطارهای {name} پاک شد.")
+    raise ApplicationHandlerStop()
 
 async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id, name = await get_user_id(update, context)
     if not user_id:
         await update.effective_message.reply_text("❌ کاربر یافت نشد.")
-        return
+        raise ApplicationHandlerStop()
 
     try:
         target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
         if target_member.status in ["administrator", "creator"]:
             await update.effective_message.reply_text("❌ شما نمی‌توانید ادمین را بی‌صدا کنید.")
-            return
-    except:
-        pass
+            raise ApplicationHandlerStop()
+    except ApplicationHandlerStop: raise
+    except: pass
 
     duration_str = context.args[1] if len(context.args) > 1 else "60"
     delta = parse_time(duration_str)
     if not delta:
         await update.effective_message.reply_text("❌ زمان نامعتبر است (مثال: 60 یا 1h)")
-        return
+        raise ApplicationHandlerStop()
 
     until = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + delta
 
@@ -178,16 +131,17 @@ async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(f"🔇 کاربر {name} تا {duration_str} دقیقه دیگر بی‌صدا شد.")
     except Exception as e:
         await update.effective_message.reply_text(f"❌ خطا در محدودسازی: {e}")
+    raise ApplicationHandlerStop()
 
 async def unmute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id, name = await get_user_id(update, context)
     if not user_id:
         await update.effective_message.reply_text("❌ کاربر یافت نشد.")
-        return
+        raise ApplicationHandlerStop()
 
     session = get_session()
     session.query(Mute).filter(Mute.user_id == user_id, Mute.group_id == update.effective_chat.id).delete()
@@ -204,44 +158,46 @@ async def unmute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(f"🔊 کاربر {name} آزاد شد.")
     except Exception as e:
         await update.effective_message.reply_text(f"❌ خطا: {e}")
+    raise ApplicationHandlerStop()
 
 async def ban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id, name = await get_user_id(update, context)
     if not user_id:
         await update.effective_message.reply_text("❌ کاربر یافت نشد.")
-        return
+        raise ApplicationHandlerStop()
 
     try:
         target_member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
         if target_member.status in ["administrator", "creator"]:
             await update.effective_message.reply_text("❌ شما نمی‌توانید ادمین را اخراج کنید.")
-            return
-    except:
-        pass
+            raise ApplicationHandlerStop()
+    except ApplicationHandlerStop: raise
+    except: pass
 
     try:
         await update.effective_chat.ban_member(user_id)
         await update.effective_message.reply_text(f"🚫 کاربر {name} از گروه اخراج و مسدود شد.")
     except Exception as e:
         await update.effective_message.reply_text(f"❌ خطا: {e}")
+    raise ApplicationHandlerStop()
 
 async def unban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
+        raise ApplicationHandlerStop()
 
     if not context.args:
         await update.effective_message.reply_text("❌ لطفا آیدی عددی کاربر را وارد کنید.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id_str = context.args[0]
     if not user_id_str.isdigit():
         await update.effective_message.reply_text("❌ آیدی عددی نامعتبر است.")
-        return
+        raise ApplicationHandlerStop()
 
     user_id = int(user_id_str)
     try:
@@ -249,6 +205,7 @@ async def unban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(f"✅ کاربر {user_id} از لیست سیاه خارج شد.")
     except Exception as e:
         await update.effective_message.reply_text(f"❌ خطا: {e}")
+    raise ApplicationHandlerStop()
 
 async def mute_checker(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user or not update.effective_chat:

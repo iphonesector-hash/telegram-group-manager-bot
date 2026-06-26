@@ -113,6 +113,7 @@ async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(reply, reply_markup=get_main_menu(), parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای باز کردن پنل را ندارید.")
+    raise ApplicationHandlerStop()
 
 async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
