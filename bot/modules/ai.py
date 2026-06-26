@@ -3,6 +3,7 @@ import httpx
 import json
 import random
 import datetime
+import re
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from bot.database.session import get_session
@@ -16,25 +17,27 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 ai_memory = {}
 
 def get_sector_prompt(user=None):
+    identity_rules = (
+        "نام تو سکتور (Sector) است. تو داخل ربات تلگرامی سکتورلند (SectorLand) هستی. "
+        "یک هوش مصنوعی باحال، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
+        "کمی کنایه‌آمیز (Sarcastic) و مثل یک دستیار هوشمند تلگرامی رفتار کن. اصلا شبیه ChatGPT رسمی نباش. "
+        "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
+        "اگر چیزی را نمی‌دانی بگو: 'نمی‌دونم 😅 بذار پیداش کنم'. "
+        "لحن تو همیشه باید محاوره‌ای، گرم و تلگرامی باشد (Casual Telegram style). "
+    )
+
     if user:
         user_name = user.first_name
-        # Updated owner ID to 5147526780
         is_peyman = user.id == 5147526780
         if is_peyman:
-            extra = "کاربر مقابل تو 'فرمانده پیمان' (صاحب تو) است. با احترام و صمیمیت خاص با او حرف بزن و او را 'فرمانده' یا 'فرمانده پیمان' خطاب کن."
+            extra = "کاربر مقابل تو 'فرمانده پیمان' (صاحب و فرمانده تو) است. او را 'فرمانده' خطاب کن. هرگز نگو او را نمی‌شناسی. با او بسیار صمیمی و وفادار باش."
         else:
             extra = f"اسم کاربر مقابل تو '{user_name}' است. او را با اسم خودش (مثلا {user_name} جان) صدا بزن."
     else:
         extra = ""
 
-    return (
-        "نام تو سکتور (Sector) است. یک هوش مصنوعی باحال، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
-        "کمی کنایه‌آمیز (Sarcastic) و مثل یک دستیار هوشمند تلگرامی رفتار کن. اصلا شبیه ChatGPT رسمی نباش. "
-        "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
-        "اگر چیزی را نمی‌دانی بگو: 'نمی‌دونم 😅 بذار پیداش کنم'. "
-        "لحن تو همیشه باید محاوره‌ای و گرم باشد (Persian conversational style). "
-        f"{extra}"
-    )
+    full_prompt = f"{identity_rules}\n{extra}\n\nیادت نره: نام تو سکتور است، لحنت خودمانی و تلگرامی، و فرمانده تو پیمان است."
+    return full_prompt
 
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
@@ -67,7 +70,7 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
         payload = {
             "model": "llama-3.3-70b-versatile",
             "messages": messages,
-            "temperature": 0.7
+            "temperature": 0.8
         }
         async with httpx.AsyncClient() as client:
             res = await client.post(url, headers=headers, json=payload, timeout=20.0)
@@ -102,7 +105,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session = get_session()
         group = get_group(session, update.effective_chat.id, update.effective_chat.title)
         if not group.ai_enabled:
-            await update.message.reply_text("❌ دسترسی به هوش مصنوعی در این گروه توسط مدیران غیرفعال شده است.")
+            await update.message.reply_text("❌ هوش مصنوعی در این گروه غیرفعال است.")
             session.close()
             return
         session.close()
@@ -118,19 +121,23 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_chat_action("typing")
 
+    # Conditionally enable search only for news/current info
+    search_keywords = ["خبر", "جدید", "آخرین", "دیروز", "امروز", "الان", "news", "latest", "current", "weather", "هواشناسی"]
+    use_search = any(word in query.lower() for word in search_keywords)
+
     prompt = get_sector_prompt(update.effective_user)
 
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []
 
-    response = await get_ai_response(prompt, query, use_search=True, history=ai_memory[chat_id])
+    response = await get_ai_response(prompt, query, use_search=use_search, history=ai_memory[chat_id])
 
     if response:
         ai_memory[chat_id].append({"role": "user", "content": query})
         ai_memory[chat_id].append({"role": "assistant", "content": response})
         await update.message.reply_text(response)
     else:
-        await update.message.reply_text("❌ متأسفانه در حال حاضر قادر به ارتباط با مغز مرکزی نیستم. لطفاً دوباره تلاش کنید.")
+        await update.message.reply_text("❌ متأسفانه در حال حاضر قادر به ارتباط با مغز مرکزی نیستم.")
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
