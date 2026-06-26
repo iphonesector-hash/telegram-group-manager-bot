@@ -23,8 +23,10 @@ app.add_middleware(
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 def validate_telegram_init_data(init_data: str):
-    if not BOT_TOKEN or not init_data:
-        return True # For development
+    if not BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="Bot token not configured")
+    if not init_data:
+        return False
 
     try:
         from urllib.parse import parse_qs, unquote
@@ -48,6 +50,9 @@ def validate_telegram_init_data(init_data: str):
 
 @app.get("/api/user/{user_id}")
 async def get_user(user_id: int, init_data: Optional[str] = Header(None)):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
     session = get_session()
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
@@ -86,7 +91,7 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None)):
         session.close()
         return {"status": "error", "message": "باید ۲۴ ساعت صبر کنید."}
 
-    reward = 50 # Basic reward
+    reward = 50
     user.coins += reward
     user.last_daily_claim = now
     session.commit()
@@ -109,9 +114,10 @@ async def get_leaderboard():
     return data
 
 @app.get("/api/groups/{user_id}")
-async def get_user_groups(user_id: int):
-    # This would normally check if user is admin in groups
-    # Simplification: return some groups from DB
+async def get_user_groups(user_id: int, init_data: Optional[str] = Header(None)):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
     session = get_session()
     groups = session.query(Group).limit(5).all()
     data = []
@@ -133,8 +139,7 @@ async def get_stats():
     session = get_session()
     data = {
         "total_users": session.query(User).count(),
-        "total_groups": session.query(Group).count(),
-        "active_today": 0 # Logic to be added
+        "total_groups": session.query(Group).count()
     }
     session.close()
     return data
