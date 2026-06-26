@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from bot.database.session import get_session
 from bot.database.models import Group, User
-from bot.utils.helpers import is_admin, get_group
+from bot.utils.helpers import is_admin, get_group, get_reply_text
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
@@ -40,7 +40,8 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     # Build message payload
     messages = [{"role": "system", "content": prompt + context_text}]
     if history:
-        messages.extend(history[-6:])
+        # Keep only useful context (last 5 pairs)
+        messages.extend(history[-10:])
     messages.append({"role": "user", "content": user_query})
 
     try:
@@ -49,7 +50,6 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-        # Model: llama-3.1-8b-instant
         payload = {
             "model": "llama-3.1-8b-instant",
             "messages": messages,
@@ -112,7 +112,8 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             query = query[len(word):].strip()
             break
 
-    if not query: return
+    # Ignore useless/meaningless messages in memory
+    if not query or len(query) < 2: return
 
     await update.effective_message.reply_chat_action("typing")
 
@@ -121,13 +122,21 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []
 
-    response = await get_ai_response(prompt, query, use_search=True, history=ai_memory[chat_id])
+    # Only use/save memory for private chats
+    history = ai_memory[chat_id] if is_private else None
+
+    response = await get_ai_response(prompt, query, use_search=True, history=history)
 
     if response:
-        ai_memory[chat_id].append({"role": "user", "content": query})
-        ai_memory[chat_id].append({"role": "assistant", "content": response})
-        # Use parse_mode=None to prevent Markdown errors
-        await update.effective_message.reply_text(response, parse_mode=None)
+        if is_private:
+            ai_memory[chat_id].append({"role": "user", "content": query})
+            ai_memory[chat_id].append({"role": "assistant", "content": response})
+            # Prune memory
+            if len(ai_memory[chat_id]) > 10:
+                ai_memory[chat_id] = ai_memory[chat_id][-10:]
+
+        reply_txt = await get_reply_text(update.effective_user, response)
+        await update.effective_message.reply_text(reply_txt, parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ متأسفانه قادر به ارتباط با مغز مرکزی نیستم.")
 

@@ -46,6 +46,7 @@ class Group(Base):
 
     # Rules
     rules = Column(Text, nullable=True)
+    rules_enabled = Column(Boolean, default=True)
 
     # Anti-spam
     antispam_enabled = Column(Boolean, default=True)

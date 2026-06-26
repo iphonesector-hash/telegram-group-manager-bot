@@ -28,13 +28,19 @@ async def set_rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text("✅ قوانین گروه بروزرسانی شد.")
     session.close()
 
-async def rules_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await rules_cmd(update, context)
-    raise ApplicationHandlerStop()
+async def rules_settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await is_admin(update, context): return
+    text = update.effective_message.text
+
+    if text == "📝 تغییر متن قوانین":
+        await update.effective_message.reply_text("💡 برای تغییر قوانین بنویسید:\n\n/setrules [متن قوانین شما]")
+        raise ApplicationHandlerStop()
 
 def get_rules_handlers():
+    rules_triggers = "^(قوانین|قوانین گروه چیه؟|قوانین رو بفرست|rules)$"
     return [
         CommandHandler("rules", rules_cmd),
         CommandHandler("setrules", set_rules_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^📜 قوانین$"), rules_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex(rules_triggers), rules_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("^📝 تغییر متن قوانین$"), rules_settings_handler),
     ]

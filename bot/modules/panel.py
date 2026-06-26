@@ -3,9 +3,9 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, 
 from bot.utils.keyboards import (
     get_main_menu, get_admin_menu, get_locks_menu, get_user_menu,
     get_economy_menu, get_entertainment_menu, get_utility_menu, get_settings_menu, get_games_menu,
-    get_group_settings_menu, get_member_mgmt_menu
+    get_group_settings_menu, get_member_mgmt_menu, get_welcome_settings_menu, get_rules_settings_menu
 )
-from bot.utils.helpers import is_admin, get_group
+from bot.utils.helpers import is_admin, get_group, get_reply_text
 from bot.database.session import get_session
 from bot.database.models import User, Group
 
@@ -18,7 +18,8 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
     if text == "🛡 مدیریت":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("🛡 منوی مدیریت SectorBot\nیکی از بخش‌ها را انتخاب کنید:", reply_markup=get_admin_menu(), parse_mode=None)
+            reply = await get_reply_text(update.effective_user, "🛡 منوی مدیریت SectorBot\nیکی از بخش‌ها را انتخاب کنید:")
+            await update.effective_message.reply_text(reply, reply_markup=get_admin_menu(), parse_mode=None)
         else:
             await update.effective_message.reply_text("❌ این بخش مخصوص مدیران گروه است.")
 
@@ -51,8 +52,13 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
             parse_mode=None
         )
 
-    elif text == "🆘 پشتیبانی":
-        await update.effective_message.reply_text("🆘 پشتیبانی سکتور\n\nدر صورت بروز مشکل یا داشتن سوال، با تیم پشتیبانی در ارتباط باشید:\n👤 @sector_ad", parse_mode=None)
+    elif text == "🤝 پشتیبانی":
+        await update.effective_message.reply_text(
+            "🤝 **پشتیبانی SectorBot**\n\n"
+            "برای ارتباط با پشتیبانی، گزارش مشکل یا سوال:\n\n"
+            "👤 @sector_ad",
+            parse_mode=None
+        )
 
     elif text == "🔒 قفل‌های گروه":
         if await is_admin(update, context):
@@ -68,6 +74,21 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
     elif text == "🎮 بازی‌ها":
         await update.effective_message.reply_text("🎮 لیست بازی‌های موجود:", reply_markup=get_games_menu(), parse_mode=None)
+
+    elif text == "👋 خوشامدگویی":
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("👋 تنظیمات خوشامدگویی اعضای جدید:", reply_markup=get_welcome_settings_menu())
+        else:
+            await update.effective_message.reply_text("❌ مخصوص مدیران.")
+
+    elif text == "📜 قوانین":
+        if update.effective_chat.type == "private":
+            await update.effective_message.reply_text("❌ این دستور فقط در گروه‌ها کاربرد دارد.")
+        elif await is_admin(update, context):
+            await update.effective_message.reply_text("⚙️ تنظیمات قوانین گروه:", reply_markup=get_rules_settings_menu())
+        else:
+            from bot.modules.rules import rules_cmd
+            await rules_cmd(update, context)
 
     elif text == "🔙 بازگشت به مدیریت":
         await update.effective_message.reply_text("🛡 بازگشت به منوی مدیریت:", reply_markup=get_admin_menu())
@@ -85,7 +106,8 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
 async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private" or await is_admin(update, context):
-        await update.effective_message.reply_text("🏠 منوی اصلی SectorBot\nلطفاً یک بخش را انتخاب کنید:", reply_markup=get_main_menu(), parse_mode=None)
+        reply = await get_reply_text(update.effective_user, "🏠 منوی اصلی SectorBot\nلطفاً یک بخش را انتخاب کنید:")
+        await update.effective_message.reply_text(reply, reply_markup=get_main_menu(), parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای باز کردن پنل را ندارید.")
 
@@ -96,18 +118,30 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
     mapping = {
         "🤖 تنظیمات هوش مصنوعی": "ai_enabled",
         "💰 تنظیمات اقتصاد": "economy_enabled",
-        "👋 خوش‌آمدگویی": "welcome_enabled",
+        "🔘 فعال/غیرفعال سازی خوشامدگویی": "welcome_enabled",
         "🛡 ضد اسپم": "antispam_enabled",
         "🆕 جلوگیری از ورود ربات": "prevent_bots",
         "👤 محدودیت عضو جدید": "new_member_limit",
         "⏳ تایید عضو جدید": "approval_mode",
-        "📢 گزارش فعالیت": "activity_logging"
+        "📢 گزارش فعالیت": "activity_logging",
+        "🔘 فعال/غیرفعال سازی قوانین": "rules_enabled" # Note: need rules_enabled in model if used
     }
+
+    # We should add rules_enabled to the model if it's strictly required,
+    # but the request didn't specify changing schema unless needed.
+    # Let's check existing models first.
 
     if text in mapping:
         attr = mapping[text]
         session = get_session()
         group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
+        # Check if attribute exists
+        if not hasattr(group, attr):
+             await update.effective_message.reply_text(f"❌ تنظیم {attr} در دیتابیس یافت نشد.")
+             session.close()
+             return
+
         setattr(group, attr, not getattr(group, attr))
         session.commit()
         status = "فعال" if getattr(group, attr) else "غیرفعال"
@@ -116,8 +150,8 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
         raise ApplicationHandlerStop()
 
 def get_panel_handlers():
-    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🎮 بازی‌ها|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|👤 مدیریت اعضا|🤖 دستیار هوشمند|🆘 پشتیبانی|🔒 قفل‌های گروه|🔙 بازگشت.*)$"
-    toggle_regex = "^(🤖 تنظیمات هوش مصنوعی|💰 تنظیمات اقتصاد|👋 خوش‌آمدگویی|🛡 ضد اسپم|🆕 جلوگیری از ورود ربات|👤 محدودیت عضو جدید|⏳ تایید عضو جدید|📢 گزارش فعالیت)$"
+    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🎮 بازی‌ها|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|👤 مدیریت اعضا|🤖 دستیار هوشمند|🤝 پشتیبانی|🔒 قفل‌های گروه|👋 خوشامدگویی|📜 قوانین|🔙 بازگشت.*)$"
+    toggle_regex = "^(🤖 تنظیمات هوش مصنوعی|💰 تنظیمات اقتصاد|🛡 ضد اسپم|🆕 جلوگیری از ورود ربات|👤 محدودیت عضو جدید|⏳ تایید عضو جدید|📢 گزارش فعالیت|🔘 فعال/غیرفعال سازی خوشامدگویی|🔘 فعال/غیرفعال سازی قوانین)$"
     return [
         CommandHandler("panel", panel_cmd),
         MessageHandler(filters.TEXT & filters.Regex(nav_regex), menu_navigation_handler),

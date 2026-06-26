@@ -5,16 +5,16 @@ def get_main_menu():
         [KeyboardButton("🛡 مدیریت"), KeyboardButton("👤 حساب کاربری")],
         [KeyboardButton("🏦 بانک و اقتصاد"), KeyboardButton("🎮 سرگرمی")],
         [KeyboardButton("🛠 کاربردی"), KeyboardButton("🤖 دستیار هوشمند")],
-        [KeyboardButton("⚙️ تنظیمات"), KeyboardButton("🆘 پشتیبانی")]
+        [KeyboardButton("⚙️ تنظیمات"), KeyboardButton("🤝 پشتیبانی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def get_admin_menu():
     keyboard = [
-        [KeyboardButton("🔒 قفل‌های گروه"), KeyboardButton("🌟 خوشامدگویی")],
+        [KeyboardButton("🔒 قفل‌های گروه"), KeyboardButton("👋 خوشامدگویی")],
         [KeyboardButton("🛡 ضد اسپم"), KeyboardButton("📜 قوانین")],
         [KeyboardButton("👤 مدیریت اعضا"), KeyboardButton("💰 تنظیمات اقتصاد")],
-        [KeyboardButton("⚙️ تنظیمات گروه"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
+        [KeyboardButton("📊 آمار گروه"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -68,7 +68,7 @@ def get_security_mgmt_menu():
 
 def get_group_settings_menu():
     keyboard = [
-        [KeyboardButton("👋 خوش‌آمدگویی"), KeyboardButton("📜 قوانین")],
+        [KeyboardButton("👋 خوشامدگویی"), KeyboardButton("📜 قوانین")],
         [KeyboardButton("🔗 ضد لینک"), KeyboardButton("🛡 ضد اسپم")],
         [KeyboardButton("🔒 قفل‌ها"), KeyboardButton("⚙️ تنظیمات عمومی")],
         [KeyboardButton("🔙 بازگشت به مدیریت")]
@@ -88,7 +88,7 @@ def get_locks_menu():
 
 def get_user_menu():
     keyboard = [
-        [KeyboardButton("📊 پروفایل من")],
+        [KeyboardButton("👤 پروفایل")],
         [KeyboardButton("🏆 رتبه جهانی"), KeyboardButton("📜 سوابق اخطار")],
         [KeyboardButton("🔙 بازگشت به منوی اصلی")]
     ]
@@ -108,7 +108,8 @@ def get_entertainment_menu():
         [KeyboardButton("🎮 بازی‌ها"), KeyboardButton("📜 فال حافظ")],
         [KeyboardButton("😂 جوک"), KeyboardButton("💡 دانستنی")],
         [KeyboardButton("❓ معما"), KeyboardButton("📖 داستان")],
-        [KeyboardButton("🎯 چالش"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
+        [KeyboardButton("🎯 چالش"), KeyboardButton("🎭 جرات و حقیقت")],
+        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -117,6 +118,29 @@ def get_games_menu():
         [KeyboardButton("🎲 تاس"), KeyboardButton("🪙 پرتاب سکه")],
         [KeyboardButton("📝 حدس کلمه"), KeyboardButton("🚩 حدس پرچم")],
         [KeyboardButton("✂️ سنگ کاغذ قیچی"), KeyboardButton("⚔️ دوئل")],
+        [KeyboardButton("🔙 بازگشت به سرگرمی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_tod_menu():
+    keyboard = [
+        [KeyboardButton("🎯 جرات"), KeyboardButton("💬 حقیقت")],
+        [KeyboardButton("🎲 تصادفی"), KeyboardButton("🔙 بازگشت به سرگرمی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_joke_categories_menu():
+    keyboard = [
+        [KeyboardButton("😂 خنده‌دار"), KeyboardButton("😈 شیطنتی")],
+        [KeyboardButton("🧠 هوشمندانه"), KeyboardButton("🤣 کوتاه")],
+        [KeyboardButton("🔙 بازگشت به سرگرمی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_challenge_categories_menu():
+    keyboard = [
+        [KeyboardButton("🎯 چالش تصادفی"), KeyboardButton("⚡ چالش سخت")],
+        [KeyboardButton("😂 چالش خنده‌دار"), KeyboardButton("🧠 چالش ذهنی")],
         [KeyboardButton("🔙 بازگشت به سرگرمی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -133,5 +157,21 @@ def get_settings_menu():
     keyboard = [
         [KeyboardButton("🤖 تنظیمات هوش مصنوعی")],
         [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_welcome_settings_menu():
+    keyboard = [
+        [KeyboardButton("🔘 فعال/غیرفعال سازی خوشامدگویی")],
+        [KeyboardButton("📝 تغییر متن خوشامدگویی")],
+        [KeyboardButton("🔙 بازگشت به مدیریت")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_rules_settings_menu():
+    keyboard = [
+        [KeyboardButton("🔘 فعال/غیرفعال سازی قوانین")],
+        [KeyboardButton("📝 تغییر متن قوانین")],
+        [KeyboardButton("🔙 بازگشت به مدیریت")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

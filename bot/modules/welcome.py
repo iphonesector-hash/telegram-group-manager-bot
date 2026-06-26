@@ -17,24 +17,19 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
     welcome_text = group.welcome_text
     for member in update.message.new_chat_members:
         text = welcome_text.replace("{name}", member.full_name).replace("{mention}", member.mention_html())
-        # HTML mention is usually safe if formatted correctly, but let's keep it for now as it's not AI output
         try:
             await update.message.reply_text(text, parse_mode="HTML")
         except:
             await update.message.reply_text(text, parse_mode=None)
     session.close()
 
-async def welcome_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def welcome_settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
-    session = get_session()
-    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+    text = update.effective_message.text
 
-    group.welcome_enabled = not group.welcome_enabled
-    session.commit()
-    status = "فعال" if group.welcome_enabled else "غیرفعال"
-    await update.message.reply_text(f"🌟 وضعیت خوشامدگویی به {status} تغییر یافت.", parse_mode=None)
-    session.close()
-    raise ApplicationHandlerStop()
+    if text == "📝 تغییر متن خوشامدگویی":
+        await update.effective_message.reply_text("💡 برای تغییر متن خوشامدگویی بنویسید:\n\n/setwelcome [متن شما]\n\nمثال: /setwelcome سلام {mention} عزیز به گروه {title} خوش آمدی!")
+        raise ApplicationHandlerStop()
 
 async def set_welcome_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
@@ -47,12 +42,12 @@ async def set_welcome_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     group.welcome_text = new_text
     session.commit()
-    await update.message.reply_text("✅ متن خوشامدگویی تغییر یافت.")
+    await update.message.reply_text("✅ متن خوشامدگویی با موفقیت تغییر یافت.")
     session.close()
 
 def get_welcome_handlers():
     return [
         MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member),
-        MessageHandler(filters.TEXT & filters.Regex("^🌟 خوشامدگویی$"), welcome_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^📝 تغییر متن خوشامدگویی$"), welcome_settings_handler),
         CommandHandler("setwelcome", set_welcome_cmd),
     ]

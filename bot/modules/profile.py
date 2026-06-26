@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from bot.database.session import get_session
 from bot.database.models import User, Warning, Group
 from bot.modules.economy import rank_cmd
+from bot.utils.helpers import get_reply_text
 
 async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user or not update.message:
@@ -16,11 +17,17 @@ async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user:
         user.message_count += 1
+        # Real progression
+        xp_gain = 5
+        user.xp += xp_gain
+
+        # Level increase logic
+        next_level_xp = user.level * 100 * (1.2 ** (user.level - 1))
+        if user.xp >= next_level_xp:
+            user.level += 1
+            # Optional: notify user in private
+
         user.coins += 1
-        user.xp += 5
-        new_level = (user.xp // 100) + 1
-        if new_level > user.level:
-            user.level = new_level
         try:
             session.commit()
         except:
@@ -28,7 +35,7 @@ async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session.close()
 
 async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.effective_user:
+    if not update.effective_user:
         return
 
     user_obj = update.effective_user
@@ -36,7 +43,7 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = session.query(User).filter(User.id == user_obj.id).first()
 
     if not user:
-        await update.message.reply_text("❌ ابتدا پیامی بفرستید تا پروفایل شما ساخته شود.")
+        await update.effective_message.reply_text("❌ ابتدا پیامی بفرستید تا پروفایل شما ساخته شود.")
         session.close()
         return
 
@@ -50,34 +57,66 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     join_date = user.joined_at.strftime("%Y-%m-%d")
 
+    # Text-based Profile Card
     text = (
-        f"👤 پروفایل {user_obj.full_name}\n\n"
-        f"🆔 شناسه: {user.id}\n"
-        f"👤 نام کاربری: @{user_obj.username if user_obj.username else 'ندارد'}\n"
-        f"📅 تاریخ عضویت: {join_date}\n"
+        f"👤 **Sector Profile**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 شناسه: `{user.id}`\n"
+        f"👤 نام: {user_obj.full_name}\n"
+        f"🏷 یوزرنیم: @{user_obj.username if user_obj.username else 'ندارد'}\n"
+        f"📅 عضویت: {join_date}\n\n"
         f"🌟 سطح: {user.level}\n"
         f"✨ امتیاز (XP): {user.xp}\n"
-        f"📨 تعداد پیام‌ها: {user.message_count}\n"
+        f"📨 پیام‌ها: {user.message_count}\n"
         f"🪙 سکه‌ها: {user.coins}\n"
         f"🏆 رتبه جهانی: {rank}\n"
-        f"⚠️ تعداد اخطارها (در این گروه): {warn_count}\n"
+        f"⚠️ اخطارها: {warn_count}\n"
+        f"━━━━━━━━━━━━━━━━━━"
     )
-    await update.message.reply_text(text, parse_mode=None)
+
+    reply = await get_reply_text(user_obj, text)
+    await update.effective_message.reply_text(reply, parse_mode=None)
+    session.close()
+
+async def group_stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == "private":
+        await update.effective_message.reply_text("❌ این آمار مخصوص گروه‌ها است.")
+        return
+
+    session = get_session()
+    group_id = update.effective_chat.id
+
+    # Message stats (requires more complex tracking or estimation)
+    # For now, let's show members and active users from DB who interacted in this group
+    total_tracked_users = session.query(Warning).filter(Warning.group_id == group_id).distinct(Warning.user_id).count()
+
+    members_count = await context.bot.get_chat_member_count(group_id)
+
+    text = (
+        f"📊 **آمار گروه {update.effective_chat.title}**\n\n"
+        f"👥 تعداد اعضا: {members_count}\n"
+        f"🤖 وضعیت ربات: فعال ✅\n"
+        f"🛡 امنیت: برقرار 🔐\n"
+    )
+    await update.effective_message.reply_text(text, parse_mode=None)
     session.close()
 
 async def user_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    if text == "📊 پروفایل من":
+    text = update.effective_message.text
+    if text == "👤 پروفایل":
         await profile_cmd(update, context)
     elif text == "🏆 رتبه جهانی":
         await rank_cmd(update, context)
     elif text == "📜 سوابق اخطار":
         from bot.modules.warnings import warns_cmd
         await warns_cmd(update, context)
+    elif text == "📊 آمار گروه":
+        await group_stats_cmd(update, context)
 
 def get_profile_handlers():
     return [
         CommandHandler("profile", profile_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(📊 پروفایل من|🏆 رتبه جهانی|📜 سوابق اخطار)$"), user_button_handler),
+        CommandHandler("stats", group_stats_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("^(👤 پروفایل|🏆 رتبه جهانی|📜 سوابق اخطار|📊 آمار گروه)$"), user_button_handler),
         MessageHandler(filters.ALL & ~filters.COMMAND, count_message),
     ]

@@ -22,12 +22,16 @@ def init_db():
             'prevent_bots': 'BOOLEAN DEFAULT 0',
             'new_member_limit': 'BOOLEAN DEFAULT 0',
             'approval_mode': 'BOOLEAN DEFAULT 0',
-            'activity_logging': 'BOOLEAN DEFAULT 1'
+            'activity_logging': 'BOOLEAN DEFAULT 1',
+            'rules_enabled': 'BOOLEAN DEFAULT 1'
         }
 
         for col, col_type in new_columns.items():
             if col not in columns:
-                conn.execute(text(f"ALTER TABLE groups ADD COLUMN {col} {col_type}"))
+                try:
+                    conn.execute(text(f"ALTER TABLE groups ADD COLUMN {col} {col_type}"))
+                except:
+                    pass
 
         conn.commit()
 
