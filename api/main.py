@@ -10,6 +10,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from bot.database.session import get_session
 from bot.database.models import User, Group
+from urllib.parse import parse_qs, unquote
 
 app = FastAPI()
 
@@ -24,32 +25,56 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 def validate_telegram_init_data(init_data: str):
     if not BOT_TOKEN:
+        print("Validation Error: BOT_TOKEN not found")
         raise HTTPException(status_code=500, detail="Bot token not configured")
     if not init_data:
+        print("Validation Error: init_data is empty")
         return False
 
     try:
-        from urllib.parse import parse_qs, unquote
-        parsed_data = parse_qs(init_data)
-        hash_str = parsed_data.get('hash', [None])[0]
-        if not hash_str: return False
+        # Standard Telegram validation
+        # data_check_string is formed by sorting key-value pairs in lexicographical order
+        # and joining them with \n
 
+        # Split by & first
+        params = init_data.split('&')
         data_check_list = []
-        for key, value in sorted(parsed_data.items()):
-            if key != 'hash':
-                data_check_list.append(f"{key}={value[0]}")
+        hash_str = None
+
+        for p in params:
+            if '=' not in p: continue
+            key, value = p.split('=', 1)
+            if key == 'hash':
+                hash_str = value
+            else:
+                data_check_list.append(f"{key}={unquote(value)}")
+
+        if not hash_str:
+            print("Validation Error: Hash not found in initData")
+            return False
+
+        data_check_list.sort()
         data_check_string = "\n".join(data_check_list)
 
+        # Construct the secret key
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+
+        # Calculate hash
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        return calculated_hash == hash_str
+        if calculated_hash != hash_str:
+            print(f"Validation Error: Hash mismatch.")
+            # For safe debugging:
+            # print(f"Data Check String: {data_check_string}")
+            return False
+
+        return True
     except Exception as e:
-        print(f"Validation Error: {e}")
+        print(f"Validation Exception: {e}")
         return False
 
 @app.get("/api/user/{user_id}")
-async def get_user(user_id: int, init_data: Optional[str] = Header(None)):
+async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
@@ -76,7 +101,7 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None)):
     return data
 
 @app.post("/api/daily-claim/{user_id}")
-async def claim_daily(user_id: int, init_data: Optional[str] = Header(None)):
+async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
@@ -101,7 +126,7 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None)):
     return {"status": "success", "reward": reward, "coins": current_coins}
 
 @app.get("/api/leaderboard")
-async def get_leaderboard(init_data: Optional[str] = Header(None)):
+async def get_leaderboard(init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
@@ -119,7 +144,7 @@ async def get_leaderboard(init_data: Optional[str] = Header(None)):
     return data
 
 @app.get("/api/shop")
-async def get_shop(init_data: Optional[str] = Header(None)):
+async def get_shop(init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
@@ -134,7 +159,7 @@ async def get_shop(init_data: Optional[str] = Header(None)):
     }
 
 @app.get("/api/games")
-async def get_games(init_data: Optional[str] = Header(None)):
+async def get_games(init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
@@ -145,7 +170,7 @@ async def get_games(init_data: Optional[str] = Header(None)):
     ]
 
 @app.get("/api/groups/{user_id}")
-async def get_user_groups(user_id: int, init_data: Optional[str] = Header(None)):
+async def get_user_groups(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
@@ -176,7 +201,7 @@ async def get_stats():
     return data
 
 @app.post("/api/shop/buy/{user_id}")
-async def buy_item(user_id: int, item_id: int, init_data: Optional[str] = Header(None)):
+async def buy_item(user_id: int, item_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     if not validate_telegram_init_data(init_data):
         raise HTTPException(status_code=403, detail="Invalid auth")
 
