@@ -30,7 +30,8 @@ from bot.modules.warnings import get_handlers as get_warning_handlers
 from bot.modules.rules import get_rules_handlers
 from bot.modules.economy import get_handlers as get_economy_handlers
 from bot.modules.entertainment import get_handlers as get_entertainment_handlers
-from bot.modules.tools import get_handlers as get_tool_handlers
+from bot.modules.ai import get_handlers as get_ai_handlers
+from bot.modules.extra import get_extra_handlers
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -42,7 +43,7 @@ def main():
         print("❌ BOT_TOKEN پیدا نشد. فایل .env را چک کنید.")
         return
 
-    # دیتابیس
+    # دیتابیس (با قابلیت مایگریشن خودکار)
     init_db()
 
     app = Application.builder().token(BOT_TOKEN).build()
@@ -53,7 +54,6 @@ def main():
         app.add_handler(handler, group=0)
 
     # گروه 1 - فیلترهای مسدودکننده (Mute & Antispam)
-    # این‌ها باید قبل از دستورات باشند تا کاربران محدود شده نتوانند از دستورات استفاده کنند
     for handler in get_warning_handlers():
         if not isinstance(handler, CommandHandler):
             app.add_handler(handler, group=1)
@@ -63,18 +63,24 @@ def main():
             app.add_handler(handler, group=1)
 
 
-    # گروه 2 - دستورات (Commands & Menu)
+    # گروه 2 - دستورات و هندلرهای منو (Commands & Navigation)
     app.add_handler(start_handler, group=2)
 
     for handler in get_panel_handlers():
         app.add_handler(handler, group=2)
 
+    for handler in get_economy_handlers():
+        app.add_handler(handler, group=2)
+
+    for handler in get_entertainment_handlers():
+        app.add_handler(handler, group=2)
+
     for handler in get_profile_handlers():
-        if isinstance(handler, CommandHandler):
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=2)
 
     for handler in get_lock_handlers():
-        if isinstance(handler, CommandHandler):
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=2)
 
     for handler in get_warning_handlers():
@@ -82,45 +88,38 @@ def main():
             app.add_handler(handler, group=2)
 
     for handler in get_rules_handlers():
-        if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=2)
+        app.add_handler(handler, group=2)
 
     for handler in get_welcome_handlers():
-        if isinstance(handler, CommandHandler):
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=2)
 
     for handler in get_antispam_handlers():
-        if isinstance(handler, CommandHandler):
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=2)
 
-    for handler in get_economy_handlers():
-        if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=2)
-
-    for handler in get_entertainment_handlers():
-        if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=2)
-
-    for handler in get_tool_handlers():
-        if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=2)
+    for handler in get_extra_handlers():
+        app.add_handler(handler, group=2)
 
 
-    # گروه 3 - خوش آمدگویی (پیام‌های سیستمی)
+    # گروه 3 - هوش مصنوعی (فقط اگر به دستورات یا منو برنخورد)
+    for handler in get_ai_handlers():
+        app.add_handler(handler, group=3)
+
+
+    # گروه 4 - فیلترهای پس‌زمینه (Welcome, Content Locks)
     for handler in get_welcome_handlers():
-        if not isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=3)
+        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=4)
 
-
-    # گروه 4 - قفل‌های محتوا (حذف پیام‌های غیرمجاز)
     for handler in get_lock_handlers():
-        if not isinstance(handler, CommandHandler):
+        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=4)
 
 
     # گروه 5 - آمار و اقتصاد (XP/Coins)
     for handler in get_profile_handlers():
-        if not isinstance(handler, CommandHandler):
+        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=5)
 
 

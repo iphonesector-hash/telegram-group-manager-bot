@@ -1,50 +1,46 @@
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import Group
-from bot.utils.helpers import is_admin
+from bot.utils.helpers import is_admin, get_group
 
 async def rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type not in ["group", "supergroup"]:
-        return
-
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
 
-    if not group or not group.rules:
-        await update.message.reply_text("❌ قوانینی برای این گروه ثبت نشده است.")
+    if not group.rules:
+        await update.effective_message.reply_text("📜 قوانین برای این گروه تنظیم نشده است.")
     else:
-        await update.message.reply_text(f"📜 قوانین گروه {group.title}:\n\n{group.rules}")
-
+        await update.effective_message.reply_text(f"📜 قوانین گروه {group.title}:\n\n{group.rules}", parse_mode=None)
     session.close()
 
 async def set_rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type not in ["group", "supergroup"]:
-        return
-
-    if not await is_admin(update, context):
-        await update.message.reply_text("❌ شما دسترسی لازم برای این کار را ندارید.")
-        return
-
+    if not await is_admin(update, context): return
     if not context.args:
-        await update.message.reply_text("💡 برای ثبت قوانین، متن قوانین را بعد از دستور بنویسید.\nمثال: `/setrules 1. فحش ندهید`", parse_mode="Markdown")
+        await update.effective_message.reply_text("💡 مثال: /setrules قوانین گروه ما...")
         return
-
     new_rules = " ".join(context.args)
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-
-    if not group:
-        group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-        session.add(group)
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
 
     group.rules = new_rules
     session.commit()
-    await update.message.reply_text("✅ قوانین گروه با موفقیت ثبت شد.")
+    await update.effective_message.reply_text("✅ قوانین گروه بروزرسانی شد.")
     session.close()
 
+async def rules_settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await is_admin(update, context): return
+    text = update.effective_message.text
+
+    if text == "📝 تغییر متن قوانین":
+        await update.effective_message.reply_text("💡 برای تغییر قوانین بنویسید:\n\n/setrules [متن قوانین شما]")
+        raise ApplicationHandlerStop()
+
 def get_rules_handlers():
+    rules_triggers = "^(قوانین|قوانین گروه چیه؟|قوانین رو بفرست|rules)$"
     return [
         CommandHandler("rules", rules_cmd),
         CommandHandler("setrules", set_rules_cmd),
+        MessageHandler(filters.TEXT & filters.Regex(rules_triggers), rules_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("^📝 تغییر متن قوانین$"), rules_settings_handler),
     ]

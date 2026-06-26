@@ -19,10 +19,6 @@ class User(Base):
 
     last_daily_claim = Column(DateTime, nullable=True)
 
-    # Bank Features
-    loan_amount = Column(BigInteger, default=0)
-    loan_due_date = Column(DateTime, nullable=True)
-
     is_admin = Column(Boolean, default=False)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -50,6 +46,7 @@ class Group(Base):
 
     # Rules
     rules = Column(Text, nullable=True)
+    rules_enabled = Column(Boolean, default=True)
 
     # Anti-spam
     antispam_enabled = Column(Boolean, default=True)
@@ -57,6 +54,15 @@ class Group(Base):
 
     # Economy
     economy_enabled = Column(Boolean, default=True)
+
+    # AI
+    ai_enabled = Column(Boolean, default=True)
+
+    # Security
+    prevent_bots = Column(Boolean, default=False)
+    new_member_limit = Column(Boolean, default=False)
+    approval_mode = Column(Boolean, default=False)
+    activity_logging = Column(Boolean, default=True)
 
     is_active = Column(Boolean, default=True)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)

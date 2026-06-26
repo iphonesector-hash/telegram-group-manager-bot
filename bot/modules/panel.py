@@ -1,226 +1,152 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
+from bot.utils.keyboards import (
+    get_main_menu, get_admin_menu, get_locks_menu, get_user_menu,
+    get_economy_menu, get_entertainment_menu, get_utility_menu, get_settings_menu, get_games_menu,
+    get_group_settings_menu, get_member_mgmt_menu, get_welcome_settings_menu, get_rules_settings_menu
+)
+from bot.utils.helpers import is_admin, get_group, get_reply_text
 from bot.database.session import get_session
-from bot.database.models import Group, User, Warning
+from bot.database.models import User, Group
 
-async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return True
-    try:
-        member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-        return member.status in ["administrator", "creator"]
-    except:
-        return False
-
-async def panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat:
+async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.effective_message or not update.effective_message.text:
         return
 
-    # Main categories as ReplyKeyboardMarkup
-    keyboard = [
-        ["🛡 مدیریت", "👤 کاربر"],
-        ["🏦 بانک", "🎮 سرگرمی"],
-        ["🛠 کاربردی", "⚙️ تنظیمات"],
-        ["🆘 پشتیبانی"]
-    ]
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    text = "💎 **به منوی هوشمند SectorBot خوش آمدید!**\nلطفاً از دکمه‌های زیر برای دسترسی به بخش‌های مختلف استفاده کنید:"
-
-    await update.effective_message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
-
-async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    text = update.effective_message.text
+    handled = True
 
     if text == "🛡 مدیریت":
-        if not await is_admin(update, context):
-            await update.message.reply_text("❌ این بخش مخصوص ادمین‌ها است.")
-            return
-        keyboard = [
-            [InlineKeyboardButton("🔒 قفل‌ها", callback_data="panel_locks")],
-            [InlineKeyboardButton("👋 خوش‌آمدگویی", callback_data="panel_welcome")],
-            [InlineKeyboardButton("⚠️ هشدارها", callback_data="panel_users")],
-            [InlineKeyboardButton("⚙️ تنظیمات گروه", callback_data="cat_settings")],
-            [InlineKeyboardButton("❌ بستن", callback_data="panel_close")]
-        ]
-        await update.message.reply_text("🛡 **بخش مدیریت گروه:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        if await is_admin(update, context):
+            reply = await get_reply_text(update.effective_user, "🛡 **منوی مدیریت SectorBot**\nیکی از بخش‌ها را انتخاب کنید:")
+            await update.effective_message.reply_text(reply, reply_markup=get_admin_menu(), parse_mode=None)
+        else:
+            await update.effective_message.reply_text("❌ این بخش مخصوص مدیران گروه است.")
 
-    elif text == "👤 کاربر":
-        keyboard = [
-            [InlineKeyboardButton("👤 پروفایل", callback_data="user_profile")],
-            [InlineKeyboardButton("🏆 رتبه‌بندی", callback_data="user_top")],
-            [InlineKeyboardButton("📜 قوانین", callback_data="panel_rules")],
-            [InlineKeyboardButton("❌ بستن", callback_data="panel_close")]
-        ]
-        await update.message.reply_text("👤 **بخش کاربری:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    elif text == "👤 حساب کاربری":
+        await update.effective_message.reply_text("👤 **تنظیمات و اطلاعات حساب شما:**", reply_markup=get_user_menu(), parse_mode=None)
 
-    elif text == "🏦 بانک":
-        keyboard = [
-            [InlineKeyboardButton("💰 کیف پول", callback_data="bank_wallet"), InlineKeyboardButton("🎁 جایزه روزانه", callback_data="bank_daily")],
-            [InlineKeyboardButton("💸 انتقال سکه", callback_data="bank_transfer")],
-            [InlineKeyboardButton("💎 ثروتمندترین‌ها", callback_data="user_top")],
-            [InlineKeyboardButton("🏦 وام", callback_data="bank_loan"), InlineKeyboardButton("💳 پرداخت وام", callback_data="bank_repay")],
-            [InlineKeyboardButton("❌ بستن", callback_data="panel_close")]
-        ]
-        await update.message.reply_text("🏦 **بانک SectorBot:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    elif text == "🏦 بانک و اقتصاد":
+        await update.effective_message.reply_text("🏦 **سیستم مالی و پاداش سکتور:**", reply_markup=get_economy_menu(), parse_mode=None)
 
     elif text == "🎮 سرگرمی":
-        keyboard = [
-            [InlineKeyboardButton("😂 جوک", callback_data="fun_joke"), InlineKeyboardButton("📜 فال حافظ", callback_data="fun_hafez")],
-            [InlineKeyboardButton("💡 فکت", callback_data="fun_fact"), InlineKeyboardButton("🎲 تاس", callback_data="fun_dice")],
-            [InlineKeyboardButton("🪙 شیر یا خط", callback_data="fun_coin"), InlineKeyboardButton("❓ چیستان", callback_data="fun_riddle")],
-            [InlineKeyboardButton("🎮 سنگ کاغذ قیچی", callback_data="fun_rps")],
-            [InlineKeyboardButton("🔡 حدس کلمه", callback_data="fun_guess_word"), InlineKeyboardButton("🏳️ حدس پرچم", callback_data="fun_guess_flag")],
-            [InlineKeyboardButton("⚔️ دوئل", callback_data="fun_duel"), InlineKeyboardButton("👮 دزد و پلیس", callback_data="fun_cops")],
-            [InlineKeyboardButton("❌ بستن", callback_data="panel_close")]
-        ]
-        await update.message.reply_text("🎮 **بخش سرگرمی و بازی:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await update.effective_message.reply_text("🎮 **بخش سرگرمی و بازی:**", reply_markup=get_entertainment_menu(), parse_mode=None)
 
     elif text == "🛠 کاربردی":
-        keyboard = [
-            [InlineKeyboardButton("🌍 مترجم", callback_data="tool_translate"), InlineKeyboardButton("☁️ آب و هوا", callback_data="tool_weather")],
-            [InlineKeyboardButton("⚖️ تبدیل واحد", callback_data="tool_convert"), InlineKeyboardButton("🧮 حسابگر", callback_data="tool_calc")],
-            [InlineKeyboardButton("❌ بستن", callback_data="panel_close")]
-        ]
-        await update.message.reply_text("🛠 **ابزارهای کاربردی:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await update.effective_message.reply_text("🛠 **ابزارهای هوشمند و کاربردی:**", reply_markup=get_utility_menu(), parse_mode=None)
 
     elif text == "⚙️ تنظیمات":
-        if not await is_admin(update, context):
-            await update.message.reply_text("❌ دسترسی محدود به ادمین.")
-            return
-        keyboard = [
-            [InlineKeyboardButton("👋 خوش‌آمدگویی", callback_data="panel_welcome")],
-            [InlineKeyboardButton("🔒 قفل‌ها", callback_data="panel_locks")],
-            [InlineKeyboardButton("🛡 ضداسپم", callback_data="panel_antispam")],
-            [InlineKeyboardButton("📜 قوانین", callback_data="panel_rules")],
-            [InlineKeyboardButton("❌ بستن", callback_data="panel_close")]
-        ]
-        await update.message.reply_text("⚙️ **تنظیمات پیشرفته گروه:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("⚙️ **تنظیمات ربات در این گروه:**", reply_markup=get_settings_menu(), parse_mode=None)
+        else:
+            await update.effective_message.reply_text("❌ فقط مدیران می‌توانند تنظیمات را تغییر دهند.")
 
-    elif text == "🆘 پشتیبانی":
-        keyboard = [[InlineKeyboardButton("💬 تماس با پشتیبانی", url="https://t.me/sector_ad")]]
-        await update.message.reply_text("🆘 برای پشتیبانی و سوالات، روی دکمه زیر کلیک کنید:", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    elif text == "🤖 دستیار هوشمند":
+        await update.effective_message.reply_text(
+            "🤖 **من دستیار هوشمند سکتور هستم!**\n\n"
+            "✨ من می‌تونم به سوالاتت جواب بدم، تو پیدا کردن اطلاعات کمکت کنم و باهات گپ بزنم.\n\n"
+            "💡 **روش استفاده:**\n"
+            "▫️ در چت خصوصی: مستقیماً پیام بده.\n"
+            "▫️ در گروه‌ها: اول پیام کلمه **سکتور** یا **Sector** رو بنویس یا منو ریپلای کن.",
+            reply_markup=get_main_menu(),
+            parse_mode=None
+        )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+    elif text == "🤝 پشتیبانی":
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("👤 ارتباط با کارشناس", url="t.me/sector_ad")]])
+        await update.effective_message.reply_text(
+            "🤝 **پشتیبانی SectorBot**\n\n"
+            "برای ارتباط با پشتیبانی، گزارش مشکل یا سوال:\n\n"
+            "🆔 @sector_ad",
+            reply_markup=keyboard,
+            parse_mode=None
+        )
 
-    data = query.data
+    elif text == "🔒 قفل‌های گروه":
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("🔐 **مدیریت قفل‌های محتوا:**\nبرای فعال/غیرفعال کردن هر قفل روی دکمه مربوطه بزنید.", reply_markup=get_locks_menu(), parse_mode=None)
 
-    if data == "panel_close":
-        await query.message.delete()
-        return
+    elif text == "👤 مدیریت اعضا":
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("👤 **بخش مدیریت اعضا:**", reply_markup=get_member_mgmt_menu(), parse_mode=None)
 
-    # Category Sub-menus logic
-    if data == "panel_locks":
+    elif text == "⚙️ تنظیمات گروه":
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("⚙️ **تنظیمات پیشرفته گروه:**", reply_markup=get_group_settings_menu(), parse_mode=None)
+
+    elif text == "📊 آمار گروه":
+         from bot.modules.profile import group_stats_cmd
+         await group_stats_cmd(update, context)
+
+    elif text == "👋 خوشامدگویی":
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("👋 **تنظیمات خوشامدگویی:**", reply_markup=get_welcome_settings_menu())
+        else:
+            await update.effective_message.reply_text("❌ مخصوص مدیران.")
+
+    elif text == "📜 قوانین":
+        if update.effective_chat.type == "private":
+            await update.effective_message.reply_text("❌ فقط در گروه‌ها.")
+        elif await is_admin(update, context):
+            await update.effective_message.reply_text("📜 **تنظیمات قوانین:**", reply_markup=get_rules_settings_menu())
+        else:
+            from bot.modules.rules import rules_cmd
+            await rules_cmd(update, context)
+
+    elif text == "🔙 بازگشت به مدیریت":
+        await update.effective_message.reply_text("🛡 بازگشت به منوی مدیریت:", reply_markup=get_admin_menu())
+
+    elif text == "🔙 بازگشت به سرگرمی":
+        await update.effective_message.reply_text("🎮 بازگشت به منوی سرگرمی:", reply_markup=get_entertainment_menu())
+
+    elif text == "🔙 بازگشت به منوی اصلی":
+        await update.effective_message.reply_text("🏠 بازگشت به منوی اصلی:", reply_markup=get_main_menu())
+    else:
+        handled = False
+
+    if handled:
+        raise ApplicationHandlerStop()
+
+async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == "private" or await is_admin(update, context):
+        reply = await get_reply_text(update.effective_user, "🏠 **منوی اصلی SectorBot 2.0**\nلطفاً یک بخش را انتخاب کنید:")
+        await update.effective_message.reply_text(reply, reply_markup=get_main_menu(), parse_mode=None)
+    else:
+        await update.effective_message.reply_text("❌ شما دسترسی لازم برای باز کردن پنل را ندارید.")
+
+async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await is_admin(update, context): return
+    text = update.effective_message.text
+
+    mapping = {
+        "🤖 تنظیمات هوش مصنوعی": "ai_enabled",
+        "💰 تنظیمات اقتصاد": "economy_enabled",
+        "🔘 فعال/غیرفعال سازی خوشامدگویی": "welcome_enabled",
+        "🛡 ضد اسپم": "antispam_enabled",
+        "🆕 جلوگیری از ورود ربات": "prevent_bots",
+        "👤 محدودیت عضو جدید": "new_member_limit",
+        "⏳ تایید عضو جدید": "approval_mode",
+        "📢 گزارش فعالیت": "activity_logging",
+        "🔘 فعال/غیرفعال سازی قوانین": "rules_enabled"
+    }
+
+    if text in mapping:
+        attr = mapping[text]
         session = get_session()
-        group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-        if not group:
-            session.close()
-            return
-        def s(v): return "🔒" if v else "🔓"
-        keyboard = [
-            [InlineKeyboardButton(f"{s(group.lock_links)} لینک", callback_data="toggle_lock_links"), InlineKeyboardButton(f"{s(group.lock_usernames)} یوزرنیم", callback_data="toggle_lock_usernames")],
-            [InlineKeyboardButton(f"{s(group.lock_forward)} فوروارد", callback_data="toggle_lock_forward"), InlineKeyboardButton(f"{s(group.lock_photos)} عکس", callback_data="toggle_lock_photos")],
-            [InlineKeyboardButton(f"{s(group.lock_stickers)} استیکر", callback_data="toggle_lock_stickers"), InlineKeyboardButton(f"{s(group.lock_gifs)} گیف", callback_data="toggle_lock_gifs")],
-            [InlineKeyboardButton("🔙 بازگشت", callback_data="back_admin")]
-        ]
-        await query.edit_message_text("🔐 **تنظیمات قفل‌های گروه:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-        session.close()
-
-    elif data == "panel_welcome":
-        session = get_session()
-        group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-        status = "✅ فعال" if group.welcome_enabled else "❌ غیرفعال"
-        keyboard = [
-            [InlineKeyboardButton(f"وضعیت: {status}", callback_data="toggle_welcome_enabled")],
-            [InlineKeyboardButton("📝 تغییر متن خوشامد", callback_data="panel_setwelcome")],
-            [InlineKeyboardButton("🔙 بازگشت", callback_data="back_admin")]
-        ]
-        await query.edit_message_text("🌟 **تنظیمات خوشامدگویی:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-        session.close()
-
-    elif data == "panel_antispam":
-        session = get_session()
-        group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-        status = "✅ فعال" if group.antispam_enabled else "❌ غیرفعال"
-        keyboard = [
-            [InlineKeyboardButton(f"وضعیت: {status}", callback_data="toggle_antispam_enabled")],
-            [InlineKeyboardButton("🔙 بازگشت", callback_data="back_settings")]
-        ]
-        await query.edit_message_text("🛡 **تنظیمات ضد اسپم:**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-        session.close()
-
-    elif data.startswith("toggle_"):
-        attr = data.replace("toggle_", "")
-        session = get_session()
-        group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
+        group = get_group(session, update.effective_chat.id)
         if hasattr(group, attr):
             setattr(group, attr, not getattr(group, attr))
             session.commit()
+            status = "فعال" if getattr(group, attr) else "غیرفعال"
+            await update.effective_message.reply_text(f"✅ تنظیمات **{text}** به حالت **{status}** تغییر یافت.", parse_mode=None)
         session.close()
-        if "lock" in data: query.data = "panel_locks"
-        elif "welcome" in data: query.data = "panel_welcome"
-        elif "antispam" in data: query.data = "panel_antispam"
-        await button_handler(update, context)
-
-    # Modules Integrations
-    elif data == "user_profile":
-        from bot.modules.profile import profile_cmd
-        await profile_cmd(update, context)
-    elif data == "user_top":
-        from bot.modules.profile import top_cmd
-        await top_cmd(update, context)
-    elif data == "bank_wallet":
-        from bot.modules.economy import coins_cmd
-        await coins_cmd(update, context)
-    elif data == "bank_daily":
-        from bot.modules.economy import daily_cmd
-        await daily_cmd(update, context)
-    elif data == "bank_transfer":
-        await query.message.reply_text("💸 برای انتقال سکه از دستور زیر استفاده کنید:\n`/transfer آیدی_عددی مبلغ`", parse_mode="Markdown")
-    elif data == "bank_loan":
-        from bot.modules.economy import loan_cmd
-        await loan_cmd(update, context)
-    elif data == "bank_repay":
-        from bot.modules.economy import repay_cmd
-        await repay_cmd(update, context)
-
-    elif data == "fun_joke":
-        from bot.modules.entertainment import joke_cmd
-        await joke_cmd(update, context)
-    elif data == "fun_fact":
-        from bot.modules.entertainment import fact_cmd
-        await fact_cmd(update, context)
-    elif data == "fun_dice":
-        from bot.modules.entertainment import dice_cmd
-        await dice_cmd(update, context)
-    elif data == "fun_coin":
-        from bot.modules.entertainment import coin_cmd
-        await coin_cmd(update, context)
-    elif data == "fun_riddle":
-        from bot.modules.entertainment import riddle_cmd
-        await riddle_cmd(update, context)
-    elif data.startswith("fun_") or data.startswith("tool_"):
-        await query.message.reply_text("🚀 این قابلیت به زودی در آپدیت بعدی فعال می‌شود!")
-
-    elif data == "panel_rules":
-        keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="back_user")]]
-        await query.edit_message_text("📜 برای تنظیم قوانین از دستور `/setrules متن قوانین` استفاده کنید.", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-
-    elif data == "panel_users":
-        keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="back_admin")]]
-        await query.edit_message_text("👤 **مدیریت کاربران**\nبرای مدیریت کاربران از دستورات زیر استفاده کنید:\n\n/warn - اخطار\n/mute - بی‌صدا\n/ban - اخراج\n/unmute - آزاد کردن", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-
-    elif data.startswith("back_"):
-        cat = data.replace("back_", "")
-        update.message = query.message
-        update.message.text = "🛡 مدیریت" if cat == "admin" else "👤 کاربر" if cat == "user" else "⚙️ تنظیمات"
-        await menu_text_handler(update, context)
+        raise ApplicationHandlerStop()
 
 def get_panel_handlers():
+    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🎮 بازی‌ها|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|👤 مدیریت اعضا|🤖 دستیار هوشمند|🤝 پشتیبانی|🔒 قفل‌های گروه|👋 خوشامدگویی|📜 قوانین|📊 آمار گروه|🔙 بازگشت.*)$"
+    toggle_regex = "^(🤖 تنظیمات هوش مصنوعی|💰 تنظیمات اقتصاد|🛡 ضد اسپم|🆕 جلوگیری از ورود ربات|👤 محدودیت عضو جدید|⏳ تایید عضو جدید|📢 گزارش فعالیت|🔘 فعال/غیرفعال سازی خوشامدگویی|🔘 فعال/غیرفعال سازی قوانین)$"
     return [
-        CommandHandler("panel", panel),
-        MessageHandler(filters.Text(["🛡 مدیریت", "👤 کاربر", "🏦 بانک", "🎮 سرگرمی", "🛠 کاربردی", "⚙️ تنظیمات", "🆘 پشتیبانی"]), menu_text_handler),
-        CallbackQueryHandler(button_handler),
+        CommandHandler("panel", panel_cmd),
+        MessageHandler(filters.TEXT & filters.Regex(nav_regex), menu_navigation_handler),
+        MessageHandler(filters.TEXT & filters.Regex(toggle_regex), toggle_setting_handler),
     ]
