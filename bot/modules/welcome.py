@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, MessageHandler, filters, CommandHandler, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import Group
-from bot.utils.helpers import is_admin
+from bot.utils.helpers import is_admin, get_group
 
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.new_chat_members:
@@ -21,10 +21,8 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def welcome_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if not group:
-        group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-        session.add(group)
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
     group.welcome_enabled = not group.welcome_enabled
     session.commit()
     status = "فعال" if group.welcome_enabled else "غیرفعال"
@@ -39,11 +37,11 @@ async def set_welcome_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     new_text = " ".join(context.args)
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if group:
-        group.welcome_text = new_text
-        session.commit()
-        await update.message.reply_text("✅ متن خوشامدگویی تغییر یافت.")
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
+    group.welcome_text = new_text
+    session.commit()
+    await update.message.reply_text("✅ متن خوشامدگویی تغییر یافت.")
     session.close()
 
 def get_welcome_handlers():

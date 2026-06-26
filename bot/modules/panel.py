@@ -4,7 +4,7 @@ from bot.utils.keyboards import (
     get_main_menu, get_admin_menu, get_locks_menu, get_user_menu,
     get_economy_menu, get_entertainment_menu, get_utility_menu, get_settings_menu, get_games_menu
 )
-from bot.utils.helpers import is_admin
+from bot.utils.helpers import is_admin, get_group
 from bot.database.session import get_session
 from bot.database.models import User, Group
 
@@ -83,10 +83,8 @@ async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def ai_toggle_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if not group:
-        group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-        session.add(group)
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
     group.ai_enabled = not group.ai_enabled
     session.commit()
     status = "فعال" if group.ai_enabled else "غیرفعال"
@@ -97,10 +95,8 @@ async def ai_toggle_button_handler(update: Update, context: ContextTypes.DEFAULT
 async def eco_toggle_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if not group:
-        group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-        session.add(group)
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
     group.economy_enabled = not group.economy_enabled
     session.commit()
     status = "فعال" if group.economy_enabled else "غیرفعال"

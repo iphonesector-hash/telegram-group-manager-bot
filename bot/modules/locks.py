@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, MessageHandler, filters, CommandHandler, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import Group
-from bot.utils.helpers import is_admin
+from bot.utils.helpers import is_admin, get_group
 from bot.utils.keyboards import get_locks_menu
 
 async def lock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -17,10 +17,8 @@ async def lock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     lock_type = context.args[0]
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if not group:
-        group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-        session.add(group)
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
     mapping = {
         "links": "lock_links", "usernames": "lock_usernames", "forward": "lock_forward",
         "photos": "lock_photos", "videos": "lock_videos", "files": "lock_files",
@@ -46,10 +44,8 @@ async def lock_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     if text in mapping:
         lock_type = mapping[text]
         session = get_session()
-        group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-        if not group:
-            group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-            session.add(group)
+        group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
         attr = f"lock_{lock_type}"
         current = getattr(group, attr)
         setattr(group, attr, not current)

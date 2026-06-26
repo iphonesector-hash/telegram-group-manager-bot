@@ -2,7 +2,7 @@ from telegram import Update, ChatPermissions
 from telegram.ext import ContextTypes, MessageHandler, filters, CommandHandler, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import Group, Mute
-from bot.utils.helpers import is_admin
+from bot.utils.helpers import is_admin, get_group
 import time
 import datetime
 
@@ -46,10 +46,8 @@ async def antispam_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def antispam_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if not group:
-        group = Group(id=update.effective_chat.id, title=update.effective_chat.title)
-        session.add(group)
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
     group.antispam_enabled = not group.antispam_enabled
     session.commit()
     status = "فعال" if group.antispam_enabled else "غیرفعال"
