@@ -1,4 +1,6 @@
 import os
+import datetime
+import re
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.database.session import get_session
@@ -54,3 +56,57 @@ def get_user_badge(user_db):
     if user_db.level >= 5:
         return "🥈 Silver"
     return "🥉 Bronze"
+
+async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Extracts user_id and name from message reply or command arguments.
+    Returns: (user_id, name) or (None, None)
+    """
+    if update.effective_message.reply_to_message:
+        user = update.effective_message.reply_to_message.from_user
+        return user.id, user.first_name
+
+    if context.args:
+        arg = context.args[0]
+        if arg.isdigit():
+            user_id = int(arg)
+            # Try to get member info to have a name, otherwise fallback to ID
+            try:
+                member = await context.bot.get_chat_member(update.effective_chat.id, user_id)
+                return user_id, member.user.first_name
+            except:
+                return user_id, f"User {user_id}"
+
+    return None, None
+
+def parse_time(time_str):
+    """
+    Parses strings like '60', '1h', '2d' into timedelta.
+    Default unit is minutes if only number is provided.
+    """
+    if not time_str:
+        return None
+
+    try:
+        if time_str.isdigit():
+            return datetime.timedelta(minutes=int(time_str))
+
+        match = re.match(r"^(\d+)([smhd])$", time_str.lower())
+        if not match:
+            return None
+
+        amount, unit = match.groups()
+        amount = int(amount)
+
+        if unit == "s":
+            return datetime.timedelta(seconds=amount)
+        elif unit == "m":
+            return datetime.timedelta(minutes=amount)
+        elif unit == "h":
+            return datetime.timedelta(hours=amount)
+        elif unit == "d":
+            return datetime.timedelta(days=amount)
+    except:
+        pass
+
+    return None
