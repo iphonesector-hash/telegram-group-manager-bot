@@ -32,27 +32,27 @@ CHALLENGES = [
 ]
 
 async def joke_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(random.choice(JOKES))
+    await update.effective_message.reply_text(random.choice(JOKES))
 
 async def fact_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"💡 {random.choice(FACTS)}")
+    await update.effective_message.reply_text(f"💡 {random.choice(FACTS)}")
 
 async def riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     riddle = random.choice(RIDDLES)
-    await update.message.reply_text(f"❓ {riddle['q']}\n\n.\n.\n.\n✅ پاسخ: {riddle['a']}")
+    await update.effective_message.reply_text(f"❓ {riddle['q']}\n\n.\n.\n.\n✅ پاسخ: {riddle['a']}")
 
 async def story_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"📖 {random.choice(STORIES)}")
+    await update.effective_message.reply_text(f"📖 {random.choice(STORIES)}")
 
 async def dice_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_dice()
+    await update.effective_message.reply_dice()
 
 async def coin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = random.choice(["شیر 🦁", "خط 📏"])
-    await update.message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
 
 async def challenge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"🎯 چالش:\n\n{random.choice(CHALLENGES)}")
+    await update.effective_message.reply_text(f"🎯 چالش:\n\n{random.choice(CHALLENGES)}")
 
 def get_handlers():
     return [
