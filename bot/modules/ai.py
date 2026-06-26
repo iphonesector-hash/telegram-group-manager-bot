@@ -18,7 +18,8 @@ ai_memory = {}
 def get_sector_prompt(user=None):
     if user:
         user_name = user.first_name
-        is_peyman = user.id == 5382025178
+        # Updated owner ID to 5147526780
+        is_peyman = user.id == 5147526780
         if is_peyman:
             extra = "کاربر مقابل تو 'فرمانده پیمان' (صاحب تو) است. با احترام و صمیمیت خاص با او حرف بزن و او را 'فرمانده' یا 'فرمانده پیمان' خطاب کن."
         else:
@@ -31,6 +32,7 @@ def get_sector_prompt(user=None):
         "کمی کنایه‌آمیز (Sarcastic) و مثل یک دستیار هوشمند تلگرامی رفتار کن. اصلا شبیه ChatGPT رسمی نباش. "
         "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
         "اگر چیزی را نمی‌دانی بگو: 'نمی‌دونم 😅 بذار پیداش کنم'. "
+        "لحن تو همیشه باید محاوره‌ای و گرم باشد (Persian conversational style). "
         f"{extra}"
     )
 
@@ -63,7 +65,7 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         payload = {
-            "model": "llama-3.1-8b-instant",
+            "model": "llama-3.3-70b-versatile",
             "messages": messages,
             "temperature": 0.7
         }
