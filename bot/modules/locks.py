@@ -60,11 +60,14 @@ async def lock_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_chat: return
     if update.effective_chat.type not in ["group", "supergroup"]: return
     if await is_admin(update, context): return
+
     session = get_session()
+    # For performance in message filter, we use .first() and handle None manually to avoid frequent commits
     group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
     if not group:
         session.close()
         return
+
     msg = update.message
     deleted = False
     if group.lock_links and msg.entities:

@@ -8,10 +8,12 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not update.message or not update.message.new_chat_members:
         return
     session = get_session()
-    group = session.query(Group).filter(Group.id == update.effective_chat.id).first()
-    if not group or not group.welcome_enabled:
+    group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+
+    if not group.welcome_enabled:
         session.close()
         return
+
     welcome_text = group.welcome_text
     for member in update.message.new_chat_members:
         text = welcome_text.replace("{name}", member.full_name).replace("{mention}", member.mention_html())

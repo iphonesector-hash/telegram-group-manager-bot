@@ -8,32 +8,40 @@ from bot.modules.ai import get_ai_response
 
 async def translator_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    if not text.startswith("ترجمه:"): return
+    if not text or not text.startswith("ترجمه:"): return
     query = text.replace("ترجمه:", "").strip()
     if not query: return
     await update.message.reply_chat_action("typing")
     res = await get_ai_response("Translate the following text to Persian if it's English, or to English if it's Persian. Only return the translation.", query)
-    await update.message.reply_text(f"🌐 **ترجمه:**\n\n{res}", parse_mode="Markdown")
+    if res:
+        await update.message.reply_text(f"🌐 **ترجمه:**\n\n{res}", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("❌ خطا در ترجمه. لطفاً دوباره تلاش کنید.")
     raise ApplicationHandlerStop()
 
 async def weather_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    if not text.startswith("هوای "): return
+    if not text or not text.startswith("هوای "): return
     city = text.replace("هوای ", "").strip()
     if not city: return
     await update.message.reply_chat_action("typing")
     res = await get_ai_response(f"Get the current weather for {city}. Respond in Persian with temperature and condition.", f"Weather in {city}", use_search=True)
-    await update.message.reply_text(f"⛅️ **وضعیت هوا:**\n\n{res}", parse_mode="Markdown")
+    if res:
+        await update.message.reply_text(f"⛅️ **وضعیت هوا:**\n\n{res}", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("❌ خطا در دریافت اطلاعات هواشناسی.")
     raise ApplicationHandlerStop()
 
 async def calculator_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    if not re.match(r"^[0-9\s\+\-\*\/\(\)\.]+$", text): return
+    if not text or not re.match(r"^[0-9\s\+\-\*\/\(\)\.]+$", text): return
     if len(text) < 3: return
     try:
-        res = await get_ai_response("Calculate this math expression and return only the number.", text)
-        await update.message.reply_text(f"🧮 **نتیجه:**\n\n`{res}`", parse_mode="Markdown")
-        raise ApplicationHandlerStop()
+        res = await get_ai_response("Calculate this math expression and return only the numeric result.", text)
+        if res:
+            await update.message.reply_text(f"🧮 **نتیجه:**\n\n`{res}`", parse_mode="Markdown")
+            raise ApplicationHandlerStop()
+    except ApplicationHandlerStop: raise
     except: pass
 
 async def games_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -89,4 +97,5 @@ def get_extra_handlers():
         MessageHandler(filters.TEXT & filters.Regex("^(📝 حدس کلمه|🚩 حدس پرچم|✂️ سنگ کاغذ قیچی|⚔️ دوئل)$"), games_handler),
         MessageHandler(filters.TEXT & filters.Regex("^ترجمه:"), translator_handler),
         MessageHandler(filters.TEXT & filters.Regex("^هوای "), weather_handler),
+        MessageHandler(filters.TEXT & filters.Regex(r"^[0-9\s\+\-\*\/\(\)\.]+$"), calculator_handler),
     ]
