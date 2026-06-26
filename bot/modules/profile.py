@@ -1,5 +1,5 @@
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import User, Warning, Group
 from bot.modules.economy import rank_cmd
@@ -31,6 +31,15 @@ async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user: return
+    text_val = update.effective_message.text
+
+    if text_val == "🏆 رتبه جهانی":
+        await rank_cmd(update, context)
+        raise ApplicationHandlerStop()
+    elif text_val == "📊 آمار گروه":
+        await group_stats_cmd(update, context)
+        raise ApplicationHandlerStop()
+
     user_obj = update.effective_user
     session = get_session()
     user = session.query(User).filter(User.id == user_obj.id).first()
@@ -38,7 +47,7 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:
         await update.effective_message.reply_text("❌ پروفایل شما یافت نشد.")
         session.close()
-        return
+        raise ApplicationHandlerStop()
 
     rank = session.query(User).filter(User.coins > user.coins).count() + 1
     badge = get_user_badge(user)
@@ -61,6 +70,7 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = await get_reply_text(user_obj, text)
     await update.effective_message.reply_text(reply, parse_mode=None)
     session.close()
+    raise ApplicationHandlerStop()
 
 async def group_stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
