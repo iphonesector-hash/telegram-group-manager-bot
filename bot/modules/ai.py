@@ -99,7 +99,21 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_chat_action("typing")
 
-    prompt = "You are SectorBot, a professional Persian AI assistant. Respond fluently in Persian (Farsi). Be concise and use emojis."
+    user_name = update.effective_user.first_name
+    is_peyman = update.effective_user.id == 5382025178
+
+    if is_peyman:
+        address_as = "فرمانده پیمان"
+        extra_instruction = "کاربر مقابل تو 'فرمانده پیمان' (صاحب تو) است. با احترام و صمیمیت خاص با او حرف بزن و او را 'فرمانده' یا 'فرمانده پیمان' خطاب کن."
+    else:
+        address_as = user_name
+        extra_instruction = f"اسم کاربر مقابل تو '{user_name}' است. او را با اسم خودش (مثلا {user_name} جان) صدا بزن."
+
+    prompt = (
+        "نام تو سکتور (Sector) است. یک هوش مصنوعی باحال، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
+        "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
+        f"{extra_instruction}"
+    )
 
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []
@@ -115,13 +129,15 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    res = await get_ai_response("یک جوک جدید و خنده‌دار متفاوت به زبان فارسی بگو. تکراری نباشد.", "جوک بگو")
+    prompt = "یک جوک باحال، کوتاه (حداکثر ۴ خط) و جدید به زبان فارسی بگو. اصلا رسمی نباش."
+    res = await get_ai_response(prompt, "جوک بگو")
     fallback = "‏غواصه میره زیر آب، میبینه یه ماهی داره غرق میشه! نجاتش میده! 😂"
     await update.message.reply_text(res or fallback)
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    res = await get_ai_response("یک معما جدید به همراه پاسخ به زبان فارسی بگو.", "معما بگو")
+    prompt = "یک معمای کوتاه، جدید و جالب به زبان فارسی بگو که تکراری نباشد. پاسخ را هم بنویس."
+    res = await get_ai_response(prompt, "معما بگو")
     fallback = "❓ آن چیست که پا دارد اما راه نمی‌رود؟\n\n✅ پاسخ: میز 🪑"
     await update.message.reply_text(res or fallback)
 
@@ -133,26 +149,26 @@ async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    res = await get_ai_response("یک متن انگیزشی کوتاه و انرژی‌بخش جدید به زبان فارسی بگو.", "متن انگیزشی")
+    prompt = "یک جمله انگیزشی خیلی کوتاه و خفن (حداکثر ۳ جمله) به زبان فارسی بگو."
+    res = await get_ai_response(prompt, "متن انگیزشی")
     fallback = "✨ هرگز تسلیم نشو، معجزه‌ها هر روز رخ می‌دهند."
     await update.message.reply_text(res or fallback)
 
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
     prompt = (
-        "Generate a Hafez fortune in Persian. Include: "
-        "1. A random verse from Hafez. "
-        "2. An interpretation (تعبیر). "
-        "3. The deeper meaning (مفهوم). "
-        "4. A final result (نتیجه فال). "
-        "Make it poetic and beautiful with emojis."
+        "یک فال حافظ به زبان فارسی بگیر. ساختار پاسخ دقیقا این باشد:\n"
+        "۱. متن فال (یک بیت شعر)\n"
+        "۲. تعبیر کوتاه\n"
+        "۳. توصیه\n"
+        "کل پاسخ حداکثر ۸ خط باشد و از ایموجی استفاده کن."
     )
     res = await get_ai_response(prompt, "فال حافظ بگیر")
     fallback = (
-        "📜 **فال حافظ شما:**\n\n"
-        "📖 **شعر:**\n_الا یا ایها الساقی ادر کأسا و ناولها_\n\n"
-        "💡 **تعبیر:**\nصبور باشید و به خداوند توکل کنید.\n\n"
-        "🎯 **نتیجه:**\nموفقیت در انتظار شماست."
+        "📜 **فال شما:**\n"
+        "۱. فال:\n_دوش وقت سحر از غصه نجاتم دادند_\n"
+        "۲. تعبیر:\nخبرهای خوبی در راه است که دلت را شاد می‌کند.\n"
+        "۳. توصیه:\nصبر داشته باش و به تلاش ادامه بده. 🌸"
     )
     await update.message.reply_text(res or fallback)
 

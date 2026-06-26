@@ -25,7 +25,7 @@ async def get_story_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_chat_action("typing")
-    prompt = "یک معمای منطقی سخت به همراه پاسخ به زبان فارسی بگو. فرمت خروجی دقیقاً این باشد: معما: [متن] | پاسخ: [پاسخ]"
+    prompt = "یک معمای کوتاه و باحال به زبان فارسی بگو. فرمت خروجی دقیقا این باشد: معما: [متن] | پاسخ: [پاسخ]"
     res = await get_ai_response(prompt, "معما بگو")
 
     if res and "|" in res:
@@ -49,7 +49,7 @@ async def reveal_riddle_answer(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def get_categorized_joke(update: Update, category):
     await update.effective_message.reply_chat_action("typing")
-    prompt = f"یک جوک بسیار خنده‌دار در دسته '{category}' به زبان فارسی بگو. جوک باید با مفهوم و عالی باشد."
+    prompt = f"یک جوک کوتاه (حداکثر ۴ خط) و خیلی خنده‌دار در دسته '{category}' به زبان فارسی بگو. اصلا رسمی نباش."
     res = await get_ai_response(prompt, f"جوک {category} بگو")
     await update.effective_message.reply_text(res or "😂 جوکم نمیاد فعلاً!", parse_mode=None)
 

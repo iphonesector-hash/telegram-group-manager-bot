@@ -95,11 +95,16 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None)):
     user.coins += reward
     user.last_daily_claim = now
     session.commit()
+
+    current_coins = user.coins
     session.close()
-    return {"status": "success", "reward": reward}
+    return {"status": "success", "reward": reward, "coins": current_coins}
 
 @app.get("/api/leaderboard")
-async def get_leaderboard():
+async def get_leaderboard(init_data: Optional[str] = Header(None)):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
     session = get_session()
     top_users = session.query(User).order_by(User.coins.desc()).limit(10).all()
     data = []
@@ -112,6 +117,32 @@ async def get_leaderboard():
         })
     session.close()
     return data
+
+@app.get("/api/shop")
+async def get_shop(init_data: Optional[str] = Header(None)):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
+    return {
+        "status": "open",
+        "items": [
+            {"id": 1, "name": "VPN یک ماهه", "price": 1000},
+            {"id": 2, "name": "VPN سه ماهه", "price": 2500},
+            {"id": 3, "name": "پک استیکر اختصاصی", "price": 500},
+            {"id": 4, "name": "لقب سفارشی در گروه", "price": 2000}
+        ]
+    }
+
+@app.get("/api/games")
+async def get_games(init_data: Optional[str] = Header(None)):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
+    return [
+        {"id": "snake", "name": "مار بازی", "active": False},
+        {"id": "hokm", "name": "حکم", "active": False},
+        {"id": "quiz", "name": "کوییز", "active": False}
+    ]
 
 @app.get("/api/groups/{user_id}")
 async def get_user_groups(user_id: int, init_data: Optional[str] = Header(None)):
@@ -143,108 +174,42 @@ async def get_stats():
     }
     session.close()
     return data
-@app.post("/api/daily-claim/{user_id}")
-async def daily_claim(user_id: int):
+
+@app.post("/api/shop/buy/{user_id}")
+async def buy_item(user_id: int, item_id: int, init_data: Optional[str] = Header(None)):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
+    shop_items = {
+        1: {"name": "VPN یک ماهه", "price": 1000},
+        2: {"name": "VPN سه ماهه", "price": 2500},
+        3: {"name": "پک استیکر اختصاصی", "price": 500},
+        4: {"name": "لقب سفارشی در گروه", "price": 2000}
+    }
+
+    if item_id not in shop_items:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    item = shop_items[item_id]
+
     session = get_session()
-
     user = session.query(User).filter(User.id == user_id).first()
-
     if not user:
         session.close()
         raise HTTPException(status_code=404, detail="User not found")
 
-    now = datetime.datetime.utcnow()
+    if user.coins < item["price"]:
+        session.close()
+        return {"status": "error", "message": "سکه کافی نداری! برو تو گروه فعالیت کن."}
 
-    if user.last_daily_claim:
-        if (now - user.last_daily_claim).days < 1:
-            session.close()
-            return {
-                "success": False,
-                "message": "24 ساعت صبر کنید"
-            }
-
-    reward = 50
-
-    user.coins += reward
-    user.last_daily_claim = now
-
+    user.coins -= item["price"]
     session.commit()
 
-    result = {
-        "success": True,
-        "reward": reward,
-        "coins": user.coins
-    }
-
+    current_coins = user.coins
     session.close()
-
-    return result
-
-
-
-@app.get("/api/leaderboard")
-async def leaderboard():
-
-    session = get_session()
-
-    users = (
-        session.query(User)
-        .order_by(User.coins.desc())
-        .limit(10)
-        .all()
-    )
-
-    data = []
-
-    for i, user in enumerate(users):
-
-        data.append({
-            "rank": i + 1,
-            "name": user.first_name,
-            "coins": user.coins,
-            "level": user.level
-        })
-
-
-    session.close()
-
-    return data
-
-
-
-@app.get("/api/shop")
-async def shop():
 
     return {
-        "status": "open",
-        "items": [
-            {
-                "id": 1,
-                "name": "VPN یک ماهه",
-                "price": 1000
-            },
-            {
-                "id": 2,
-                "name": "VPN سه ماهه",
-                "price": 2500
-            }
-        ]
+        "status": "success",
+        "message": f"آیتم {item['name']} با موفقیت خریداری شد!",
+        "coins": current_coins
     }
-
-
-
-@app.get("/api/games")
-async def games():
-
-    return [
-        {
-            "id": "snake",
-            "name": "مار بازی",
-            "active": True
-        },
-        {
-            "id": "hokm",
-            "name": "حکم",
-            "active": False
-        }
-    ]
