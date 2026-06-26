@@ -16,7 +16,7 @@ const App = () => {
       setUser(tgUser);
 
       if (tgUser) {
-        fetch(`https://sectorland-api.vercel.app/api/user/${tgUser.id}`)
+        fetch(`http://130.185.122.76:8000/api/user/${tgUser.id}`)
           .then(res => res.json())
           .then(data => {
             setDbUser(data);
