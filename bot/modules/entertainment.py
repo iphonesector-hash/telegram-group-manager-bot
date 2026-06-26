@@ -10,7 +10,7 @@ async def dice_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def coin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = random.choice(["شیر 🦁", "خط 📏"])
-    await update.effective_message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: {res}", parse_mode=None)
     raise ApplicationHandlerStop()
 
 async def challenge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -20,13 +20,13 @@ async def challenge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "یک سلفی خنده‌دار بگیر و تو گروه بفرست! 📸",
         "اسم یک فیلم رو با ایموجی بنویس بقیه حدس بزنن. 🎭"
     ]
-    await update.effective_message.reply_text(f"🎯 **چالش سکتور:**\n\n{random.choice(challenges)}", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"🎯 چالش سکتور:\n\n{random.choice(challenges)}", parse_mode=None)
     raise ApplicationHandlerStop()
 
 async def rps_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     choices = ["سنگ 🪨", "کاغذ 📄", "قیچی ✂️"]
     bot_choice = random.choice(choices)
-    await update.effective_message.reply_text(f"🎮 من انتخاب کردم: **{bot_choice}**\n\nحالا نوبت توئه! سنگ، کاغذ یا قیچی؟", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"🎮 من انتخاب کردم: {bot_choice}\n\nحالا نوبت توئه! سنگ، کاغذ یا قیچی؟", parse_mode=None)
     raise ApplicationHandlerStop()
 
 async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):

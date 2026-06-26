@@ -17,7 +17,11 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
     welcome_text = group.welcome_text
     for member in update.message.new_chat_members:
         text = welcome_text.replace("{name}", member.full_name).replace("{mention}", member.mention_html())
-        await update.message.reply_text(text, parse_mode="HTML")
+        # HTML mention is usually safe if formatted correctly, but let's keep it for now as it's not AI output
+        try:
+            await update.message.reply_text(text, parse_mode="HTML")
+        except:
+            await update.message.reply_text(text, parse_mode=None)
     session.close()
 
 async def welcome_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -28,14 +32,14 @@ async def welcome_button_handler(update: Update, context: ContextTypes.DEFAULT_T
     group.welcome_enabled = not group.welcome_enabled
     session.commit()
     status = "فعال" if group.welcome_enabled else "غیرفعال"
-    await update.message.reply_text(f"🌟 وضعیت خوشامدگویی به **{status}** تغییر یافت.", parse_mode="Markdown")
+    await update.message.reply_text(f"🌟 وضعیت خوشامدگویی به {status} تغییر یافت.", parse_mode=None)
     session.close()
     raise ApplicationHandlerStop()
 
 async def set_welcome_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     if not context.args:
-        await update.message.reply_text("💡 مثال: `/setwelcome سلام {mention}`")
+        await update.message.reply_text("💡 مثال: /setwelcome سلام {mention}")
         return
     new_text = " ".join(context.args)
     session = get_session()

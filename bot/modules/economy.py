@@ -18,7 +18,11 @@ async def daily_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
         return
 
-    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    # Use utcnow if UTC is not available
+    try:
+        now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    except AttributeError:
+        now = datetime.datetime.utcnow()
 
     if user.last_daily_claim and (now - user.last_daily_claim).days < 1:
         time_left = datetime.timedelta(days=1) - (now - user.last_daily_claim)
@@ -42,12 +46,12 @@ async def coins_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session = get_session()
     user = session.query(User).filter(User.id == update.effective_user.id).first()
     coins = user.coins if user else 0
-    await update.message.reply_text(f"💰 موجودی کیف پول شما:\n\n**{coins} سکه**", parse_mode="Markdown")
+    await update.message.reply_text(f"💰 موجودی کیف پول شما:\n\n{coins} سکه", parse_mode=None)
     session.close()
 
 async def transfer_coins(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
-        await update.message.reply_text("❌ برای انتقال سکه، روی پیام فرد مورد نظر ریپلای کنید و مقدار را بنویسید.\nمثال: `/transfer 100`", parse_mode="Markdown")
+        await update.message.reply_text("❌ برای انتقال سکه، روی پیام فرد مورد نظر ریپلای کنید و مقدار را بنویسید.\nمثال: /transfer 100", parse_mode=None)
         return
 
     try:
@@ -81,7 +85,7 @@ async def transfer_coins(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_from.coins -= amount
     user_to.coins += amount
     session.commit()
-    await update.message.reply_text(f"✅ مبلغ **{amount}** سکه با موفقیت به {update.message.reply_to_message.from_user.first_name} انتقال یافت.", parse_mode="Markdown")
+    await update.message.reply_text(f"✅ مبلغ {amount} سکه با موفقیت به {update.message.reply_to_message.from_user.first_name} انتقال یافت.", parse_mode=None)
     session.close()
 
 async def loan_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -91,7 +95,7 @@ async def loan_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         loan_amount = 200
         user.coins += loan_amount
         session.commit()
-        await update.message.reply_text(f"🏦 مبلغ **{loan_amount}** سکه وام بانکی به حساب شما واریز شد.\n⚠️ فراموش نکنید که باید آن را بازپرداخت کنید!", parse_mode="Markdown")
+        await update.message.reply_text(f"🏦 مبلغ {loan_amount} سکه وام بانکی به حساب شما واریز شد.\n⚠️ فراموش نکنید که باید آن را بازپرداخت کنید!", parse_mode=None)
     session.close()
 
 async def repay_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -112,7 +116,7 @@ async def top_coins_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("هنوز کسی امتیازی کسب نکرده.")
     else:
         lines = [f"{i+1}. {u.first_name} — 🪙 {u.coins}" for i, u in enumerate(top_users)]
-        await update.message.reply_text("🏆 **ثروتمندترین‌های سکتور:**\n\n" + "\n".join(lines), parse_mode="Markdown")
+        await update.message.reply_text("🏆 ثروتمندترین‌های سکتور:\n\n" + "\n".join(lines), parse_mode=None)
     session.close()
 
 async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,19 +131,19 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rank = session.query(User).filter(User.coins > user.coins).count() + 1
     msg_rank = session.query(User).filter(User.message_count > user.message_count).count() + 1
     text = (
-        f"🏆 **رتبه شما در SectorBot**\n\n"
+        f"🏆 رتبه شما در SectorBot\n\n"
         f"💰 رتبه ثروت: {rank} از {total_users}\n"
         f"📨 رتبه فعالیت: {msg_rank} از {total_users}\n"
         f"🌟 سطح فعلی: {user.level}"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode=None)
     session.close()
 
 async def economy_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if text == "💰 موجودی کیف پول": await coins_cmd(update, context)
     elif text == "🎁 هدیه روزانه": await daily_cmd(update, context)
-    elif text == "💸 انتقال سکه": await update.message.reply_text("💸 برای انتقال سکه، روی پیام کاربر مورد نظر ریپلای کرده و دستور `/transfer [مقدار]` را بزنید.")
+    elif text == "💸 انتقال سکه": await update.message.reply_text("💸 برای انتقال سکه، روی پیام کاربر مورد نظر ریپلای کرده و دستور /transfer [مقدار] را بزنید.")
     elif text == "🏦 وام بانکی": await loan_cmd(update, context)
     elif text == "📉 بازپرداخت وام": await repay_cmd(update, context)
     elif text == "🏆 برترین‌های ثروت": await top_coins_cmd(update, context)

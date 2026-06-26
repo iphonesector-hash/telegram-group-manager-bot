@@ -51,8 +51,8 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     join_date = user.joined_at.strftime("%Y-%m-%d")
 
     text = (
-        f"👤 **پروفایل {user_obj.full_name}**\n\n"
-        f"🆔 شناسه: `{user.id}`\n"
+        f"👤 پروفایل {user_obj.full_name}\n\n"
+        f"🆔 شناسه: {user.id}\n"
         f"👤 نام کاربری: @{user_obj.username if user_obj.username else 'ندارد'}\n"
         f"📅 تاریخ عضویت: {join_date}\n"
         f"🌟 سطح: {user.level}\n"
@@ -62,7 +62,7 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🏆 رتبه جهانی: {rank}\n"
         f"⚠️ تعداد اخطارها (در این گروه): {warn_count}\n"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode=None)
     session.close()
 
 async def user_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):

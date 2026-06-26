@@ -18,56 +18,56 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
     if text == "🛡 مدیریت":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("🛡 **منوی مدیریت SectorBot**\nیکی از بخش‌ها را انتخاب کنید:", reply_markup=get_admin_menu(), parse_mode="Markdown")
+            await update.effective_message.reply_text("🛡 منوی مدیریت SectorBot\nیکی از بخش‌ها را انتخاب کنید:", reply_markup=get_admin_menu(), parse_mode=None)
         else:
             await update.effective_message.reply_text("❌ این بخش مخصوص مدیران گروه است.")
 
     elif text == "👤 حساب کاربری":
-        await update.effective_message.reply_text("👤 **تنظیمات و اطلاعات حساب شما:**", reply_markup=get_user_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("👤 تنظیمات و اطلاعات حساب شما:", reply_markup=get_user_menu(), parse_mode=None)
 
     elif text == "🏦 بانک و اقتصاد":
-        await update.effective_message.reply_text("🏦 **سیستم مالی و پاداش سکتور:**", reply_markup=get_economy_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🏦 سیستم مالی و پاداش سکتور:", reply_markup=get_economy_menu(), parse_mode=None)
 
     elif text == "🎮 سرگرمی":
-        await update.effective_message.reply_text("🎮 **بخش سرگرمی و بازی:**", reply_markup=get_entertainment_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🎮 بخش سرگرمی و بازی:", reply_markup=get_entertainment_menu(), parse_mode=None)
 
     elif text == "🛠 کاربردی":
-        await update.effective_message.reply_text("🛠 **ابزارهای هوشمند و کاربردی:**", reply_markup=get_utility_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🛠 ابزارهای هوشمند و کاربردی:", reply_markup=get_utility_menu(), parse_mode=None)
 
     elif text == "⚙️ تنظیمات":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("⚙️ **تنظیمات ربات در این گروه:**", reply_markup=get_settings_menu(), parse_mode="Markdown")
+            await update.effective_message.reply_text("⚙️ تنظیمات ربات در این گروه:", reply_markup=get_settings_menu(), parse_mode=None)
         else:
             await update.effective_message.reply_text("❌ فقط مدیران می‌توانند تنظیمات را تغییر دهند.")
 
     elif text == "🤖 دستیار هوشمند":
         await update.effective_message.reply_text(
-            "🤖 **من دستیار هوشمند سکتور هستم!**\n\n"
+            "🤖 دستیار هوشمند سکتور هستم!\n\n"
             "✨ من می‌تونم به سوالاتت جواب بدم، تو پیدا کردن اطلاعات کمکت کنم و باهات گپ بزنم.\n\n"
-            "💡 **روش استفاده:**\n"
+            "💡 روش استفاده:\n"
             "▫️ در چت خصوصی: مستقیماً پیام بده.\n"
-            "▫️ در گروه‌ها: اول پیام کلمه **سکتور** یا **Sector** رو بنویس یا منو ریپلای کن.",
+            "▫️ در گروه‌ها: اول پیام کلمه سکتور یا Sector رو بنویس یا منو ریپلای کن.",
             reply_markup=get_main_menu(),
-            parse_mode="Markdown"
+            parse_mode=None
         )
 
     elif text == "🆘 پشتیبانی":
-        await update.effective_message.reply_text("🆘 **پشتیبانی سکتور**\n\nدر صورت بروز مشکل یا داشتن سوال، با تیم پشتیبانی در ارتباط باشید:\n👤 @sector_ad", parse_mode="Markdown")
+        await update.effective_message.reply_text("🆘 پشتیبانی سکتور\n\nدر صورت بروز مشکل یا داشتن سوال، با تیم پشتیبانی در ارتباط باشید:\n👤 @sector_ad", parse_mode=None)
 
     elif text == "🔒 قفل‌های گروه":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("🔐 **مدیریت قفل‌های محتوا:**\nبرای فعال/غیرفعال کردن هر قفل روی دکمه مربوطه بزنید.", reply_markup=get_locks_menu(), parse_mode="Markdown")
+            await update.effective_message.reply_text("🔐 مدیریت قفل‌های محتوا:\nبرای فعال/غیرفعال کردن هر قفل روی دکمه مربوطه بزنید.", reply_markup=get_locks_menu(), parse_mode=None)
 
     elif text == "👤 مدیریت اعضا":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("👤 **بخش مدیریت اعضا:**", reply_markup=get_member_mgmt_menu(), parse_mode="Markdown")
+            await update.effective_message.reply_text("👤 بخش مدیریت اعضا:", reply_markup=get_member_mgmt_menu(), parse_mode=None)
 
     elif text == "⚙️ تنظیمات گروه":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("⚙️ **تنظیمات پیشرفته گروه:**", reply_markup=get_group_settings_menu(), parse_mode="Markdown")
+            await update.effective_message.reply_text("⚙️ تنظیمات پیشرفته گروه:", reply_markup=get_group_settings_menu(), parse_mode=None)
 
     elif text == "🎮 بازی‌ها":
-        await update.effective_message.reply_text("🎮 **لیست بازی‌های موجود:**", reply_markup=get_games_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🎮 لیست بازی‌های موجود:", reply_markup=get_games_menu(), parse_mode=None)
 
     elif text == "🔙 بازگشت به مدیریت":
         await update.effective_message.reply_text("🛡 بازگشت به منوی مدیریت:", reply_markup=get_admin_menu())
@@ -85,7 +85,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
 async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private" or await is_admin(update, context):
-        await update.effective_message.reply_text("🏠 **منوی اصلی SectorBot**\nلطفاً یک بخش را انتخاب کنید:", reply_markup=get_main_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🏠 منوی اصلی SectorBot\nلطفاً یک بخش را انتخاب کنید:", reply_markup=get_main_menu(), parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای باز کردن پنل را ندارید.")
 
@@ -111,7 +111,7 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
         setattr(group, attr, not getattr(group, attr))
         session.commit()
         status = "فعال" if getattr(group, attr) else "غیرفعال"
-        await update.effective_message.reply_text(f"✅ تنظیمات **{text}** به حالت **{status}** تغییر یافت.", parse_mode="Markdown")
+        await update.effective_message.reply_text(f"✅ تنظیمات {text} به حالت {status} تغییر یافت.", parse_mode=None)
         session.close()
         raise ApplicationHandlerStop()
 

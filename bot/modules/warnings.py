@@ -286,22 +286,22 @@ async def member_mgmt_buttons_handler(update: Update, context: ContextTypes.DEFA
     if text == "⚠️ اخطارها":
         await update.effective_message.reply_text("⚠️ مدیریت اخطارهای کاربران:", reply_markup=get_warnings_mgmt_menu())
     elif text == "➕ اخطار کاربر":
-        await update.effective_message.reply_text("💡 برای اخطار دادن، روی پیام کاربر **ریپلای** کنید و دستور `/warn` را بزنید.", parse_mode="Markdown")
+        await update.effective_message.reply_text("💡 برای اخطار دادن، روی پیام کاربر ریپلای کنید و دستور /warn را بزنید.")
     elif text == "📋 لیست اخطارها":
-        await update.effective_message.reply_text("💡 برای دیدن لیست اخطارها، روی کاربر **ریپلای** کنید و دستور `/warns` را بزنید.", parse_mode="Markdown")
+        await update.effective_message.reply_text("💡 برای دیدن لیست اخطارها، روی کاربر ریپلای کنید و دستور /warns را بزنید.")
     elif text == "🗑 حذف آخرین اخطار":
-        await update.effective_message.reply_text("💡 این قابلیت بزودی اضافه می‌شود. فعلاً از `/clearwarn` استفاده کنید.")
+        await update.effective_message.reply_text("💡 این قابلیت بزودی اضافه می‌شود. فعلاً از /clearwarn استفاده کنید.")
     elif text == "🔄 پاک کردن همه اخطارها":
-        await update.effective_message.reply_text("💡 برای پاک کردن همه اخطارها، روی کاربر **ریپلای** کنید و دستور `/clearwarn` را بزنید.", parse_mode="Markdown")
+        await update.effective_message.reply_text("💡 برای پاک کردن همه اخطارها، روی کاربر ریپلای کنید و دستور /clearwarn را بزنید.")
 
     elif text == "🔇 محدودیت‌ها":
         await update.effective_message.reply_text("🔇 مدیریت محدودیت‌های چت:", reply_markup=get_mutes_mgmt_menu())
     elif text == "🔇 سکوت کاربر":
-        await update.effective_message.reply_text("💡 روی کاربر **ریپلای** کنید و دستور `/mute` را بزنید.")
+        await update.effective_message.reply_text("💡 روی کاربر ریپلای کنید و دستور /mute را بزنید.")
     elif text == "⏱ سکوت زمان‌دار":
-        await update.effective_message.reply_text("💡 روی کاربر **ریپلای** کنید و بنویسید: `/mute 1h` (یا هر زمان دیگری).")
+        await update.effective_message.reply_text("💡 روی کاربر ریپلای کنید و بنویسید: /mute 1h (یا هر زمان دیگری).")
     elif text == "🔊 رفع سکوت":
-        await update.effective_message.reply_text("💡 روی کاربر **ریپلای** کنید و دستور `/unmute` را بزنید.")
+        await update.effective_message.reply_text("💡 روی کاربر ریپلای کنید و دستور /unmute را بزنید.")
     elif text == "📊 لیست کاربران محدود شده":
         session = get_session()
         mutes = session.query(Mute).filter(Mute.group_id == update.effective_chat.id).all()
@@ -310,27 +310,27 @@ async def member_mgmt_buttons_handler(update: Update, context: ContextTypes.DEFA
         else:
             txt = "📊 لیست کاربران محدود شده:\n\n"
             for m in mutes:
-                txt += f"👤 کاربر `{m.user_id}` تا زمان `{m.until.strftime('%Y-%m-%d %H:%M')}`\n"
-            await update.effective_message.reply_text(txt, parse_mode="Markdown")
+                txt += f"👤 کاربر {m.user_id} تا زمان {m.until.strftime('%Y-%m-%d %H:%M')}\n"
+            await update.effective_message.reply_text(txt, parse_mode=None)
         session.close()
 
     elif text == "🚫 مسدودسازی":
         await update.effective_message.reply_text("🚫 مدیریت لیست سیاه گروه:", reply_markup=get_bans_mgmt_menu())
     elif text == "🚫 بن کاربر":
-        await update.effective_message.reply_text("💡 روی کاربر **ریپلای** کنید و دستور `/ban` را بزنید.")
+        await update.effective_message.reply_text("💡 روی کاربر ریپلای کنید و دستور /ban را بزنید.")
     elif text == "♻️ رفع بن":
-        await update.effective_message.reply_text("💡 دستور `/unban` را همراه با آیدی عددی کاربر بزنید.")
+        await update.effective_message.reply_text("💡 دستور /unban را همراه با آیدی عددی کاربر بزنید.")
 
     elif text == "👤 اطلاعات کاربر":
         await update.effective_message.reply_text("👤 دریافت آمار و اطلاعات اعضا:", reply_markup=get_user_info_mgmt_menu())
     elif text == "🔎 پروفایل کاربر":
-        await update.effective_message.reply_text("💡 روی کاربر **ریپلای** کنید و دستور `/profile` را بزنید.")
+        await update.effective_message.reply_text("💡 روی کاربر ریپلای کنید و دستور /profile را بزنید.")
     elif text == "📈 آمار پیام‌ها":
-        await update.effective_message.reply_text("💡 آمار دقیق پیام‌ها در بخش `/profile` قابل مشاهده است.")
+        await update.effective_message.reply_text("💡 آمار دقیق پیام‌ها در بخش /profile قابل مشاهده است.")
     elif text == "⭐ XP و سطح":
         await update.effective_message.reply_text("💡 سطح و XP هر کاربر در پروفایل او نمایش داده می‌شود.")
     elif text == "💰 موجودی سکه":
-        await update.effective_message.reply_text("💡 برای مشاهده موجودی سکه از دکمه **موجودی کیف پول** در منوی بانک استفاده کنید.")
+        await update.effective_message.reply_text("💡 برای مشاهده موجودی سکه از دکمه موجودی کیف پول در منوی بانک استفاده کنید.")
 
     elif text == "🛡 امنیت":
         await update.effective_message.reply_text("🛡 تنظیمات امنیتی گروه:", reply_markup=get_security_mgmt_menu())
