@@ -30,6 +30,7 @@ from bot.modules.warnings import get_handlers as get_warning_handlers
 from bot.modules.rules import get_rules_handlers
 from bot.modules.economy import get_handlers as get_economy_handlers
 from bot.modules.entertainment import get_handlers as get_entertainment_handlers
+from bot.modules.tools import get_handlers as get_tool_handlers
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -62,7 +63,7 @@ def main():
             app.add_handler(handler, group=1)
 
 
-    # گروه 2 - دستورات (Commands)
+    # گروه 2 - دستورات (Commands & Menu)
     app.add_handler(start_handler, group=2)
 
     for handler in get_panel_handlers():
@@ -81,7 +82,8 @@ def main():
             app.add_handler(handler, group=2)
 
     for handler in get_rules_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
 
     for handler in get_welcome_handlers():
         if isinstance(handler, CommandHandler):
@@ -92,10 +94,16 @@ def main():
             app.add_handler(handler, group=2)
 
     for handler in get_economy_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
 
     for handler in get_entertainment_handlers():
-        app.add_handler(handler, group=2)
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
+
+    for handler in get_tool_handlers():
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
 
 
     # گروه 3 - خوش آمدگویی (پیام‌های سیستمی)

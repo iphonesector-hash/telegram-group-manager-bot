@@ -43,7 +43,7 @@ async def count_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session.close()
 
 async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.effective_user:
+    if not update.effective_user:
         return
 
     user_obj = update.effective_user
@@ -80,13 +80,10 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🏆 رتبه جهانی: {rank}\n"
         f"⚠️ تعداد اخطارها (در این گروه): {warn_count}\n"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.effective_message.reply_text(text, parse_mode="Markdown")
     session.close()
 
 async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
     session = get_session()
     try:
         # Toggle between top activity or top wealth via args if needed,
@@ -94,7 +91,7 @@ async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         top_users = session.query(User).order_by(User.coins.desc()).limit(10).all()
 
         if not top_users:
-            await update.message.reply_text("هنوز کسی امتیاز نگرفته.")
+            await update.effective_message.reply_text("هنوز کسی امتیاز نگرفته.")
             return
 
         lines = []
@@ -102,10 +99,10 @@ async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name = user.first_name or "نامشخص"
             lines.append(f"{i}. {name} — 🪙 {user.coins} (سطح {user.level})")
 
-        await update.message.reply_text("🏆 **برترین‌ها (بر اساس سکه):**\n\n" + "\n".join(lines), parse_mode="Markdown")
+        await update.effective_message.reply_text("🏆 **برترین‌ها (بر اساس سکه):**\n\n" + "\n".join(lines), parse_mode="Markdown")
     except Exception as e:
         print(f"❌ Error fetching top users: {e}")
-        await update.message.reply_text("❌ خطا در دریافت اطلاعات.")
+        await update.effective_message.reply_text("❌ خطا در دریافت اطلاعات.")
     finally:
         session.close()
 

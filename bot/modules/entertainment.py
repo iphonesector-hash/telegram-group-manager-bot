@@ -25,34 +25,38 @@ STORIES = [
     "در زمان‌های قدیم، پادشاهی عادل بود که برای فهمیدن مشکلات مردم، شب‌ها با لباس مبدل در شهر قدم می‌زد...",
 ]
 
-CHALLENGES = [
-    "همین الان ۳ بار بلند بگو: «چای داغ، دایی چاق»! 🍵",
-    "بدون اینکه پلک بزنی ۳۰ ثانیه به صفحه گوشی نگاه کن! 👀",
-    "نام ۵ شهر ایران که با حرف «س» شروع می‌شوند را بگو. 🗺",
+HAFEZ = [
+    "الا یا ایها الساقی ادر کأسا و ناولها / که عشق آسان نمود اول ولی افتاد مشکل‌ها",
+    "دوش وقت سحر از غصه نجاتم دادند / واندر آن ظلمت شب آب حیاتم دادند",
 ]
 
 async def joke_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(random.choice(JOKES))
+    await update.effective_message.reply_text(random.choice(JOKES))
 
 async def fact_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"💡 {random.choice(FACTS)}")
+    await update.effective_message.reply_text(f"💡 {random.choice(FACTS)}")
 
 async def riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     riddle = random.choice(RIDDLES)
-    await update.message.reply_text(f"❓ {riddle['q']}\n\n.\n.\n.\n✅ پاسخ: {riddle['a']}")
+    await update.effective_message.reply_text(f"❓ {riddle['q']}\n\n.\n.\n.\n✅ پاسخ: {riddle['a']}")
 
 async def story_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"📖 {random.choice(STORIES)}")
+    await update.effective_message.reply_text(f"📖 {random.choice(STORIES)}")
 
 async def dice_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_dice()
+    await update.effective_message.reply_dice()
 
 async def coin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = random.choice(["شیر 🦁", "خط 📏"])
-    await update.message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: **{res}**", parse_mode="Markdown")
 
-async def challenge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"🎯 چالش:\n\n{random.choice(CHALLENGES)}")
+async def hafez_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.effective_message.reply_text(f"📜 نیت کنید و بشنوید:\n\n{random.choice(HAFEZ)}")
+
+async def rps_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    choices = ["سنگ 💎", "کاغذ 📄", "قیچی ✂️"]
+    bot_choice = random.choice(choices)
+    await update.effective_message.reply_text(f"🎮 من انتخاب کردم:\n\n**{bot_choice}**\n\nحالا تو چی میگی؟", parse_mode="Markdown")
 
 def get_handlers():
     return [
@@ -62,5 +66,6 @@ def get_handlers():
         CommandHandler("story", story_cmd),
         CommandHandler("dice", dice_cmd),
         CommandHandler("coin", coin_cmd),
-        CommandHandler("challenge", challenge_cmd),
+        CommandHandler("hafez", hafez_cmd),
+        CommandHandler("rps", rps_cmd),
     ]
