@@ -25,48 +25,59 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 def validate_telegram_init_data(init_data: str):
     if not BOT_TOKEN:
-        print("Validation Error: BOT_TOKEN not found")
+        print("Validation Error: BOT_TOKEN not configured in environment")
         raise HTTPException(status_code=500, detail="Bot token not configured")
+
     if not init_data:
-        print("Validation Error: init_data is empty")
+        print("Validation Error: No init-data header received")
         return False
 
     try:
-        # Standard Telegram validation
-        # data_check_string is formed by sorting key-value pairs in lexicographical order
-        # and joining them with \n
+        # Standard Telegram validation:
+        # 1. Parse into key-value pairs
+        # 2. Extract and remove hash
+        # 3. Sort keys alphabetically
+        # 4. Join with \n
+        # 5. Sign with secret_key derived from BOT_TOKEN
 
-        # Split by & first
         params = init_data.split('&')
         data_check_list = []
-        hash_str = None
+        received_hash = None
 
         for p in params:
             if '=' not in p: continue
             key, value = p.split('=', 1)
             if key == 'hash':
-                hash_str = value
+                received_hash = value
             else:
+                # IMPORTANT: Use unquote for the value as Telegram sends them encoded
                 data_check_list.append(f"{key}={unquote(value)}")
 
-        if not hash_str:
-            print("Validation Error: Hash not found in initData")
+        if not received_hash:
+            print("Validation Error: 'hash' field missing in initData")
             return False
 
         data_check_list.sort()
         data_check_string = "\n".join(data_check_list)
 
-        # Construct the secret key
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-
-        # Calculate hash
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        if calculated_hash != hash_str:
-            print(f"Validation Error: Hash mismatch.")
-            # For safe debugging:
-            # print(f"Data Check String: {data_check_string}")
+        if calculated_hash != received_hash:
+            print(f"Validation Error: Hash mismatch. Received data length: {len(init_data)}")
+            # print(f"DEBUG Check String: {data_check_string}")
             return False
+
+        # Optional: Extract user id for logging
+        try:
+            for item in data_check_list:
+                if item.startswith("user="):
+                    user_json = item[5:]
+                    user_data = json.loads(user_json)
+                    print(f"Validation Success: User ID {user_data.get('id')} authenticated.")
+                    break
+        except:
+            pass
 
         return True
     except Exception as e:
