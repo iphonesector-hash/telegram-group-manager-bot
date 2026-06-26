@@ -31,7 +31,7 @@ async def daily_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user.last_daily_claim = now
     session.commit()
 
-    await update.message.reply_text(f"✅ هدیه روزانه دریافت شد!\n💰 مبلغ {reward} سکه به کیف پول شما اضافه شد.")
+    await update.effective_message.reply_text(f"✅ هدیه روزانه دریافت شد!\n💰 مبلغ {reward} سکه به کیف پول شما اضافه شد.")
     session.close()
 
 async def coins_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,11 +42,11 @@ async def coins_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = session.query(User).filter(User.id == update.effective_user.id).first()
 
     if not user:
-        await update.message.reply_text("💰 موجودی شما: 0 سکه")
+        await update.effective_message.reply_text("💰 موجودی شما: 0 سکه")
         session.close()
         return
 
-    await update.message.reply_text(f"💰 موجودی کیف پول شما:\n\n**{user.coins} سکه**", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"💰 موجودی کیف پول شما:\n\n**{user.coins} سکه**", parse_mode="Markdown")
     session.close()
 
 async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
