@@ -15,6 +15,25 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 # Simple in-memory context memory (per chat)
 ai_memory = {}
 
+def get_sector_prompt(user=None):
+    if user:
+        user_name = user.first_name
+        is_peyman = user.id == 5382025178
+        if is_peyman:
+            extra = "کاربر مقابل تو 'فرمانده پیمان' (صاحب تو) است. با احترام و صمیمیت خاص با او حرف بزن و او را 'فرمانده' یا 'فرمانده پیمان' خطاب کن."
+        else:
+            extra = f"اسم کاربر مقابل تو '{user_name}' است. او را با اسم خودش (مثلا {user_name} جان) صدا بزن."
+    else:
+        extra = ""
+
+    return (
+        "نام تو سکتور (Sector) است. یک هوش مصنوعی باحال، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
+        "کمی کنایه‌آمیز (Sarcastic) و مثل یک دستیار هوشمند تلگرامی رفتار کن. اصلا شبیه ChatGPT رسمی نباش. "
+        "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
+        "اگر چیزی را نمی‌دانی بگو: 'نمی‌دونم 😅 بذار پیداش کنم'. "
+        f"{extra}"
+    )
+
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
         return None
@@ -55,8 +74,6 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
                 return "خطای API: " + res.text
 
             data = res.json()
-            print("GROQ RESPONSE:", data)
-
             if "choices" not in data:
                 return "خطای API: " + str(data)
 
@@ -99,21 +116,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_chat_action("typing")
 
-    user_name = update.effective_user.first_name
-    is_peyman = update.effective_user.id == 5382025178
-
-    if is_peyman:
-        address_as = "فرمانده پیمان"
-        extra_instruction = "کاربر مقابل تو 'فرمانده پیمان' (صاحب تو) است. با احترام و صمیمیت خاص با او حرف بزن و او را 'فرمانده' یا 'فرمانده پیمان' خطاب کن."
-    else:
-        address_as = user_name
-        extra_instruction = f"اسم کاربر مقابل تو '{user_name}' است. او را با اسم خودش (مثلا {user_name} جان) صدا بزن."
-
-    prompt = (
-        "نام تو سکتور (Sector) است. یک هوش مصنوعی باحال، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
-        "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
-        f"{extra_instruction}"
-    )
+    prompt = get_sector_prompt(update.effective_user)
 
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []
@@ -129,41 +132,47 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    prompt = "یک جوک باحال، کوتاه (حداکثر ۴ خط) و جدید به زبان فارسی بگو. اصلا رسمی نباش."
-    res = await get_ai_response(prompt, "جوک بگو")
+    persona = get_sector_prompt(update.effective_user)
+    instruction = "یک جوک باحال، کوتاه (حداکثر ۴ خط) و جدید به زبان فارسی بگو. اصلا رسمی نباش."
+    res = await get_ai_response(persona + "\n\n" + instruction, "جوک بگو")
     fallback = "‏غواصه میره زیر آب، میبینه یه ماهی داره غرق میشه! نجاتش میده! 😂"
     await update.message.reply_text(res or fallback)
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    prompt = "یک معمای کوتاه، جدید و جالب به زبان فارسی بگو که تکراری نباشد. پاسخ را هم بنویس."
-    res = await get_ai_response(prompt, "معما بگو")
+    persona = get_sector_prompt(update.effective_user)
+    instruction = "یک معمای کوتاه، جدید و جالب به زبان فارسی بگو که تکراری نباشد. پاسخ را هم بنویس."
+    res = await get_ai_response(persona + "\n\n" + instruction, "معما بگو")
     fallback = "❓ آن چیست که پا دارد اما راه نمی‌رود؟\n\n✅ پاسخ: میز 🪑"
     await update.message.reply_text(res or fallback)
 
 async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    res = await get_ai_response("یک دانستنی علمی یا جالب جدید و عجیب به زبان فارسی بگو.", "دانستنی بگو")
+    persona = get_sector_prompt(update.effective_user)
+    instruction = "یک دانستنی علمی یا جالب جدید و عجیب به زبان فارسی بگو."
+    res = await get_ai_response(persona + "\n\n" + instruction, "دانستنی بگو")
     fallback = "💡 آیا می‌دانستید که هشت‌پاها سه قلب دارند؟ 🐙"
     await update.message.reply_text(res or fallback)
 
 async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    prompt = "یک جمله انگیزشی خیلی کوتاه و خفن (حداکثر ۳ جمله) به زبان فارسی بگو."
-    res = await get_ai_response(prompt, "متن انگیزشی")
+    persona = get_sector_prompt(update.effective_user)
+    instruction = "یک جمله انگیزشی خیلی کوتاه و خفن (حداکثر ۳ جمله) به زبان فارسی بگو."
+    res = await get_ai_response(persona + "\n\n" + instruction, "متن انگیزشی")
     fallback = "✨ هرگز تسلیم نشو، معجزه‌ها هر روز رخ می‌دهند."
     await update.message.reply_text(res or fallback)
 
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
-    prompt = (
+    persona = get_sector_prompt(update.effective_user)
+    instruction = (
         "یک فال حافظ به زبان فارسی بگیر. ساختار پاسخ دقیقا این باشد:\n"
         "۱. متن فال (یک بیت شعر)\n"
         "۲. تعبیر کوتاه\n"
         "۳. توصیه\n"
         "کل پاسخ حداکثر ۸ خط باشد و از ایموجی استفاده کن."
     )
-    res = await get_ai_response(prompt, "فال حافظ بگیر")
+    res = await get_ai_response(persona + "\n\n" + instruction, "فال حافظ بگیر")
     fallback = (
         "📜 **فال شما:**\n"
         "۱. فال:\n_دوش وقت سحر از غصه نجاتم دادند_\n"
