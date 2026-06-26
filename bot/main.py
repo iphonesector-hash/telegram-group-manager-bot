@@ -63,7 +63,7 @@ def main():
             app.add_handler(handler, group=1)
 
 
-    # گروه 2 - دستورات (Commands & Menu)
+    # گروه 2 - دستورات (Commands & Bottom Menu)
     app.add_handler(start_handler, group=2)
 
     for handler in get_panel_handlers():

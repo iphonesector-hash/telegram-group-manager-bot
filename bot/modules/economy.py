@@ -26,7 +26,7 @@ async def daily_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
         return
 
-    reward = 50
+    reward = 100
     user.coins += reward
     user.last_daily_claim = now
     session.commit()
@@ -50,7 +50,10 @@ async def coins_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session.close()
 
 async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_user or not context.args or len(context.args) < 2:
+    if not update.effective_user:
+        return
+
+    if not context.args or len(context.args) < 2:
         await update.effective_message.reply_text("💡 مثال: `/transfer آیدی_عددی مبلغ`", parse_mode="Markdown")
         return
 
@@ -100,13 +103,13 @@ async def loan_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
         return
 
-    loan_val = 500
+    loan_val = 1000
     user.coins += loan_val
     user.loan_amount = loan_val
     user.loan_due_date = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + datetime.timedelta(days=7)
 
     session.commit()
-    await update.effective_message.reply_text(f"✅ وام به مبلغ {loan_val} سکه دریافت شد.\n📅 مهلت بازپرداخت: ۷ روز دیگر.")
+    await update.effective_message.reply_text(f"✅ وام فوری SectorBot به مبلغ {loan_val} سکه دریافت شد.\n📅 مهلت بازپرداخت: ۷ روز دیگر.")
     session.close()
 
 async def repay_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -131,8 +134,25 @@ async def repay_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user.loan_due_date = None
 
     session.commit()
-    await update.effective_message.reply_text("✅ وام شما با موفقیت تسویه شد.")
+    await update.effective_message.reply_text("✅ وام شما با موفقیت تسویه شد. از خوش‌حسابی شما متشکریم!")
     session.close()
+
+async def richest_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    session = get_session()
+    try:
+        top_users = session.query(User).order_by(User.coins.desc()).limit(10).all()
+        if not top_users:
+            await update.effective_message.reply_text("هنوز کسی سکه کسب نکرده است.")
+            return
+
+        lines = []
+        for i, user in enumerate(top_users, start=1):
+            name = user.first_name or "نامشخص"
+            lines.append(f"{i}. {name} — 💰 {user.coins} سکه")
+
+        await update.effective_message.reply_text("💎 **لیست ثروتمندترین کاربران SectorBot:**\n\n" + "\n".join(lines), parse_mode="Markdown")
+    finally:
+        session.close()
 
 def get_handlers():
     return [
@@ -141,4 +161,5 @@ def get_handlers():
         CommandHandler("transfer", transfer_cmd),
         CommandHandler("loan", loan_cmd),
         CommandHandler("repay", repay_cmd),
+        CommandHandler("richest", richest_cmd),
     ]

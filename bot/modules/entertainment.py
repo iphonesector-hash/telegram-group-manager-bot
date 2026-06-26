@@ -30,6 +30,16 @@ HAFEZ = [
     "دوش وقت سحر از غصه نجاتم دادند / واندر آن ظلمت شب آب حیاتم دادند",
 ]
 
+GUESS_WORDS = [
+    {"q": "پایتخت ایران؟", "a": "تهران"},
+    {"q": "بزرگترین سیاره منظومه شمسی؟", "a": "مشتری"},
+]
+
+FLAGS = [
+    {"q": "🇮🇷 این پرچم کدام کشور است؟", "a": "ایران"},
+    {"q": "🇩🇪 این پرچم کدام کشور است؟", "a": "آلمان"},
+]
+
 async def joke_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(random.choice(JOKES))
 
@@ -56,7 +66,23 @@ async def hafez_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def rps_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     choices = ["سنگ 💎", "کاغذ 📄", "قیچی ✂️"]
     bot_choice = random.choice(choices)
-    await update.effective_message.reply_text(f"🎮 من انتخاب کردم:\n\n**{bot_choice}**\n\nحالا تو چی میگی؟", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"🎮 من انتخاب کردم:\n\n**{bot_choice}**\n\nحالا تو چی انتخاب می‌کنی؟ (مثال: /rps سنگ)", parse_mode="Markdown")
+
+async def guess_word_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    item = random.choice(GUESS_WORDS)
+    await update.effective_message.reply_text(f"🔡 حدس کلمه:\n\n{item['q']}\n\n.\n.\n.\n✅ پاسخ: {item['a']}")
+
+async def guess_flag_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    item = random.choice(FLAGS)
+    await update.effective_message.reply_text(f"🏳️ حدس پرچم:\n\n{item['q']}\n\n.\n.\n.\n✅ پاسخ: {item['a']}")
+
+async def duel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    res = random.choice(["پیروز شدی! 🏆", "شکست خوردی... 💀"])
+    await update.effective_message.reply_text(f"⚔️ دوئل آغاز شد!\n\nنتیجه نهایی: **{res}**", parse_mode="Markdown")
+
+async def cops_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    res = random.choice(["پلیس تو را دستگیر کرد! 👮", "با موفقیت فرار کردی! 🏃‍♂️"])
+    await update.effective_message.reply_text(f"👮 دزد و پلیس:\n\n{res}")
 
 def get_handlers():
     return [
@@ -68,4 +94,8 @@ def get_handlers():
         CommandHandler("coin", coin_cmd),
         CommandHandler("hafez", hafez_cmd),
         CommandHandler("rps", rps_cmd),
+        CommandHandler("guessword", guess_word_cmd),
+        CommandHandler("guessflag", guess_flag_cmd),
+        CommandHandler("duel", duel_cmd),
+        CommandHandler("cops", cops_cmd),
     ]
