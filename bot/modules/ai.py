@@ -40,7 +40,6 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     # Build message payload
     messages = [{"role": "system", "content": prompt + context_text}]
     if history:
-        # history is a list of {"role": "user/assistant", "content": "..."}
         messages.extend(history[-6:])
     messages.append({"role": "user", "content": user_query})
 
@@ -50,7 +49,7 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-        # Model updated to llama-3.1-8b-instant
+        # Model: llama-3.1-8b-instant
         payload = {
             "model": "llama-3.1-8b-instant",
             "messages": messages,
@@ -64,10 +63,10 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
             if res.status_code != 200:
                 print(f"Groq API Error: {res.status_code}")
                 try:
-                    print(f"Error Body: {res.text}")
-                    print(f"Error JSON: {res.json()}")
+                    error_json = res.json()
+                    print(f"Detailed Groq Error: {json.dumps(error_json, indent=2)}")
                 except:
-                    pass
+                    print(f"Raw Error Body: {res.text}")
                 return None
 
             data = res.json()
@@ -127,7 +126,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if response:
         ai_memory[chat_id].append({"role": "user", "content": query})
         ai_memory[chat_id].append({"role": "assistant", "content": response})
-        # AI output might contain markdown that breaks Telegram, send as plain text
+        # Use parse_mode=None to prevent Markdown errors
         await update.effective_message.reply_text(response, parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ متأسفانه قادر به ارتباط با مغز مرکزی نیستم.")
