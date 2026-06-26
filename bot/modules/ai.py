@@ -17,6 +17,7 @@ ai_memory = {}
 
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
+        print("Error: GROQ_API_KEY not found in environment.")
         return None
 
     context_text = ""
@@ -28,54 +29,75 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
                     json={"api_key": TAVILY_API_KEY, "query": user_query, "search_depth": "basic"},
                     timeout=10.0
                 )
-                search_data = search_res.json()
-                results = search_data.get("results", [])
-                if results:
-                    context_text = "\n\nSearch Results:\n" + "\n".join([f"- {r['title']}: {r['content']}" for r in results[:3]])
+                if search_res.status_code == 200:
+                    search_data = search_res.json()
+                    results = search_data.get("results", [])
+                    if results:
+                        context_text = "\n\nRelevant Information from Search:\n" + "\n".join([f"- {r['title']}: {r['content']}" for r in results[:3]])
         except Exception as e:
-            print(f"Search Error: {e}")
+            print(f"Search API Error: {e}")
 
+    # Build message payload
     messages = [{"role": "system", "content": prompt + context_text}]
     if history:
+        # history is a list of {"role": "user/assistant", "content": "..."}
         messages.extend(history[-6:])
     messages.append({"role": "user", "content": user_query})
 
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        # Use llama3-70b-8192 or llama3-8b-8192
         payload = {
             "model": "llama3-70b-8192",
             "messages": messages,
-            "temperature": 0.7
+            "temperature": 0.7,
+            "max_tokens": 1024
         }
+
         async with httpx.AsyncClient() as client:
-            res = await client.post(url, headers=headers, json=payload, timeout=20.0)
-            res.raise_for_status()
+            res = await client.post(url, headers=headers, json=payload, timeout=30.0)
+
+            if res.status_code != 200:
+                print(f"Groq API Error: {res.status_code} - {res.text}")
+                return None
+
             data = res.json()
-            return data["choices"][0]["message"]["content"]
+            if "choices" in data and len(data["choices"]) > 0:
+                return data["choices"][0]["message"]["content"].strip()
+            else:
+                print(f"Groq API Invalid Response: {data}")
+                return None
+
     except Exception as e:
-        print(f"AI API Error: {e}")
+        print(f"AI api_call Error: {e}")
         return None
 
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
+    if not update.effective_message or not update.effective_message.text:
         return
 
-    text = update.message.text
+    text = update.effective_message.text
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
 
+    # AI Triggers
     trigger_words = ["سکتور", "sector", f"@{context.bot.username}"]
     triggered = any(text.lower().startswith(word) for word in trigger_words) or is_private
 
+    # Ignore commands or non-triggered group messages
     if not triggered or text.startswith("/"):
         return
 
+    # Group enable check
     if not is_private:
         session = get_session()
         group = get_group(session, update.effective_chat.id, update.effective_chat.title)
         if not group.ai_enabled:
-            await update.message.reply_text("❌ دسترسی به هوش مصنوعی در این گروه توسط مدیران غیرفعال شده است.")
+            await update.effective_message.reply_text("❌ دسترسی به هوش مصنوعی در این گروه توسط مدیران غیرفعال شده است.")
             session.close()
             return
         session.close()
@@ -86,12 +108,11 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             query = query[len(word):].strip()
             break
 
-    if not query:
-        return
+    if not query: return
 
-    await update.message.reply_chat_action("typing")
+    await update.effective_message.reply_chat_action("typing")
 
-    prompt = "You are SectorBot, a professional Persian AI assistant. Respond fluently in Persian (Farsi). Be concise and use emojis."
+    prompt = "You are SectorBot, a helpful and professional Persian AI assistant. Speak like a friendly human in Persian. Use emojis."
 
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []
@@ -101,36 +122,40 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if response:
         ai_memory[chat_id].append({"role": "user", "content": query})
         ai_memory[chat_id].append({"role": "assistant", "content": response})
-        await update.message.reply_text(response)
+        # AI output might contain markdown that breaks Telegram, send as plain text if it fails
+        try:
+            await update.effective_message.reply_text(response, parse_mode="Markdown")
+        except:
+            await update.effective_message.reply_text(response)
     else:
-        await update.message.reply_text("❌ متأسفانه در حال حاضر قادر به ارتباط با مغز مرکزی نیستم. لطفاً دوباره تلاش کنید.")
+        await update.effective_message.reply_text("❌ متأسفانه در حال حاضر قادر به پاسخگویی نیستم. لطفاً دوباره تلاش کنید.")
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_chat_action("typing")
+    await update.effective_message.reply_chat_action("typing")
     res = await get_ai_response("یک جوک جدید و خنده‌دار متفاوت به زبان فارسی بگو. تکراری نباشد.", "جوک بگو")
     fallback = "‏غواصه میره زیر آب، میبینه یه ماهی داره غرق میشه! نجاتش میده! 😂"
-    await update.message.reply_text(res or fallback)
+    await update.effective_message.reply_text(res or fallback)
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_chat_action("typing")
+    await update.effective_message.reply_chat_action("typing")
     res = await get_ai_response("یک معما جدید به همراه پاسخ به زبان فارسی بگو.", "معما بگو")
     fallback = "❓ آن چیست که پا دارد اما راه نمی‌رود؟\n\n✅ پاسخ: میز 🪑"
-    await update.message.reply_text(res or fallback)
+    await update.effective_message.reply_text(res or fallback)
 
 async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_chat_action("typing")
+    await update.effective_message.reply_chat_action("typing")
     res = await get_ai_response("یک دانستنی علمی یا جالب جدید و عجیب به زبان فارسی بگو.", "دانستنی بگو")
     fallback = "💡 آیا می‌دانستید که هشت‌پاها سه قلب دارند؟ 🐙"
-    await update.message.reply_text(res or fallback)
+    await update.effective_message.reply_text(res or fallback)
 
 async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_chat_action("typing")
+    await update.effective_message.reply_chat_action("typing")
     res = await get_ai_response("یک متن انگیزشی کوتاه و انرژی‌بخش جدید به زبان فارسی بگو.", "متن انگیزشی")
     fallback = "✨ هرگز تسلیم نشو، معجزه‌ها هر روز رخ می‌دهند."
-    await update.message.reply_text(res or fallback)
+    await update.effective_message.reply_text(res or fallback)
 
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_chat_action("typing")
+    await update.effective_message.reply_chat_action("typing")
     prompt = (
         "Generate a Hafez fortune in Persian. Include: "
         "1. A random verse from Hafez. "
@@ -146,7 +171,7 @@ async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 **تعبیر:**\nصبور باشید و به خداوند توکل کنید.\n\n"
         "🎯 **نتیجه:**\nموفقیت در انتظار شماست."
     )
-    await update.message.reply_text(res or fallback)
+    await update.effective_message.reply_text(res or fallback, parse_mode="Markdown" if res else None)
 
 def get_handlers():
     return [
