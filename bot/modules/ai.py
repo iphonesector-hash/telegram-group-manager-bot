@@ -40,7 +40,6 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     # Build message payload
     messages = [{"role": "system", "content": prompt + context_text}]
     if history:
-        # Keep only useful context (last 5 pairs)
         messages.extend(history[-10:])
     messages.append({"role": "user", "content": user_query})
 
@@ -70,10 +69,11 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
                 return None
 
             data = res.json()
-            if "choices" in data and len(data["choices"]) > 0:
+            # Enhanced robustness for non-standard responses
+            if "choices" in data and len(data["choices"]) > 0 and "message" in data["choices"][0]:
                 return data["choices"][0]["message"]["content"].strip()
             else:
-                print(f"Groq API Invalid Response Structure: {data}")
+                print(f"Groq API Unexpected Response Structure: {data}")
                 return None
 
     except Exception as e:
@@ -100,8 +100,8 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_private:
         session = get_session()
         group = get_group(session, update.effective_chat.id, update.effective_chat.title)
-        if not group.ai_enabled:
-            await update.effective_message.reply_text("❌ دسترسی به هوش مصنوعی در این گروه توسط مدیران غیرفعال شده است.")
+        if not group or not group.ai_enabled:
+            # Silent ignore if not found or disabled
             session.close()
             return
         session.close()
@@ -112,7 +112,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             query = query[len(word):].strip()
             break
 
-    # Ignore useless/meaningless messages in memory
     if not query or len(query) < 2: return
 
     await update.effective_message.reply_chat_action("typing")
@@ -122,7 +121,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []
 
-    # Only use/save memory for private chats
     history = ai_memory[chat_id] if is_private else None
 
     response = await get_ai_response(prompt, query, use_search=True, history=history)
@@ -131,12 +129,16 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_private:
             ai_memory[chat_id].append({"role": "user", "content": query})
             ai_memory[chat_id].append({"role": "assistant", "content": response})
-            # Prune memory
             if len(ai_memory[chat_id]) > 10:
                 ai_memory[chat_id] = ai_memory[chat_id][-10:]
 
         reply_txt = await get_reply_text(update.effective_user, response)
-        await update.effective_message.reply_text(reply_txt, parse_mode=None)
+        # Final safety against Markdown errors
+        try:
+            await update.effective_message.reply_text(reply_txt, parse_mode=None)
+        except Exception as e:
+            print(f"Telegram Send Error: {e}")
+            await update.effective_message.reply_text(reply_txt.replace("*", "").replace("_", "").replace("`", ""), parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ متأسفانه قادر به ارتباط با مغز مرکزی نیستم.")
 

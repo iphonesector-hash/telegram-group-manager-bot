@@ -37,7 +37,20 @@ def get_group(session, chat_id, title=None):
     return group
 
 async def get_reply_text(user, text):
-    """Returns a respectful reply for the owner if applicable."""
+    """Returns a respectful reply for the owner or styled text for others."""
     if user.id == OWNER_ID:
-        return f"🫡 **{OWNER_NAME}** عزیز، در خدمت شما هستم:\n\n{text}"
+        return f"🫡 **فرمانده پیمان** عزیز، در خدمت شما هستم:\n\n{text}"
+
+    # Rank badges for other users based on level or stats could go here
     return text
+
+def get_user_badge(user_db):
+    if user_db.id == OWNER_ID:
+        return "👑 فرمانده پیمان"
+    if user_db.level >= 20:
+        return "👑 Legend"
+    if user_db.level >= 10:
+        return "🥇 Gold"
+    if user_db.level >= 5:
+        return "🥈 Silver"
+    return "🥉 Bronze"

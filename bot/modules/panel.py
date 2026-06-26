@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.utils.keyboards import (
     get_main_menu, get_admin_menu, get_locks_menu, get_user_menu,
@@ -18,74 +18,77 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
     if text == "🛡 مدیریت":
         if await is_admin(update, context):
-            reply = await get_reply_text(update.effective_user, "🛡 منوی مدیریت SectorBot\nیکی از بخش‌ها را انتخاب کنید:")
+            reply = await get_reply_text(update.effective_user, "🛡 **منوی مدیریت SectorBot**\nیکی از بخش‌ها را انتخاب کنید:")
             await update.effective_message.reply_text(reply, reply_markup=get_admin_menu(), parse_mode=None)
         else:
             await update.effective_message.reply_text("❌ این بخش مخصوص مدیران گروه است.")
 
     elif text == "👤 حساب کاربری":
-        await update.effective_message.reply_text("👤 تنظیمات و اطلاعات حساب شما:", reply_markup=get_user_menu(), parse_mode=None)
+        await update.effective_message.reply_text("👤 **تنظیمات و اطلاعات حساب شما:**", reply_markup=get_user_menu(), parse_mode=None)
 
     elif text == "🏦 بانک و اقتصاد":
-        await update.effective_message.reply_text("🏦 سیستم مالی و پاداش سکتور:", reply_markup=get_economy_menu(), parse_mode=None)
+        await update.effective_message.reply_text("🏦 **سیستم مالی و پاداش سکتور:**", reply_markup=get_economy_menu(), parse_mode=None)
 
     elif text == "🎮 سرگرمی":
-        await update.effective_message.reply_text("🎮 بخش سرگرمی و بازی:", reply_markup=get_entertainment_menu(), parse_mode=None)
+        await update.effective_message.reply_text("🎮 **بخش سرگرمی و بازی:**", reply_markup=get_entertainment_menu(), parse_mode=None)
 
     elif text == "🛠 کاربردی":
-        await update.effective_message.reply_text("🛠 ابزارهای هوشمند و کاربردی:", reply_markup=get_utility_menu(), parse_mode=None)
+        await update.effective_message.reply_text("🛠 **ابزارهای هوشمند و کاربردی:**", reply_markup=get_utility_menu(), parse_mode=None)
 
     elif text == "⚙️ تنظیمات":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("⚙️ تنظیمات ربات در این گروه:", reply_markup=get_settings_menu(), parse_mode=None)
+            await update.effective_message.reply_text("⚙️ **تنظیمات ربات در این گروه:**", reply_markup=get_settings_menu(), parse_mode=None)
         else:
             await update.effective_message.reply_text("❌ فقط مدیران می‌توانند تنظیمات را تغییر دهند.")
 
     elif text == "🤖 دستیار هوشمند":
         await update.effective_message.reply_text(
-            "🤖 دستیار هوشمند سکتور هستم!\n\n"
+            "🤖 **من دستیار هوشمند سکتور هستم!**\n\n"
             "✨ من می‌تونم به سوالاتت جواب بدم، تو پیدا کردن اطلاعات کمکت کنم و باهات گپ بزنم.\n\n"
-            "💡 روش استفاده:\n"
+            "💡 **روش استفاده:**\n"
             "▫️ در چت خصوصی: مستقیماً پیام بده.\n"
-            "▫️ در گروه‌ها: اول پیام کلمه سکتور یا Sector رو بنویس یا منو ریپلای کن.",
+            "▫️ در گروه‌ها: اول پیام کلمه **سکتور** یا **Sector** رو بنویس یا منو ریپلای کن.",
             reply_markup=get_main_menu(),
             parse_mode=None
         )
 
     elif text == "🤝 پشتیبانی":
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("👤 ارتباط با کارشناس", url="t.me/sector_ad")]])
         await update.effective_message.reply_text(
             "🤝 **پشتیبانی SectorBot**\n\n"
             "برای ارتباط با پشتیبانی، گزارش مشکل یا سوال:\n\n"
-            "👤 @sector_ad",
+            "🆔 @sector_ad",
+            reply_markup=keyboard,
             parse_mode=None
         )
 
     elif text == "🔒 قفل‌های گروه":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("🔐 مدیریت قفل‌های محتوا:\nبرای فعال/غیرفعال کردن هر قفل روی دکمه مربوطه بزنید.", reply_markup=get_locks_menu(), parse_mode=None)
+            await update.effective_message.reply_text("🔐 **مدیریت قفل‌های محتوا:**\nبرای فعال/غیرفعال کردن هر قفل روی دکمه مربوطه بزنید.", reply_markup=get_locks_menu(), parse_mode=None)
 
     elif text == "👤 مدیریت اعضا":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("👤 بخش مدیریت اعضا:", reply_markup=get_member_mgmt_menu(), parse_mode=None)
+            await update.effective_message.reply_text("👤 **بخش مدیریت اعضا:**", reply_markup=get_member_mgmt_menu(), parse_mode=None)
 
     elif text == "⚙️ تنظیمات گروه":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("⚙️ تنظیمات پیشرفته گروه:", reply_markup=get_group_settings_menu(), parse_mode=None)
+            await update.effective_message.reply_text("⚙️ **تنظیمات پیشرفته گروه:**", reply_markup=get_group_settings_menu(), parse_mode=None)
 
-    elif text == "🎮 بازی‌ها":
-        await update.effective_message.reply_text("🎮 لیست بازی‌های موجود:", reply_markup=get_games_menu(), parse_mode=None)
+    elif text == "📊 آمار گروه":
+         from bot.modules.profile import group_stats_cmd
+         await group_stats_cmd(update, context)
 
     elif text == "👋 خوشامدگویی":
         if await is_admin(update, context):
-            await update.effective_message.reply_text("👋 تنظیمات خوشامدگویی اعضای جدید:", reply_markup=get_welcome_settings_menu())
+            await update.effective_message.reply_text("👋 **تنظیمات خوشامدگویی:**", reply_markup=get_welcome_settings_menu())
         else:
             await update.effective_message.reply_text("❌ مخصوص مدیران.")
 
     elif text == "📜 قوانین":
         if update.effective_chat.type == "private":
-            await update.effective_message.reply_text("❌ این دستور فقط در گروه‌ها کاربرد دارد.")
+            await update.effective_message.reply_text("❌ فقط در گروه‌ها.")
         elif await is_admin(update, context):
-            await update.effective_message.reply_text("⚙️ تنظیمات قوانین گروه:", reply_markup=get_rules_settings_menu())
+            await update.effective_message.reply_text("📜 **تنظیمات قوانین:**", reply_markup=get_rules_settings_menu())
         else:
             from bot.modules.rules import rules_cmd
             await rules_cmd(update, context)
@@ -106,7 +109,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
 async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private" or await is_admin(update, context):
-        reply = await get_reply_text(update.effective_user, "🏠 منوی اصلی SectorBot\nلطفاً یک بخش را انتخاب کنید:")
+        reply = await get_reply_text(update.effective_user, "🏠 **منوی اصلی SectorBot 2.0**\nلطفاً یک بخش را انتخاب کنید:")
         await update.effective_message.reply_text(reply, reply_markup=get_main_menu(), parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ شما دسترسی لازم برای باز کردن پنل را ندارید.")
@@ -124,33 +127,23 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
         "👤 محدودیت عضو جدید": "new_member_limit",
         "⏳ تایید عضو جدید": "approval_mode",
         "📢 گزارش فعالیت": "activity_logging",
-        "🔘 فعال/غیرفعال سازی قوانین": "rules_enabled" # Note: need rules_enabled in model if used
+        "🔘 فعال/غیرفعال سازی قوانین": "rules_enabled"
     }
-
-    # We should add rules_enabled to the model if it's strictly required,
-    # but the request didn't specify changing schema unless needed.
-    # Let's check existing models first.
 
     if text in mapping:
         attr = mapping[text]
         session = get_session()
-        group = get_group(session, update.effective_chat.id, update.effective_chat.title)
-
-        # Check if attribute exists
-        if not hasattr(group, attr):
-             await update.effective_message.reply_text(f"❌ تنظیم {attr} در دیتابیس یافت نشد.")
-             session.close()
-             return
-
-        setattr(group, attr, not getattr(group, attr))
-        session.commit()
-        status = "فعال" if getattr(group, attr) else "غیرفعال"
-        await update.effective_message.reply_text(f"✅ تنظیمات {text} به حالت {status} تغییر یافت.", parse_mode=None)
+        group = get_group(session, update.effective_chat.id)
+        if hasattr(group, attr):
+            setattr(group, attr, not getattr(group, attr))
+            session.commit()
+            status = "فعال" if getattr(group, attr) else "غیرفعال"
+            await update.effective_message.reply_text(f"✅ تنظیمات **{text}** به حالت **{status}** تغییر یافت.", parse_mode=None)
         session.close()
         raise ApplicationHandlerStop()
 
 def get_panel_handlers():
-    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🎮 بازی‌ها|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|👤 مدیریت اعضا|🤖 دستیار هوشمند|🤝 پشتیبانی|🔒 قفل‌های گروه|👋 خوشامدگویی|📜 قوانین|🔙 بازگشت.*)$"
+    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🎮 بازی‌ها|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|👤 مدیریت اعضا|🤖 دستیار هوشمند|🤝 پشتیبانی|🔒 قفل‌های گروه|👋 خوشامدگویی|📜 قوانین|📊 آمار گروه|🔙 بازگشت.*)$"
     toggle_regex = "^(🤖 تنظیمات هوش مصنوعی|💰 تنظیمات اقتصاد|🛡 ضد اسپم|🆕 جلوگیری از ورود ربات|👤 محدودیت عضو جدید|⏳ تایید عضو جدید|📢 گزارش فعالیت|🔘 فعال/غیرفعال سازی خوشامدگویی|🔘 فعال/غیرفعال سازی قوانین)$"
     return [
         CommandHandler("panel", panel_cmd),
