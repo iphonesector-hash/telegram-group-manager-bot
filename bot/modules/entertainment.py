@@ -1,7 +1,7 @@
 import random
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
-from bot.modules.ai import get_ai_response, get_new_joke as get_ai_joke, get_new_riddle as get_ai_riddle, get_new_fact, get_motivation, hafez_fortune
+from bot.modules.ai import get_ai_response, get_sector_prompt, get_new_joke as get_ai_joke, get_new_riddle as get_ai_riddle, get_new_fact, get_motivation, hafez_fortune
 from bot.utils.keyboards import get_games_menu, get_tod_menu, get_joke_categories_menu, get_challenge_categories_menu
 
 riddle_answers = {}
@@ -18,15 +18,17 @@ async def coin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_story_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_chat_action("typing")
+    persona = get_sector_prompt(update.effective_user)
     prompt = "یک داستان کوتاه خلاقانه و جدید به زبان فارسی بنویس. داستان باید حداقل سه پاراگراف باشد و موضوعی جذاب داشته باشد. موضوع می‌تواند علمی-تخیلی یا فانتزی باشد."
-    res = await get_ai_response(prompt, "یک داستان بگو")
+    res = await get_ai_response(persona + "\n\n" + prompt, "یک داستان بگو")
     await update.effective_message.reply_text(res or "📖 متأسفانه کتاب داستانم فعلاً گم شده!", parse_mode=None)
     raise ApplicationHandlerStop()
 
 async def get_riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_chat_action("typing")
+    persona = get_sector_prompt(update.effective_user)
     prompt = "یک معمای کوتاه و باحال به زبان فارسی بگو. فرمت خروجی دقیقا این باشد: معما: [متن] | پاسخ: [پاسخ]"
-    res = await get_ai_response(prompt, "معما بگو")
+    res = await get_ai_response(persona + "\n\n" + prompt, "معما بگو")
 
     if res and "|" in res:
         parts = res.split("|")
