@@ -57,6 +57,12 @@ class Group(Base):
     # AI
     ai_enabled = Column(Boolean, default=True)
 
+    # Security
+    prevent_bots = Column(Boolean, default=False)
+    new_member_limit = Column(Boolean, default=False)
+    approval_mode = Column(Boolean, default=False)
+    activity_logging = Column(Boolean, default=True)
+
     is_active = Column(Boolean, default=True)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)
 

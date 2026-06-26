@@ -14,7 +14,64 @@ def get_admin_menu():
         [KeyboardButton("🔒 قفل‌های گروه"), KeyboardButton("🌟 خوشامدگویی")],
         [KeyboardButton("🛡 ضد اسپم"), KeyboardButton("📜 قوانین")],
         [KeyboardButton("👤 مدیریت اعضا"), KeyboardButton("💰 تنظیمات اقتصاد")],
-        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+        [KeyboardButton("⚙️ تنظیمات گروه"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_member_mgmt_menu():
+    keyboard = [
+        [KeyboardButton("⚠️ اخطارها"), KeyboardButton("🔇 محدودیت‌ها")],
+        [KeyboardButton("🚫 مسدودسازی"), KeyboardButton("👤 اطلاعات کاربر")],
+        [KeyboardButton("🛡 امنیت"), KeyboardButton("🔙 بازگشت به مدیریت")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_warnings_mgmt_menu():
+    keyboard = [
+        [KeyboardButton("➕ اخطار کاربر"), KeyboardButton("📋 لیست اخطارها")],
+        [KeyboardButton("🗑 حذف آخرین اخطار"), KeyboardButton("🔄 پاک کردن همه اخطارها")],
+        [KeyboardButton("🔙 بازگشت به مدیریت اعضا")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_mutes_mgmt_menu():
+    keyboard = [
+        [KeyboardButton("🔇 سکوت کاربر"), KeyboardButton("⏱ سکوت زمان‌دار")],
+        [KeyboardButton("🔊 رفع سکوت"), KeyboardButton("📊 لیست کاربران محدود شده")],
+        [KeyboardButton("🔙 بازگشت به مدیریت اعضا")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_bans_mgmt_menu():
+    keyboard = [
+        [KeyboardButton("🚫 بن کاربر"), KeyboardButton("♻️ رفع بن")],
+        [KeyboardButton("👥 بن چند کاربر"), KeyboardButton("📋 لیست بن‌ها")],
+        [KeyboardButton("🔙 بازگشت به مدیریت اعضا")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_user_info_mgmt_menu():
+    keyboard = [
+        [KeyboardButton("🔎 پروفایل کاربر"), KeyboardButton("📈 آمار پیام‌ها")],
+        [KeyboardButton("⭐ XP و سطح"), KeyboardButton("💰 موجودی سکه")],
+        [KeyboardButton("🔙 بازگشت به مدیریت اعضا")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_security_mgmt_menu():
+    keyboard = [
+        [KeyboardButton("🆕 جلوگیری از ورود ربات"), KeyboardButton("👤 محدودیت عضو جدید")],
+        [KeyboardButton("⏳ تایید عضو جدید"), KeyboardButton("📢 گزارش فعالیت")],
+        [KeyboardButton("🔙 بازگشت به مدیریت اعضا")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_group_settings_menu():
+    keyboard = [
+        [KeyboardButton("👋 خوش‌آمدگویی"), KeyboardButton("📜 قوانین")],
+        [KeyboardButton("🔗 ضد لینک"), KeyboardButton("🛡 ضد اسپم")],
+        [KeyboardButton("🔒 قفل‌ها"), KeyboardButton("⚙️ تنظیمات عمومی")],
+        [KeyboardButton("🔙 بازگشت به مدیریت")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
