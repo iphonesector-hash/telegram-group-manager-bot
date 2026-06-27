@@ -46,24 +46,6 @@ async def calculator_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except ApplicationHandlerStop: raise
     except: pass
 
-async def games_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.effective_message.text
-    if text == "📝 حدس کلمه":
-        await update.effective_message.reply_text("🎮 بازی حدس کلمه\n\nیک کلمه ۵ حرفی انتخاب کردم. حدس بزن!")
-    elif text == "🚩 حدس پرچم":
-        flags = {"🇮🇷": "ایران", "🇫🇷": "فرانسه", "🇩🇪": "آلمان", "🇯🇵": "ژاپن"}
-        flag = random.choice(list(flags.keys()))
-        await update.effective_message.reply_text(f"🎮 این پرچم کدوم کشوره؟\n\n{flag}")
-    elif text == "✂️ سنگ کاغذ قیچی":
-        from bot.modules.entertainment import rps_game
-        await rps_game(update, context)
-        # Note: rps_game already raises ApplicationHandlerStop
-    elif text == "⚔️ دوئل":
-        await update.effective_message.reply_text("⚔️ برای دوئل روی پیام رقیب خود ریپلای کنید و بنویسید: دوئل")
-    else:
-        return
-    raise ApplicationHandlerStop()
-
 async def general_utils_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
     if text == "🌐 مترجم":
@@ -97,7 +79,6 @@ def get_extra_handlers():
     return [
         MessageHandler(filters.TEXT & filters.Regex("^👤 مدیریت اعضا$"), user_mgmt_button_handler),
         MessageHandler(filters.TEXT & filters.Regex("^(🌐 مترجم|🧮 ماشین حساب|⛅️ هواشناسی|📅 تاریخ و زمان)$"), general_utils_handler),
-        MessageHandler(filters.TEXT & filters.Regex("^(📝 حدس کلمه|🚩 حدس پرچم|✂️ سنگ کاغذ قیچی|⚔️ دوئل)$"), games_handler),
         MessageHandler(filters.TEXT & filters.Regex("^ترجمه:"), translator_handler),
         MessageHandler(filters.TEXT & filters.Regex("^هوای "), weather_handler),
         MessageHandler(filters.TEXT & filters.Regex(r"^[0-9\s\+\-\*\/\(\)\.]+$"), calculator_handler),
