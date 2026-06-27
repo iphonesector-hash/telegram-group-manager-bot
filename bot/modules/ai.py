@@ -95,7 +95,7 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک جوک جدید، باحال و خیلی خنده‌دار (حداکثر ۴ خط) به زبان فارسی بگو. از اینترنت برای پیدا کردن جوک‌های جدید استفاده کن."
+    prompt = "یک جوک جدید، باحال و خیلی خنده‌دار (حداکثر ۴ خط) به زبان فارسی بگو. از اینترنت برای پیدا کردن جوک‌های جدید استفاده کن تا تکراری نباشد."
     res = await get_ai_response(persona, prompt, use_search=True)
     if res:
         await update.effective_message.reply_text(res)
@@ -104,13 +104,13 @@ async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک معمای جدید و چالش‌برانگیز به زبان فارسی بگو. در پایان پاسخ را هم بگو. فرمت: معما: [متن] | پاسخ: [متن]"
+    prompt = "یک معمای جدید و چالش‌برانگیز به زبان فارسی بگو. در پایان پاسخ را هم بگو. از اینترنت کمک بگیر. فرمت: معما: [متن] | پاسخ: [متن]"
     res = await get_ai_response(persona, prompt, use_search=True)
     return res
 
 async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک فکت یا دانستنی جدید، علمی یا عجیب (کوتاه و جذاب) به زبان فارسی بگو. از اخبار یا مقالات جدید استفاده کن."
+    prompt = "یک فکت یا دانستنی علمی، عجیب یا جالب جدید به زبان فارسی بگو. از منابع معتبر اینترنتی استفاده کن تا محتوای تازه ارائه بدهی."
     res = await get_ai_response(persona, prompt, use_search=True)
     if res:
         await update.effective_message.reply_text(f"💡 **آیا می‌دانستی؟**\n\n{res}")
@@ -119,8 +119,8 @@ async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک جمله انگیزشی قوی، جدید و تاثیرگذار (حداکثر ۳ جمله) به زبان فارسی بگو."
-    res = await get_ai_response(persona, prompt)
+    prompt = "یک جمله انگیزشی قوی، عمیق و جدید (حداکثر ۳ جمله) به زبان فارسی بگو. از سخنان بزرگان یا جملات مدرن استفاده کن."
+    res = await get_ai_response(persona, prompt, use_search=True)
     if res:
         await update.effective_message.reply_text(f"✨ {res}")
     else:
@@ -129,14 +129,14 @@ async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
     prompt = (
-        "یک فال حافظ حرفه‌ای بگیر. خروجی دقیقاً با این فرمت باشد:\n"
-        "📜 **فال حافظ**\n\n"
-        "🔹 **بیت برگزیده:** [بیت غزل]\n"
-        "🔸 **نام غزل:** [اگر مشخص است]\n"
-        "📝 **معنی ساده:** [یک خط معنی]\n"
-        "🔍 **تفسیر کامل:** [۳ خط تفسیر]\n"
-        "📢 **پیام حافظ:** [یک جمله خطاب به کاربر]\n"
-        "💡 **توصیه نهایی:** [یک جمله کاربردی]\n\n"
+        "یک فال حافظ واقعی و حرفه‌ای بگیر. از اینترنت برای پیدا کردن یک غزل واقعی استفاده کن. خروجی دقیقاً با این فرمت باشد:\n"
+        "📜 **فال حافظ شما**\n\n"
+        "🔹 **نام غزل:** [نام یا شماره غزل]\n"
+        "🔸 **ابیات منتخب:**\n[۲ یا ۳ بیت اصلی غزل]\n\n"
+        "📝 **معنی ساده:** [یک خط معنی ابیات]\n"
+        "🔍 **تفسیر کامل:** [۳ خط تفسیر عرفانی و کاربردی]\n"
+        "📢 **تعبیر برای نیت شما:** [یک جمله خطاب به کاربر درباره نیتش]\n"
+        "💡 **توصیه و پیام حافظ:** [یک جمله کاربردی]\n\n"
         "لحن تو صمیمی و سکتوری بماند."
     )
     res = await get_ai_response(persona, prompt, use_search=True)
@@ -154,15 +154,16 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
 
-    # Strict exclusion list for buttons and game-related keywords
+    # Comprehensive exclusion list to prevent conflicts with entertainment/games
     excluded_keywords = [
-        "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه", "📝 حدس کلمه", "🚩 حدس پرچم",
-        "✂️ سنگ کاغذ قیچی", "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی",
-        "🎭 جرات و حقیقت", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان",
-        "📜 فال حافظ", "🎯 چالش", "😂 خنده‌دار", "😈 شیطنتی", "🧠 هوشمندانه",
-        "🤣 کوتاه", "🎯 جرات", "💬 حقیقت", "🎲 تصادفی", "🎯 چالش تصادفی",
-        "⚡ چالش سخت", "😂 چالش خنده‌دار", "🧠 چالش ذهنی", "🔢 حدس عدد",
-        "💡 راهنمایی", "🏆 جدول امتیازات", "🤝 پیوستن به بازی", "🏁 شروع بازی"
+        "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
+        "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه",
+        "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم", "✂️ سنگ کاغذ قیچی",
+        "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه",
+        "🏆 مسابقه سرعت پاسخ", "🎯 چالش", "😂 خنده‌دار", "😈 شیطنتی",
+        "🧠 هوشمندانه", "🤣 کوتاه", "🎯 جرات", "💬 حقیقت", "🎲 تصادفی",
+        "🤝 پیوستن به بازی", "🏁 شروع بازی", "🔄 نوبت بعدی", "🛑 توقف",
+        "جواب معما", "جوابش", "انصراف از بازی"
     ]
 
     if any(text == kw for kw in excluded_keywords) or any(text.startswith(kw) for kw in excluded_keywords):
@@ -193,7 +194,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_chat_action("typing")
 
-    # Conditionally enable search only for news/current info
     search_keywords = ["خبر", "جدید", "آخرین", "دیروز", "امروز", "الان", "news", "latest", "current", "weather", "هواشناسی"]
     use_search = any(word in query.lower() for word in search_keywords)
 

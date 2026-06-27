@@ -1,7 +1,8 @@
 import random
 import asyncio
 import time
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+import datetime
+from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.modules.ai import get_ai_response, get_sector_prompt
 
@@ -10,7 +11,7 @@ game_states = {}
 
 async def games_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from bot.utils.keyboards import get_games_menu
-    await update.effective_message.reply_text("🎮 به بخش بازی‌های سکتور خوش اومدی!\nیکی رو انتخاب کن و شروع کنیم:", reply_markup=get_games_menu())
+    await update.effective_message.reply_text("🎮 منوی بازی‌های سکتور:", reply_markup=get_games_menu())
     raise ApplicationHandlerStop()
 
 async def dice_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -65,7 +66,6 @@ async def start_word_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     word = random.choice(words)
     chat_id = update.effective_chat.id
 
-    # Create scrambled word
     scrambled = list(word)
     random.shuffle(scrambled)
     scrambled = "".join(scrambled)
@@ -87,15 +87,12 @@ async def handle_word_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await update.effective_message.reply_text(f"✅ آفرین! درست بود. کلمه مورد نظر '{state['word']}' بود. 🏆")
         del game_states[update.effective_chat.id]
         raise ApplicationHandlerStop()
-    elif text == "راهنمایی":
-        await update.effective_message.reply_text(f"💡 راهنمایی: حرف اول کلمه '{state['word'][0]}' هست.")
-        raise ApplicationHandlerStop()
 
 # --- Flag Guess Game ---
 async def start_flag_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     flags = {
         "🇮🇷": "ایران", "🇫🇷": "فرانسه", "🇩🇪": "آلمان", "🇯🇵": "ژاپن",
-        "🇧🇷": "برزیل", "🇨🇦": "کانادا", "🇮🇹": "ایتالیا", "🇪سپانیا": "اسپانیا",
+        "🇧🇷": "برزیل", "🇨🇦": "کانادا", "🇮🇹": "ایتالیا", "🇪🇸": "اسپانیا",
         "🇦🇷": "آرژانتین", "🇰🇷": "کره جنوبی"
     }
     flag, country = random.choice(list(flags.items()))
@@ -215,7 +212,6 @@ async def logic_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raise ApplicationHandlerStop()
 
 async def daily_lucky_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Daily luck doesn't need state, just random result based on date and user_id
     user_id = update.effective_user.id
     today = datetime.date.today().isoformat()
     random.seed(f"{user_id}-{today}")
@@ -227,7 +223,7 @@ async def daily_lucky_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else: res = "😅 مواظب باش، امروز زیاد رو شانس نیستی!"
 
     await update.effective_message.reply_text(f"🎲 **میزان شانس امروز شما:** {score}%\n\n{res}")
-    random.seed() # reset seed
+    random.seed()
     raise ApplicationHandlerStop()
 
 async def speed_contest(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -250,11 +246,6 @@ async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     state = game_states[chat_id]
     text = update.effective_message.text.strip()
 
-    if text == "🔙 انصراف از بازی":
-        del game_states[chat_id]
-        await update.effective_message.reply_text("❌ بازی لغو شد.")
-        raise ApplicationHandlerStop()
-
     if state["type"] == "number_guess":
         await handle_number_guess(update, context, state)
     elif state["type"] == "word_guess":
@@ -274,7 +265,6 @@ async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 def get_handlers():
     return [
-        MessageHandler(filters.TEXT & filters.Regex("^🎮 بازی‌ها$"), games_menu_handler),
         MessageHandler(filters.TEXT & filters.Regex("^🎲 تاس$"), dice_game),
         MessageHandler(filters.TEXT & filters.Regex("^🪙 پرتاب سکه$"), coin_game),
         MessageHandler(filters.TEXT & filters.Regex("^🔢 حدس عدد$"), start_number_guess),
@@ -286,6 +276,5 @@ def get_handlers():
         MessageHandler(filters.TEXT & filters.Regex("^🧩 معمای منطقی$"), logic_riddle),
         MessageHandler(filters.TEXT & filters.Regex("^🎲 بازی شانسی روزانه$"), daily_lucky_game),
         MessageHandler(filters.TEXT & filters.Regex("^🏆 مسابقه سرعت پاسخ$"), speed_contest),
-        # Pass-through for active games
         MessageHandler(filters.TEXT & ~filters.COMMAND, game_input_handler),
     ]

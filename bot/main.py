@@ -73,7 +73,7 @@ def main():
     for handler in get_economy_handlers():
         app.add_handler(handler, group=2)
 
-    # Priority: Games -> Entertainment -> Others
+    # Correct Order: Games -> Entertainment -> Others
     for handler in get_game_handlers():
         app.add_handler(handler, group=2)
 

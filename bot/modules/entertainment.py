@@ -11,8 +11,8 @@ tod_sessions = {} # {chat_id: {"players": [id1, id2], "turn": 0, "active": False
 async def story_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. موضوعی جذاب داشته باشد."
-    res = await get_ai_response(persona, prompt)
+    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز استفاده کن."
+    res = await get_ai_response(persona, prompt, use_search=True)
     await update.effective_message.reply_text(res or "📖 کتاب قصه‌هام فعلاً باز نمیشه!")
     raise ApplicationHandlerStop()
 
@@ -63,8 +63,8 @@ async def start_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(
         f"🎭 **بازی جرات و حقیقت سکتور**\n\n"
-        f"👤 اولین بازیکن: {user.first_name}\n\n"
-        f"بقیه هم برای شرکت در بازی روی دکمه زیر کلیک کنن یا بنویسن: 'منم هستم'",
+        f"👤 شروع کننده: {user.first_name}\n\n"
+        f"بقیه هم برای شرکت در بازی روی دکمه '🤝 پیوستن به بازی' کلیک کنن یا بنویسن: 'منم هستم'",
         reply_markup=get_tod_menu()
     )
     raise ApplicationHandlerStop()
@@ -102,6 +102,7 @@ async def begin_tod_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def next_tod_turn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    if chat_id not in tod_sessions: return
     session = tod_sessions[chat_id]
 
     p_from = session["players"][session["turn"]]
@@ -114,6 +115,7 @@ async def next_tod_turn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"**جرات یا حقیقت؟**",
         reply_markup=get_tod_menu()
     )
+    raise ApplicationHandlerStop()
 
 async def tod_action_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
@@ -124,21 +126,19 @@ async def tod_action_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Single player mode fallback
             await update.effective_message.reply_chat_action("typing")
             mode = "جرات" if text == "🎯 جرات" else "حقیقت" if text == "💬 حقیقت" else random.choice(["جرات", "حقیقت"])
-            prompt = f"یک چالش '{mode}' باحال و سرگرم‌کننده بگو."
-            res = await get_ai_response(get_sector_prompt(update.effective_user), prompt)
+            prompt = f"یک چالش '{mode}' باحال، جدید و سرگرم‌کننده بگو. از اینترنت برای پیدا کردن چالش‌های تازه کمک بگیر."
+            res = await get_ai_response(get_sector_prompt(update.effective_user), prompt, use_search=True)
             await update.effective_message.reply_text(f"🎭 {text}:\n\n{res}")
             raise ApplicationHandlerStop()
         return
 
     # Multiplayer logic
-    session = tod_sessions[chat_id]
     await update.effective_message.reply_chat_action("typing")
-
     mode = "جرات" if text == "🎯 جرات" else "حقیقت" if text == "💬 حقیقت" else random.choice(["جرات", "حقیقت"])
-    prompt = f"یک چالش '{mode}' جذاب برای بازی جرات و حقیقت بگو. پاسخ فقط شامل چالش باشد."
+    prompt = f"یک چالش '{mode}' جذاب و تازه برای بازی جرات و حقیقت بگو. پاسخ فقط شامل چالش باشد."
     res = await get_ai_response(get_sector_prompt(update.effective_user), prompt, use_search=True)
 
-    await update.effective_message.reply_text(f"🎭 **{mode}:**\n\n{res}\n\nبعد از انجام چالش، 'بعدی' رو بفرستید.")
+    await update.effective_message.reply_text(f"🎭 **{mode}:**\n\n{res}\n\nبعد از انجام چالش، '🔄 نوبت بعدی' رو بزنید یا بفرستید.")
     raise ApplicationHandlerStop()
 
 async def stop_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -164,7 +164,10 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif text in ["😂 خنده‌دار", "😈 شیطنتی", "🧠 هوشمندانه", "🤣 کوتاه"]:
         await get_new_joke(update, context)
     elif text == "🎯 چالش":
-        await get_motivation(update, context) # Motivation as challenge fallback
+        await get_motivation(update, context)
+    elif text == "🎮 بازی‌ها":
+        from bot.utils.keyboards import get_games_menu
+        await update.effective_message.reply_text("🎮 به بخش بازی‌های سکتور خوش اومدی!\nیکی رو انتخاب کن و شروع کنیم:", reply_markup=get_games_menu())
     else:
         return
     raise ApplicationHandlerStop()
@@ -178,5 +181,5 @@ def get_handlers():
         MessageHandler(filters.TEXT & filters.Regex("^(توقف بازی|🛑 توقف)$"), stop_tod_session),
         MessageHandler(filters.TEXT & filters.Regex("^(🎯 جرات|💬 حقیقت|🎲 تصادفی)$"), tod_action_handler),
         MessageHandler(filters.TEXT & filters.Regex("^جواب معما$"), reveal_riddle),
-        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|📜 فال حافظ|🎯 چالش|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه)$"), ent_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|📜 فال حافظ|🎯 چالش|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه|🎮 بازی‌ها)$"), ent_button_handler),
     ]
