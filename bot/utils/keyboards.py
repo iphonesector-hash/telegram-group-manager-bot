@@ -108,7 +108,7 @@ def get_entertainment_menu():
         [KeyboardButton("🎮 بازی‌ها"), KeyboardButton("📜 فال حافظ")],
         [KeyboardButton("😂 جوک"), KeyboardButton("💡 دانستنی")],
         [KeyboardButton("❓ معما"), KeyboardButton("📖 داستان")],
-        [KeyboardButton("🎯 چالش"), KeyboardButton("🎭 جرات و حقیقت")],
+        [KeyboardButton("🎭 جرات و حقیقت"), KeyboardButton("🎯 چالش")],
         [KeyboardButton("🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -116,16 +116,20 @@ def get_entertainment_menu():
 def get_games_menu():
     keyboard = [
         [KeyboardButton("🎲 تاس"), KeyboardButton("🪙 پرتاب سکه")],
-        [KeyboardButton("📝 حدس کلمه"), KeyboardButton("🚩 حدس پرچم")],
-        [KeyboardButton("✂️ سنگ کاغذ قیچی"), KeyboardButton("⚔️ دوئل")],
-        [KeyboardButton("🔙 بازگشت به سرگرمی")]
+        [KeyboardButton("🔢 حدس عدد"), KeyboardButton("📝 حدس کلمه")],
+        [KeyboardButton("🚩 حدس پرچم"), KeyboardButton("✂️ سنگ کاغذ قیچی")],
+        [KeyboardButton("⚔️ دوئل"), KeyboardButton("🧠 تست هوش")],
+        [KeyboardButton("🧩 معمای منطقی"), KeyboardButton("🎲 بازی شانسی روزانه")],
+        [KeyboardButton("🏆 مسابقه سرعت پاسخ"), KeyboardButton("🔙 بازگشت به سرگرمی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def get_tod_menu():
     keyboard = [
         [KeyboardButton("🎯 جرات"), KeyboardButton("💬 حقیقت")],
-        [KeyboardButton("🎲 تصادفی"), KeyboardButton("🔙 بازگشت به سرگرمی")]
+        [KeyboardButton("🎲 تصادفی"), KeyboardButton("🤝 پیوستن به بازی")],
+        [KeyboardButton("🏁 شروع بازی"), KeyboardButton("🔄 نوبت بعدی")],
+        [KeyboardButton("🛑 توقف"), KeyboardButton("🔙 بازگشت به سرگرمی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
