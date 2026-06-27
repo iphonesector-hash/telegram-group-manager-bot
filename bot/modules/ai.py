@@ -95,8 +95,8 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک جوک خیلی خنده‌دار و کوتاه (حداکثر ۴ خط) به زبان فارسی بگو."
-    res = await get_ai_response(persona, prompt)
+    prompt = "یک جوک جدید، باحال و خیلی خنده‌دار (حداکثر ۴ خط) به زبان فارسی بگو. از اینترنت برای پیدا کردن جوک‌های جدید استفاده کن."
+    res = await get_ai_response(persona, prompt, use_search=True)
     if res:
         await update.effective_message.reply_text(res)
     else:
@@ -104,42 +104,46 @@ async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک معمای کوتاه و جالب به زبان فارسی بگو. در پایان پاسخ را هم بگو."
-    res = await get_ai_response(persona, prompt)
-    if res:
-        await update.effective_message.reply_text(res)
-    else:
-        await update.effective_message.reply_text("❌ مغزم فعلاً برای معما کار نمی‌کنه!")
+    prompt = "یک معمای جدید و چالش‌برانگیز به زبان فارسی بگو. در پایان پاسخ را هم بگو. فرمت: معما: [متن] | پاسخ: [متن]"
+    res = await get_ai_response(persona, prompt, use_search=True)
+    return res
 
 async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک دانستنی یا فکت علمی/عجیب و جالب به زبان فارسی بگو. کوتاه باشد."
-    res = await get_ai_response(persona, prompt)
+    prompt = "یک فکت یا دانستنی جدید، علمی یا عجیب (کوتاه و جذاب) به زبان فارسی بگو. از اخبار یا مقالات جدید استفاده کن."
+    res = await get_ai_response(persona, prompt, use_search=True)
     if res:
         await update.effective_message.reply_text(f"💡 **آیا می‌دانستی؟**\n\n{res}")
     else:
-        await update.effective_message.reply_text("❌ فعلاً چیز جالبی به ذهنم نمی‌رسه!")
+        await update.effective_message.reply_text("❌ فعلاً چیز جالبی پیدا نکردم!")
 
 async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک جمله انگیزشی کوتاه و تاثیرگذار (حداکثر ۳ جمله) به زبان فارسی بگو."
+    prompt = "یک جمله انگیزشی قوی، جدید و تاثیرگذار (حداکثر ۳ جمله) به زبان فارسی بگو."
     res = await get_ai_response(persona, prompt)
     if res:
         await update.effective_message.reply_text(f"✨ {res}")
     else:
-        await update.effective_message.reply_text("❌ فعلاً انگیزه‌ای ندارم!")
+        await update.effective_message.reply_text("❌ فعلاً انگیزه‌ای پیدا نکردم!")
 
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     persona = get_sector_prompt(update.effective_user)
     prompt = (
-        "یک فال حافظ بگیر. خروجی باید شامل: ۱. یک بیت از حافظ ۲. تفسیر کوتاه ۳. توصیه (کل پاسخ حداکثر ۸ خط) باشد. "
-        "لحنت همچنان خودمانی و تلگرامی بماند."
+        "یک فال حافظ حرفه‌ای بگیر. خروجی دقیقاً با این فرمت باشد:\n"
+        "📜 **فال حافظ**\n\n"
+        "🔹 **بیت برگزیده:** [بیت غزل]\n"
+        "🔸 **نام غزل:** [اگر مشخص است]\n"
+        "📝 **معنی ساده:** [یک خط معنی]\n"
+        "🔍 **تفسیر کامل:** [۳ خط تفسیر]\n"
+        "📢 **پیام حافظ:** [یک جمله خطاب به کاربر]\n"
+        "💡 **توصیه نهایی:** [یک جمله کاربردی]\n\n"
+        "لحن تو صمیمی و سکتوری بماند."
     )
-    res = await get_ai_response(persona, prompt)
+    res = await get_ai_response(persona, prompt, use_search=True)
     if res:
-        await update.effective_message.reply_text(f"📜 **فال حافظ شما:**\n\n{res}")
+        await update.effective_message.reply_text(res)
     else:
-        await update.effective_message.reply_text("❌ دیوان حافظ رو پیدا نمی‌کنم!")
+        await update.effective_message.reply_text("❌ دیوان حافظ در دسترس نیست!")
 
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
@@ -149,6 +153,20 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
+
+    # Strict exclusion list for buttons and game-related keywords
+    excluded_keywords = [
+        "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه", "📝 حدس کلمه", "🚩 حدس پرچم",
+        "✂️ سنگ کاغذ قیچی", "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی",
+        "🎭 جرات و حقیقت", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان",
+        "📜 فال حافظ", "🎯 چالش", "😂 خنده‌دار", "😈 شیطنتی", "🧠 هوشمندانه",
+        "🤣 کوتاه", "🎯 جرات", "💬 حقیقت", "🎲 تصادفی", "🎯 چالش تصادفی",
+        "⚡ چالش سخت", "😂 چالش خنده‌دار", "🧠 چالش ذهنی", "🔢 حدس عدد",
+        "💡 راهنمایی", "🏆 جدول امتیازات", "🤝 پیوستن به بازی", "🏁 شروع بازی"
+    ]
+
+    if any(text == kw for kw in excluded_keywords) or any(text.startswith(kw) for kw in excluded_keywords):
+        return
 
     trigger_words = ["سکتور", "sector", f"@{context.bot.username}"]
     triggered = any(text.lower().startswith(word) for word in trigger_words) or is_private
@@ -173,13 +191,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query:
         return
 
-    # Check if query is likely a button text that should have been handled by other modules
-    # This is a fallback check, ApplicationHandlerStop should ideally handle it.
-    button_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🎮 بازی‌ها|🛠 کاربردی|⚙️ تنظیمات|🤝 پشتیبانی|💰 موجودی کیف پول|🎁 هدیه روزانه|💸 انتقال سکه|🏦 وام بانکی|📉 بازپرداخت وام|🏆 برترین‌های ثروت|😂 جوک|💡 دانستنی|❓ معما|📖 داستان|📜 فال حافظ|🎮 بازی‌ها|🎭 جرات و حقیقت|📊 آمار گروه|🔙 بازگشت.*)$"
-    if re.match(button_regex, query):
-        print(f"AI handler skipped button text: {query}")
-        return
-
     await update.message.reply_chat_action("typing")
 
     # Conditionally enable search only for news/current info
@@ -187,9 +198,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     use_search = any(word in query.lower() for word in search_keywords)
 
     prompt = get_sector_prompt(user)
-
-    # Safe debug logging
-    print(f"AI processing message from User {user.id} ('{query[:20]}...') - use_search: {use_search}")
 
     if chat_id not in ai_memory:
         ai_memory[chat_id] = []

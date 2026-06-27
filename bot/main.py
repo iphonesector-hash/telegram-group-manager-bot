@@ -29,6 +29,7 @@ from bot.modules.registration import get_registration_handlers
 from bot.modules.warnings import get_handlers as get_warning_handlers
 from bot.modules.rules import get_rules_handlers
 from bot.modules.economy import get_handlers as get_economy_handlers
+from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.entertainment import get_handlers as get_entertainment_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
@@ -70,6 +71,10 @@ def main():
         app.add_handler(handler, group=2)
 
     for handler in get_economy_handlers():
+        app.add_handler(handler, group=2)
+
+    # Priority: Games -> Entertainment -> Others
+    for handler in get_game_handlers():
         app.add_handler(handler, group=2)
 
     for handler in get_entertainment_handlers():
