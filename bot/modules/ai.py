@@ -93,6 +93,54 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
         print(f"AI API Error: {e}")
         return None
 
+async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    persona = get_sector_prompt(update.effective_user)
+    prompt = "یک جوک خیلی خنده‌دار و کوتاه (حداکثر ۴ خط) به زبان فارسی بگو."
+    res = await get_ai_response(persona, prompt)
+    if res:
+        await update.effective_message.reply_text(res)
+    else:
+        await update.effective_message.reply_text("❌ فعلاً جوکم نمیاد!")
+
+async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    persona = get_sector_prompt(update.effective_user)
+    prompt = "یک معمای کوتاه و جالب به زبان فارسی بگو. در پایان پاسخ را هم بگو."
+    res = await get_ai_response(persona, prompt)
+    if res:
+        await update.effective_message.reply_text(res)
+    else:
+        await update.effective_message.reply_text("❌ مغزم فعلاً برای معما کار نمی‌کنه!")
+
+async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    persona = get_sector_prompt(update.effective_user)
+    prompt = "یک دانستنی یا فکت علمی/عجیب و جالب به زبان فارسی بگو. کوتاه باشد."
+    res = await get_ai_response(persona, prompt)
+    if res:
+        await update.effective_message.reply_text(f"💡 **آیا می‌دانستی؟**\n\n{res}")
+    else:
+        await update.effective_message.reply_text("❌ فعلاً چیز جالبی به ذهنم نمی‌رسه!")
+
+async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    persona = get_sector_prompt(update.effective_user)
+    prompt = "یک جمله انگیزشی کوتاه و تاثیرگذار (حداکثر ۳ جمله) به زبان فارسی بگو."
+    res = await get_ai_response(persona, prompt)
+    if res:
+        await update.effective_message.reply_text(f"✨ {res}")
+    else:
+        await update.effective_message.reply_text("❌ فعلاً انگیزه‌ای ندارم!")
+
+async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    persona = get_sector_prompt(update.effective_user)
+    prompt = (
+        "یک فال حافظ بگیر. خروجی باید شامل: ۱. یک بیت از حافظ ۲. تفسیر کوتاه ۳. توصیه (کل پاسخ حداکثر ۸ خط) باشد. "
+        "لحنت همچنان خودمانی و تلگرامی بماند."
+    )
+    res = await get_ai_response(persona, prompt)
+    if res:
+        await update.effective_message.reply_text(f"📜 **فال حافظ شما:**\n\n{res}")
+    else:
+        await update.effective_message.reply_text("❌ دیوان حافظ رو پیدا نمی‌کنم!")
+
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return

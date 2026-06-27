@@ -1,9 +1,0 @@
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/api/main.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/webapp/src/main.jsx
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/main.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/modules/ai.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/utils/helpers.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/modules/warnings.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/modules/economy.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/modules/profile.py
-https://raw.githubusercontent.com/iphonesector-hash/telegram-group-manager-bot/main/bot/modules/panel.py
