@@ -156,7 +156,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Comprehensive exclusion list to prevent conflicts with entertainment/games
     excluded_keywords = [
-        "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
+        "👤 پروفایل", "👤 حساب کاربری", "🎮 سرگرمی", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
         "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه",
         "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم", "✂️ سنگ کاغذ قیچی",
         "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه",
