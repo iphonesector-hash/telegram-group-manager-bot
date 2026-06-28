@@ -11,7 +11,7 @@ tod_sessions = {} # {chat_id: {"players": [id1, id2], "turn": 0, "active": False
 async def story_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز استفاده کن."
+    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز است."
     res = await get_ai_response(persona, prompt, use_search=True)
     await update.effective_message.reply_text(res or "📖 کتاب قصه‌هام فعلاً باز نمیشه!")
     raise ApplicationHandlerStop()
