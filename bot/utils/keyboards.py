@@ -105,11 +105,10 @@ def get_economy_menu():
 
 def get_entertainment_menu():
     keyboard = [
-        [KeyboardButton("🎮 بازی‌ها"), KeyboardButton("📜 فال حافظ")],
         [KeyboardButton("😂 جوک"), KeyboardButton("💡 دانستنی")],
         [KeyboardButton("❓ معما"), KeyboardButton("📖 داستان")],
-        [KeyboardButton("🎭 جرات و حقیقت"), KeyboardButton("🎯 چالش")],
-        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+        [KeyboardButton("📜 فال حافظ"), KeyboardButton("🎭 جرات و حقیقت")],
+        [KeyboardButton("🎮 بازی‌ها"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -137,14 +136,6 @@ def get_joke_categories_menu():
     keyboard = [
         [KeyboardButton("😂 خنده‌دار"), KeyboardButton("😈 شیطنتی")],
         [KeyboardButton("🧠 هوشمندانه"), KeyboardButton("🤣 کوتاه")],
-        [KeyboardButton("🔙 بازگشت به سرگرمی")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-def get_challenge_categories_menu():
-    keyboard = [
-        [KeyboardButton("🎯 چالش تصادفی"), KeyboardButton("⚡ چالش سخت")],
-        [KeyboardButton("😂 چالش خنده‌دار"), KeyboardButton("🧠 چالش ذهنی")],
         [KeyboardButton("🔙 بازگشت به سرگرمی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
