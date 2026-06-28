@@ -9,17 +9,14 @@ from bot.utils.keyboards import get_tod_menu, get_joke_categories_menu
 tod_sessions = {} # {chat_id: {"players": [id1, id2], "turn": 0, "active": False}}
 
 async def story_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:story_handler")
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز است."
+    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز استفاده کن و سبک رو برای مخاطب عام نگه دار. طول: حدود ۴۰۰-۸۰۰ کلمه."
     res = await get_ai_response(persona, prompt, use_search=True)
     await update.effective_message.reply_text(res or "📖 کتاب قصه‌هام فعلاً باز نمیشه!")
-    print(f"[TRACE] ent:story_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def riddle_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:riddle_handler")
     await update.effective_message.reply_chat_action("typing")
     res = await get_new_riddle(update, context)
     if res and "|" in res:
@@ -30,33 +27,27 @@ async def riddle_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(f"❓ **معمای جدید:**\n\n{riddle}\n\n💡 برای دیدن جواب بنویسید: جواب معما")
     else:
         await update.effective_message.reply_text("❌ مشکلی در طرح معما پیش اومد.")
-    print(f"[TRACE] ent:riddle_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def reveal_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:reveal_riddle")
     answer = context.chat_data.get("riddle_answer")
     if answer:
         await update.effective_message.reply_text(f"✅ پاسخ معما:\n\n{answer}")
         del context.chat_data["riddle_answer"]
     else:
         await update.effective_message.reply_text("❌ هنوز معمایی طرح نشده!")
-    print(f"[TRACE] ent:reveal_riddle | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def joke_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
-    print(f"[TRACE] ent:joke_handler | text: {text}")
     if text == "😂 جوک":
         await update.effective_message.reply_text("🤣 دسته جوک رو انتخاب کن:", reply_markup=get_joke_categories_menu())
     else:
         await get_new_joke(update, context)
-    print(f"[TRACE] ent:joke_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 # --- Multiplayer Truth or Dare ---
 async def start_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:start_tod_session")
     chat_id = update.effective_chat.id
     user = update.effective_user
 
@@ -76,11 +67,9 @@ async def start_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"بقیه هم برای شرکت در بازی روی دکمه '🤝 پیوستن به بازی' کلیک کنن یا بنویسن: 'منم هستم'",
         reply_markup=get_tod_menu()
     )
-    print(f"[TRACE] ent:start_tod_session | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def join_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:join_tod_session")
     chat_id = update.effective_chat.id
     user = update.effective_user
 
@@ -94,11 +83,9 @@ async def join_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     session["players"].append({"id": user.id, "name": user.first_name})
     await update.effective_message.reply_text(f"🤝 {user.first_name} به بازی اضافه شد! (تعداد بازیکنان: {len(session['players'])})")
-    print(f"[TRACE] ent:join_tod_session | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def begin_tod_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:begin_tod_play")
     chat_id = update.effective_chat.id
     if chat_id not in tod_sessions: return
 
@@ -111,11 +98,9 @@ async def begin_tod_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text("🏁 بازی شروع شد! نوبت‌ها مشخص میشه...")
     await asyncio.sleep(1)
     await next_tod_turn(update, context)
-    print(f"[TRACE] ent:begin_tod_play | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def next_tod_turn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:next_tod_turn")
     chat_id = update.effective_chat.id
     if chat_id not in tod_sessions: return
     session = tod_sessions[chat_id]
@@ -130,13 +115,11 @@ async def next_tod_turn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"**جرات یا حقیقت؟**",
         reply_markup=get_tod_menu()
     )
-    print(f"[TRACE] ent:next_tod_turn | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def tod_action_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
     chat_id = update.effective_chat.id
-    print(f"[TRACE] ent:tod_action_handler | text: {text}")
 
     if chat_id not in tod_sessions or not tod_sessions[chat_id]["active"]:
         if text in ["🎯 جرات", "💬 حقیقت", "🎲 تصادفی"]:
@@ -146,7 +129,6 @@ async def tod_action_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             prompt = f"یک چالش '{mode}' باحال، جدید و سرگرم‌کننده بگو. از اینترنت برای پیدا کردن چالش‌های تازه کمک بگیر."
             res = await get_ai_response(get_sector_prompt(update.effective_user), prompt, use_search=True)
             await update.effective_message.reply_text(f"🎭 {text}:\n\n{res}")
-            print(f"[TRACE] ent:tod_action_handler | single mode handled | ApplicationHandlerStop")
             raise ApplicationHandlerStop()
         return
 
@@ -157,21 +139,17 @@ async def tod_action_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     res = await get_ai_response(get_sector_prompt(update.effective_user), prompt, use_search=True)
 
     await update.effective_message.reply_text(f"🎭 **{mode}:**\n\n{res}\n\nبعد از انجام چالش، '🔄 نوبت بعدی' رو بزنید یا بفرستید.")
-    print(f"[TRACE] ent:tod_action_handler | multi mode handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def stop_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[TRACE] ent:stop_tod_session")
     chat_id = update.effective_chat.id
     if chat_id in tod_sessions:
         del tod_sessions[chat_id]
         await update.effective_message.reply_text("🛑 بازی متوقف شد.")
-    print(f"[TRACE] ent:stop_tod_session | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
-    print(f"[TRACE] ent:ent_button_handler | text: {text}")
 
     if text == "💡 دانستنی":
         await get_new_fact(update, context)
@@ -189,10 +167,12 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await get_motivation(update, context)
     elif text == "🎮 بازی‌ها":
         from bot.utils.keyboards import get_games_menu
-        await update.effective_message.reply_text("🎮 به بخش بازی‌های سکتور خوش اومدی!\nیکی رو انتخاب کن و شروع کنیم:", reply_markup=get_games_menu())
+        await update.effective_message.reply_text(
+            "🎮 به بخش بازی‌های سکتور خوش اومدی!\nیکی رو انتخاب کن و شروع کنیم:",
+            reply_markup=get_games_menu()
+        )
     else:
         return
-    print(f"[TRACE] ent:ent_button_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 def get_handlers():

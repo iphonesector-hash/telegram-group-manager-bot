@@ -73,11 +73,12 @@ def main():
     for handler in get_economy_handlers():
         app.add_handler(handler, group=2)
 
-    # Correct Order: Games -> Entertainment -> Others
-    for handler in get_game_handlers():
+    # Ensure entertainment handlers are registered before games to avoid games' catch-all swallowing menu buttons
+    for handler in get_entertainment_handlers():
         app.add_handler(handler, group=2)
 
-    for handler in get_entertainment_handlers():
+    # Then register game handlers
+    for handler in get_game_handlers():
         app.add_handler(handler, group=2)
 
     for handler in get_profile_handlers():
