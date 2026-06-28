@@ -228,7 +228,7 @@ async def daily_lucky_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def speed_contest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    text_to_type = random.choice(["سکتور بهترین ربات تلگرامه", "من عاشق بازی‌های سکتورلند هستم", "برنامه‌نویسی با پایتون خیلی لذت‌بخشه"])
+    text_to_type = random.choice(["سکتور بهترین ربات تلگرامه", "من عاشق بازی‌های سکتورلند هستم", "برنامه‌نویسی با پایتون خیلی خوبه"])
 
     await update.effective_message.reply_text(
         f"🏆 **مسابقه سرعت پاسخ**\n\nهر کی زودتر این جمله رو دقیقاً کپی کنه و بفرسته برنده است:\n\n`{text_to_type}`",
@@ -241,7 +241,7 @@ async def speed_contest(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if chat_id not in game_states:
-        return
+        return  # ✅ اگر بازی‌ای در جریان نیست، بگذار دیگری‌ها کار کنن
 
     state = game_states[chat_id]
     text = update.effective_message.text.strip()
@@ -259,7 +259,7 @@ async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif state["type"] == "speed_contest":
         if text == state["text"]:
             elapsed = round(time.time() - state["start_time"], 2)
-            await update.effective_message.reply_text(f"🎉 تبریک {update.effective_user.mention_html()}! تو زودتر از همه فرستادی. ✅\n⏱ زمان: {elapsed} ثانیه", parse_mode="HTML")
+            await update.effective_message.reply_text(f"🎉 تبریک {update.effective_user.mention_html()}! تو زودتر از همه فرستادی. ✅\n⏱ زمان: {elapsed} ثانیه")
             del game_states[chat_id]
             raise ApplicationHandlerStop()
 
