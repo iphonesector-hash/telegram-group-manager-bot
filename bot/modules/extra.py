@@ -8,6 +8,7 @@ from bot.modules.ai import get_ai_response
 
 async def translator_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
+    print(f"[TRACE] extra:translator_handler | text: {text}")
     if not text or not text.startswith("ترجمه:"): return
     query = text.replace("ترجمه:", "").strip()
     if not query: return
@@ -18,10 +19,12 @@ async def translator_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.effective_message.reply_text(f"🌐 ترجمه:\n\n{res}", parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ خطا در ترجمه. لطفاً دوباره تلاش کنید.")
+    print(f"[TRACE] extra:translator_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def weather_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
+    print(f"[TRACE] extra:weather_handler | text: {text}")
     if not text or not text.startswith("هوای "): return
     city = text.replace("هوای ", "").strip()
     if not city: return
@@ -32,22 +35,26 @@ async def weather_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(f"⛅️ وضعیت هوا:\n\n{res}", parse_mode=None)
     else:
         await update.effective_message.reply_text("❌ خطا در دریافت اطلاعات هواشناسی.")
+    print(f"[TRACE] extra:weather_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def calculator_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
+    print(f"[TRACE] extra:calculator_handler | text: {text}")
     if not text or not re.match(r"^[0-9\s\+\-\*\/\(\)\.]+$", text): return
     if len(text) < 3: return
     try:
         res = await get_ai_response("Calculate this math expression and return only the numeric result.", text)
         if res:
             await update.effective_message.reply_text(f"🧮 نتیجه: {res}", parse_mode=None)
+            print(f"[TRACE] extra:calculator_handler | handled | ApplicationHandlerStop")
             raise ApplicationHandlerStop()
     except ApplicationHandlerStop: raise
     except: pass
 
 async def general_utils_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
+    print(f"[TRACE] extra:general_utils_handler | text: {text}")
     if text == "🌐 مترجم":
         await update.effective_message.reply_text("🌐 برای ترجمه بنویسید:\nترجمه: [متن]")
     elif text == "🧮 ماشین حساب":
@@ -59,6 +66,7 @@ async def general_utils_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await update.effective_message.reply_text(f"📅 تاریخ: {now.strftime('%Y-%m-%d')}\n🕒 زمان: {now.strftime('%H:%M:%S')}")
     else:
         return
+    print(f"[TRACE] extra:general_utils_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def user_mgmt_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,6 +81,7 @@ async def user_mgmt_button_handler(update: Update, context: ContextTypes.DEFAULT
         "🔸 /unban - رفع مسدودیت (آیدی عددی)"
     )
     await update.effective_message.reply_text(text, parse_mode=None)
+    print(f"[TRACE] extra:user_mgmt_button_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 def get_extra_handlers():

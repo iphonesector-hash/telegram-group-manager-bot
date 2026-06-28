@@ -14,6 +14,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     text = update.effective_message.text
+    print(f"[TRACE] panel:menu_navigation_handler | text: {text}")
     handled = True
 
     if text == "🛡 مدیریت":
@@ -105,9 +106,11 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
         handled = False
 
     if handled:
+        print(f"[TRACE] panel:menu_navigation_handler | handled: {text} | ApplicationHandlerStop")
         raise ApplicationHandlerStop()
 
 async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"[TRACE] panel:panel_cmd")
     if update.effective_chat.type == "private" or await is_admin(update, context):
         reply = await get_reply_text(update.effective_user, "🏠 **منوی اصلی SectorBot 2.0**\nلطفاً یک بخش را انتخاب کنید:")
         await update.effective_message.reply_text(reply, reply_markup=get_main_menu(), parse_mode=None)
@@ -118,6 +121,7 @@ async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context): return
     text = update.effective_message.text
+    print(f"[TRACE] panel:toggle_setting_handler | text: {text}")
 
     mapping = {
         "🤖 تنظیمات هوش مصنوعی": "ai_enabled",
@@ -141,6 +145,7 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
             status = "فعال" if getattr(group, attr) else "غیرفعال"
             await update.effective_message.reply_text(f"✅ تنظیمات **{text}** به حالت **{status}** تغییر یافت.", parse_mode=None)
         session.close()
+        print(f"[TRACE] panel:toggle_setting_handler | handled: {text} | ApplicationHandlerStop")
         raise ApplicationHandlerStop()
 
 def get_panel_handlers():
