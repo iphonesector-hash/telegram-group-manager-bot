@@ -92,6 +92,6 @@ async def group_stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_profile_handlers():
     return [
         CommandHandler("profile", profile_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(👤 پروفایل|🏆 رتبه جهانی|📜 سوابق اخطار|📊 آمار گروه)$"), profile_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("^(👤 پروفایل|👤 حساب کاربری|🏆 رتبه جهانی|📜 سوابق اخطار|📊 آمار گروه)$"), profile_cmd),
         MessageHandler(filters.ALL & ~filters.COMMAND, count_message),
     ]
