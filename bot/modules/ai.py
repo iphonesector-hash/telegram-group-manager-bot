@@ -5,7 +5,7 @@ import random
 import datetime
 import re
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import Group, User
 from bot.utils.helpers import is_admin, get_group
@@ -154,6 +154,8 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
 
+    print(f"[TRACE] ai:ai_chat_handler | text: {text}")
+
     # Comprehensive exclusion list to prevent conflicts with entertainment/games
     excluded_keywords = [
         "👤 پروفایل", "👤 حساب کاربری", "🎮 سرگرمی", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
@@ -167,6 +169,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if any(text == kw for kw in excluded_keywords) or any(text.startswith(kw) for kw in excluded_keywords):
+        print(f"[TRACE] ai:ai_chat_handler | excluded: {text}")
         return
 
     trigger_words = ["سکتور", "sector", f"@{context.bot.username}"]
@@ -208,6 +211,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ai_memory[chat_id].append({"role": "user", "content": query})
         ai_memory[chat_id].append({"role": "assistant", "content": response})
         await update.message.reply_text(response)
+        print(f"[TRACE] ai:ai_chat_handler | handled | returned")
     else:
         await update.message.reply_text("❌ متأسفانه در حال حاضر قادر به ارتباط با مغز مرکزی نیستم.")
 
