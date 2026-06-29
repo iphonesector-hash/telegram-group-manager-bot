@@ -6,6 +6,7 @@ import json
 import os
 import time
 import datetime
+import random
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from bot.database.session import get_session
@@ -26,20 +27,13 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 def validate_telegram_init_data(init_data: str):
     if not BOT_TOKEN:
         print("Validation Error: BOT_TOKEN not configured in environment")
-        raise HTTPException(status_code=500, detail="Bot token not configured")
+        return False # Fallback to false if no token
 
     if not init_data:
         print("Validation Error: No init-data header received")
         return False
 
     try:
-        # Standard Telegram validation:
-        # 1. Parse into key-value pairs
-        # 2. Extract and remove hash
-        # 3. Sort keys alphabetically
-        # 4. Join with \n
-        # 5. Sign with secret_key derived from BOT_TOKEN
-
         params = init_data.split('&')
         data_check_list = []
         received_hash = None
@@ -50,11 +44,9 @@ def validate_telegram_init_data(init_data: str):
             if key == 'hash':
                 received_hash = value
             else:
-                # IMPORTANT: Use unquote for the value as Telegram sends them encoded
                 data_check_list.append(f"{key}={unquote(value)}")
 
         if not received_hash:
-            print("Validation Error: 'hash' field missing in initData")
             return False
 
         data_check_list.sort()
@@ -63,25 +55,8 @@ def validate_telegram_init_data(init_data: str):
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        if calculated_hash != received_hash:
-            print(f"Validation Error: Hash mismatch. Received data length: {len(init_data)}")
-            # print(f"DEBUG Check String: {data_check_string}")
-            return False
-
-        # Optional: Extract user id for logging
-        try:
-            for item in data_check_list:
-                if item.startswith("user="):
-                    user_json = item[5:]
-                    user_data = json.loads(user_json)
-                    print(f"Validation Success: User ID {user_data.get('id')} authenticated.")
-                    break
-        except:
-            pass
-
-        return True
-    except Exception as e:
-        print(f"Validation Exception: {e}")
+        return calculated_hash == received_hash
+    except:
         return False
 
 @app.get("/api/user/{user_id}")
@@ -97,16 +72,31 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="
 
     rank = session.query(User).filter(User.coins > user.coins).count() + 1
 
+    # Calculate cooldowns
+    now = datetime.datetime.utcnow()
+    daily_cooldown = 0
+    if user.last_daily_claim:
+        diff = (now - user.last_daily_claim).total_seconds()
+        if diff < 86400:
+            daily_cooldown = int(86400 - diff)
+
+    wheel_cooldown = 0
+    if user.last_wheel_spin:
+        diff = (now - user.last_wheel_spin).total_seconds()
+        if diff < 86400:
+            wheel_cooldown = int(86400 - diff)
+
     data = {
         "id": user.id,
         "first_name": user.first_name,
-        "username": user.username,
         "coins": user.coins,
         "xp": user.xp,
         "level": user.level,
         "rank": rank,
-        "joined_at": user.joined_at.isoformat(),
-        "achievements": ["عضو قدیمی"] if (datetime.datetime.utcnow() - user.joined_at).days > 30 else []
+        "cooldowns": {
+            "daily": daily_cooldown,
+            "wheel": wheel_cooldown
+        }
     }
     session.close()
     return data
@@ -123,9 +113,12 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alia
         raise HTTPException(status_code=404, detail="User not found")
 
     now = datetime.datetime.utcnow()
-    if user.last_daily_claim and (now - user.last_daily_claim).days < 1:
-        session.close()
-        return {"status": "error", "message": "باید ۲۴ ساعت صبر کنید."}
+    if user.last_daily_claim:
+        diff = (now - user.last_daily_claim).total_seconds()
+        if diff < 86400:
+            remaining = int(86400 - diff)
+            session.close()
+            return {"status": "error", "message": "باید ۲۴ ساعت صبر کنید.", "cooldown": remaining}
 
     reward = 50
     user.coins += reward
@@ -134,7 +127,91 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alia
 
     current_coins = user.coins
     session.close()
-    return {"status": "success", "reward": reward, "coins": current_coins}
+    return {"status": "success", "reward": reward, "coins": current_coins, "cooldown": 86400}
+
+@app.post("/api/wheel-spin/{user_id}")
+async def wheel_spin(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
+    session = get_session()
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user:
+        session.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now = datetime.datetime.utcnow()
+    if user.last_wheel_spin:
+        diff = (now - user.last_wheel_spin).total_seconds()
+        if diff < 86400:
+            remaining = int(86400 - diff)
+            session.close()
+            return {"status": "error", "message": "چرخونه هر ۲۴ ساعت یکبار می‌چرخه.", "cooldown": remaining}
+
+    prizes = [10, 20, 50, 100, 200, 0, 5, 10]
+    reward = random.choice(prizes)
+
+    user.coins += reward
+    user.last_wheel_spin = now
+    session.commit()
+
+    res = {
+        "status": "success",
+        "reward": reward,
+        "coins": user.coins,
+        "cooldown": 86400,
+        "index": prizes.index(reward) # For frontend animation
+    }
+    session.close()
+    return res
+
+@app.post("/api/game/dice/{user_id}")
+async def game_dice(user_id: int, bet: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
+    session = get_session()
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user or user.coins < bet:
+        session.close()
+        raise HTTPException(status_code=400, detail="Insufficient coins")
+
+    dice_val = random.randint(1, 6)
+    win = dice_val > 3
+
+    if win:
+        user.coins += bet
+    else:
+        user.coins -= bet
+
+    session.commit()
+    res = {"dice": dice_val, "win": win, "coins": user.coins}
+    session.close()
+    return res
+
+@app.post("/api/game/coin/{user_id}")
+async def game_coin(user_id: int, bet: int, side: str, init_data: Optional[str] = Header(None, alias="init-data")):
+    if not validate_telegram_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid auth")
+
+    session = get_session()
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user or user.coins < bet:
+        session.close()
+        raise HTTPException(status_code=400, detail="Insufficient coins")
+
+    result = random.choice(["heads", "tails"])
+    win = result == side
+
+    if win:
+        user.coins += bet
+    else:
+        user.coins -= bet
+
+    session.commit()
+    res = {"result": result, "win": win, "coins": user.coins}
+    session.close()
+    return res
 
 @app.get("/api/leaderboard")
 async def get_leaderboard(init_data: Optional[str] = Header(None, alias="init-data")):
@@ -164,20 +241,17 @@ async def get_shop(init_data: Optional[str] = Header(None, alias="init-data")):
         "items": [
             {"id": 1, "name": "VPN یک ماهه", "price": 1000},
             {"id": 2, "name": "VPN سه ماهه", "price": 2500},
-            {"id": 3, "name": "پک استیکر اختصاصی", "price": 500},
+            {"id": 3, "pake": "پک استیکر اختصاصی", "price": 500},
             {"id": 4, "name": "لقب سفارشی در گروه", "price": 2000}
         ]
     }
 
 @app.get("/api/games")
 async def get_games(init_data: Optional[str] = Header(None, alias="init-data")):
-    if not validate_telegram_init_data(init_data):
-        raise HTTPException(status_code=403, detail="Invalid auth")
-
     return [
-        {"id": "snake", "name": "مار بازی", "active": False},
-        {"id": "hokm", "name": "حکم", "active": False},
-        {"id": "quiz", "name": "کوییز", "active": False}
+        {"id": "dice", "name": "تاس انداختن", "active": True},
+        {"id": "coin", "name": "شیر یا خط", "active": True},
+        {"id": "wheel", "name": "چرخونه شانس", "active": True}
     ]
 
 @app.get("/api/groups/{user_id}")
@@ -198,16 +272,6 @@ async def get_user_groups(user_id: int, init_data: Optional[str] = Header(None, 
                 "antispam": g.antispam_enabled
             }
         })
-    session.close()
-    return data
-
-@app.get("/api/stats")
-async def get_stats():
-    session = get_session()
-    data = {
-        "total_users": session.query(User).count(),
-        "total_groups": session.query(Group).count()
-    }
     session.close()
     return data
 

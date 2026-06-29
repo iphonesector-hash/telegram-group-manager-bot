@@ -18,6 +18,7 @@ class User(Base):
     message_count = Column(BigInteger, default=0)
 
     last_daily_claim = Column(DateTime, nullable=True)
+    last_wheel_spin = Column(DateTime, nullable=True)
 
     is_admin = Column(Boolean, default=False)
     joined_at = Column(DateTime, default=datetime.datetime.utcnow)
