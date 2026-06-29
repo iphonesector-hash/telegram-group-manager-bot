@@ -1,30 +1,143 @@
-@@
-     for handler in get_panel_handlers():
-         app.add_handler(handler, group=2)
- 
-     for handler in get_economy_handlers():
-         app.add_handler(handler, group=2)
--
--    # Correct Order: Games -> Entertainment -> Others
--    for handler in get_game_handlers():
--        app.add_handler(handler, group=2)
--
--    for handler in get_entertainment_handlers():
--        app.add_handler(handler, group=2)
--
--    for handler in get_profile_handlers():
--        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
--            app.add_handler(handler, group=2)
-+
-+# Register profile handlers BEFORE game handlers to avoid games' catch-all swallowing profile buttons
-+    for handler in get_profile_handlers():
-+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-+            app.add_handler(handler, group=2)
-+
-+    # Then register game and entertainment handlers
-+    for handler in get_game_handlers():
-+        app.add_handler(handler, group=2)
-+
-+    for handler in get_entertainment_handlers():
-+        app.add_handler(handler, group=2)
-@@
+import sys
+import os
+from dotenv import load_dotenv
+
+# مسیر اصلی پروژه
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, BASE_DIR)
+
+# خواندن .env از ریشه پروژه
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters
+)
+
+from bot.database.session import init_db
+from bot.handlers.start import start_handler
+from bot.handlers.errors import error_handler
+
+from bot.modules.panel import get_panel_handlers
+from bot.modules.locks import get_handlers as get_lock_handlers
+from bot.modules.welcome import get_welcome_handlers
+from bot.modules.antispam import get_antispam_handlers
+from bot.modules.profile import get_profile_handlers
+from bot.modules.registration import get_registration_handlers
+from bot.modules.warnings import get_handlers as get_warning_handlers
+from bot.modules.rules import get_rules_handlers
+from bot.modules.economy import get_handlers as get_economy_handlers
+from bot.modules.entertainment import get_handlers as get_entertainment_handlers
+from bot.modules.games import get_handlers as get_game_handlers
+from bot.modules.ai import get_handlers as get_ai_handlers
+from bot.modules.extra import get_extra_handlers
+
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+
+def main():
+
+    if not BOT_TOKEN:
+        print("❌ BOT_TOKEN پیدا نشد. فایل .env را چک کنید.")
+        return
+
+    # دیتابیس (با قابلیت مایگریشن خودکار)
+    init_db()
+
+    app = Application.builder().token(BOT_TOKEN).build()
+
+
+    # گروه 0 - ثبت کاربران (Middleware)
+    for handler in get_registration_handlers():
+        app.add_handler(handler, group=0)
+
+    # گروه 1 - فیلترهای مسدودکننده (Mute & Antispam)
+    for handler in get_warning_handlers():
+        if not isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
+
+    for handler in get_antispam_handlers():
+        if not isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=1)
+
+
+    # گروه 2 - دستورات و هندلرهای منو (Commands & Navigation)
+    app.add_handler(start_handler, group=2)
+
+    for handler in get_panel_handlers():
+        app.add_handler(handler, group=2)
+
+    for handler in get_economy_handlers():
+        app.add_handler(handler, group=2)
+
+    # Register profile handlers BEFORE entertainment/game handlers
+    for handler in get_profile_handlers():
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=2)
+
+    # Register entertainment handlers BEFORE games to ensure entertainment buttons work
+    for handler in get_entertainment_handlers():
+        app.add_handler(handler, group=2)
+
+    for handler in get_lock_handlers():
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=2)
+
+    for handler in get_warning_handlers():
+        if isinstance(handler, CommandHandler):
+            app.add_handler(handler, group=2)
+
+    for handler in get_rules_handlers():
+        app.add_handler(handler, group=2)
+
+    for handler in get_welcome_handlers():
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=2)
+
+    for handler in get_antispam_handlers():
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=2)
+
+    for handler in get_extra_handlers():
+        app.add_handler(handler, group=2)
+
+    # Register game handlers LAST in Group 2 because it contains a catch-all TEXT filter
+    for handler in get_game_handlers():
+        app.add_handler(handler, group=2)
+
+
+    # گروه 3 - هوش مصنوعی (فقط اگر به دستورات یا منو برنخورد)
+    for handler in get_ai_handlers():
+        app.add_handler(handler, group=3)
+
+
+    # گروه 4 - فیلترهای پس‌زمینه (Welcome, Content Locks)
+    for handler in get_welcome_handlers():
+        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=4)
+
+    for handler in get_lock_handlers():
+        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=4)
+
+
+    # گروه 5 - آمار و اقتصاد (XP/Coins)
+    for handler in get_profile_handlers():
+        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=5)
+
+
+    app.add_error_handler(error_handler)
+
+
+    print("✅ ربات SectorBot با موفقیت روشن شد و آماده به کار است.")
+
+    app.run_polling()
+
+
+
+if __name__ == "__main__":
+    main()
