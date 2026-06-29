@@ -42,6 +42,12 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
         else:
             await update.effective_message.reply_text("❌ فقط مدیران می‌توانند تنظیمات را تغییر دهند.")
 
+    elif text == "⚙️ تنظیمات عمومی":
+        if await is_admin(update, context):
+             await update.effective_message.reply_text("⚙️ **تنظیمات عمومی گروه:**", reply_markup=get_group_settings_menu(), parse_mode=None)
+        else:
+            await update.effective_message.reply_text("❌ فقط مدیران.")
+
     elif text == "🤖 دستیار هوشمند":
         await update.effective_message.reply_text(
             "🤖 **من دستیار هوشمند سکتور هستم!**\n\n"
@@ -66,6 +72,10 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
     elif text == "🔒 قفل‌های گروه":
         if await is_admin(update, context):
             await update.effective_message.reply_text("🔐 **مدیریت قفل‌های محتوا:**\nبرای فعال/غیرفعال کردن هر قفل روی دکمه مربوطه بزنید.", reply_markup=get_locks_menu(), parse_mode=None)
+
+    elif text == "🔒 قفل‌ها":
+        if await is_admin(update, context):
+            await update.effective_message.reply_text("🔐 **مدیریت قفل‌های محتوا:**", reply_markup=get_locks_menu(), parse_mode=None)
 
     elif text == "👤 مدیریت اعضا":
         if await is_admin(update, context):
@@ -139,7 +149,7 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
         attr = mapping[text]
         session = get_session()
         group = get_group(session, update.effective_chat.id)
-        if hasattr(group, attr):
+        if group and hasattr(group, attr):
             setattr(group, attr, not getattr(group, attr))
             session.commit()
             status = "فعال" if getattr(group, attr) else "غیرفعال"
@@ -149,7 +159,7 @@ async def toggle_setting_handler(update: Update, context: ContextTypes.DEFAULT_T
         raise ApplicationHandlerStop()
 
 def get_panel_handlers():
-    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|👤 مدیریت اعضا|🤖 دستیار هوشمند|🤝 پشتیبانی|🔒 قفل‌های گروه|👋 خوشامدگویی|📜 قوانین|📊 آمار گروه|🔙 بازگشت.*)$"
+    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|⚙️ تنظیمات گروه|⚙️ تنظیمات عمومی|👤 مدیریت اعضا|🤖 دستیار هوشمند|🤝 پشتیبانی|🔒 قفل‌های گروه|🔒 قفل‌ها|👋 خوشامدگویی|📜 قوانین|📊 آمار گروه|🔙 بازگشت.*)$"
     toggle_regex = "^(🤖 تنظیمات هوش مصنوعی|💰 تنظیمات اقتصاد|🛡 ضد اسپم|🆕 جلوگیری از ورود ربات|👤 محدودیت عضو جدید|⏳ تایید عضو جدید|📢 گزارش فعالیت|🔘 فعال/غیرفعال سازی خوشامدگویی|🔘 فعال/غیرفعال سازی قوانین)$"
     return [
         CommandHandler("panel", panel_cmd),

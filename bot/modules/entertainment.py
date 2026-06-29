@@ -2,7 +2,7 @@ import random
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.modules.ai import get_ai_response, get_sector_prompt, get_new_joke as get_ai_joke, get_new_riddle as get_ai_riddle, get_new_fact, get_motivation, hafez_fortune
-from bot.utils.keyboards import get_games_menu, get_tod_menu, get_joke_categories_menu
+from bot.utils.keyboards import get_games_menu, get_tod_menu, get_joke_categories_menu, get_entertainment_menu
 
 riddle_answers = {}
 
@@ -117,6 +117,12 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         except Exception as e:
             print(f"[ERROR] ent:ent_button_handler | exception while sending games menu: {e}", flush=True)
             raise
+    elif text == "🔙 بازگشت به منوی اصلی":
+        from bot.utils.keyboards import get_main_menu
+        await update.effective_message.reply_text("🏠 بازگشت به منوی اصلی:", reply_markup=get_main_menu())
+    elif text == "🔙 بازگشت به سرگرمی":
+        from bot.utils.keyboards import get_entertainment_menu
+        await update.effective_message.reply_text("🎮 بازگشت به منوی سرگرمی:", reply_markup=get_entertainment_menu())
     else:
         return
 
@@ -126,6 +132,6 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 def get_handlers():
     return [
         CommandHandler("riddle", get_riddle_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(جواب معما|جوابش؟)$"), reveal_riddle_answer),
-        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|🎲 تاس|🪙 پرتاب سکه|🎯 چالش|📜 فال حافظ|🎮 بازی‌ها|🎭 جرات و حقیقت|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه|🎯 جرات|💬 حقیقت|🎲 تصادفی|🎯 چالش تصادفی|⚡ چالش سخت|😂 چالش خنده‌دار|🧠 چالش ذهنی)$"), ent_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(جواب معما|جوابش|جوابش؟)$"), reveal_riddle_answer),
+        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|🎲 تاس|🪙 پرتاب سکه|🎯 چالش|📜 فال حافظ|🎮 بازی‌ها|🎭 جرات و حقیقت|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه|🎯 جرات|💬 حقیقت|🎲 تصادفی|🎯 چالش تصادفی|⚡ چالش سخت|😂 چالش خنده‌دار|🧠 چالش ذهنی|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"), ent_button_handler),
     ]

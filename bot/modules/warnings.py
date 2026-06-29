@@ -3,10 +3,10 @@ from telegram import Update, ChatPermissions
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
 from bot.database.models import User, Group, Warning, Mute
-from bot.utils.helpers import is_admin, get_user_id, parse_time
+from bot.utils.helpers import is_admin, get_group, get_user_id, parse_time
 from bot.utils.keyboards import (
-    get_warnings_mgmt_menu, get_mutes_mgmt_menu, get_bans_mgmt_menu,
-    get_user_info_mgmt_menu, get_security_mgmt_menu, get_member_mgmt_menu
+    get_member_mgmt_menu, get_warnings_mgmt_menu, get_mutes_mgmt_menu,
+    get_bans_mgmt_menu, get_user_info_mgmt_menu, get_security_mgmt_menu, get_admin_menu
 )
 
 async def warn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -16,36 +16,29 @@ async def warn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id, name = await get_user_id(update, context)
     if not user_id:
-        await update.effective_message.reply_text("❌ کاربر یافت نشد. روی پیام فرد ریپلای کنید یا آیدی عددی بزنید.")
+        await update.effective_message.reply_text("❌ کاربر یافت نشد.")
         raise ApplicationHandlerStop()
 
-    session = get_session()
     reason = " ".join(context.args[1:]) if len(context.args) > 1 else "بدون دلیل"
+    session = get_session()
 
-    new_warn = Warning(
-        user_id=user_id,
-        group_id=update.effective_chat.id,
-        reason=reason,
-        warned_by=update.effective_user.id
-    )
+    new_warn = Warning(user_id=user_id, group_id=update.effective_chat.id, reason=reason, warned_by=update.effective_user.id)
     session.add(new_warn)
     session.commit()
 
-    warn_count = session.query(Warning).filter(
-        Warning.user_id == user_id,
-        Warning.group_id == update.effective_chat.id
-    ).count()
-
-    session.close()
-
-    await update.effective_message.reply_text(f"⚠️ کاربر {name} یک اخطار دریافت کرد.\nتعداد اخطارها: {warn_count}/3\nدلیل: {reason}")
+    warn_count = session.query(Warning).filter(Warning.user_id == user_id, Warning.group_id == update.effective_chat.id).count()
+    await update.effective_message.reply_text(f"⚠️ کاربر {name} اخطار دریافت کرد.\nتعداد اخطارها: {warn_count}/3\nدلیل: {reason}")
 
     if warn_count >= 3:
         try:
             await update.effective_chat.ban_member(user_id)
-            await update.effective_message.reply_text(f"🚫 کاربر {name} به دلیل دریافت ۳ اخطار از گروه اخراج شد.")
-        except:
-            pass
+            await update.effective_message.reply_text(f"🚫 کاربر {name} به دلیل رسیدن به ۳ اخطار از گروه اخراج شد.")
+            session.query(Warning).filter(Warning.user_id == user_id, Warning.group_id == update.effective_chat.id).delete()
+            session.commit()
+        except Exception as e:
+            await update.effective_message.reply_text(f"❌ خطا در اخراج کاربر: {e}")
+
+    session.close()
     raise ApplicationHandlerStop()
 
 async def warns_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,18 +48,16 @@ async def warns_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise ApplicationHandlerStop()
 
     session = get_session()
-    warns = session.query(Warning).filter(
-        Warning.user_id == user_id,
-        Warning.group_id == update.effective_chat.id
-    ).all()
+    warns = session.query(Warning).filter(Warning.user_id == user_id, Warning.group_id == update.effective_chat.id).all()
 
     if not warns:
         await update.effective_message.reply_text(f"✅ کاربر {name} هیچ اخطاری ندارد.")
     else:
-        txt = f"📋 لیست اخطارهای {name}:\n\n"
+        text = f"📋 لیست اخطارهای {name}:\n\n"
         for i, w in enumerate(warns):
-            txt += f"{i+1}. دلیل: {w.reason} | توسط: {w.warned_by}\n"
-        await update.effective_message.reply_text(txt, parse_mode=None)
+            text += f"{i+1}. {w.reason} (توسط {w.warned_by})\n"
+        await update.effective_message.reply_text(text)
+
     session.close()
     raise ApplicationHandlerStop()
 
@@ -81,13 +72,10 @@ async def clearwarn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise ApplicationHandlerStop()
 
     session = get_session()
-    session.query(Warning).filter(
-        Warning.user_id == user_id,
-        Warning.group_id == update.effective_chat.id
-    ).delete()
+    session.query(Warning).filter(Warning.user_id == user_id, Warning.group_id == update.effective_chat.id).delete()
     session.commit()
     session.close()
-    await update.effective_message.reply_text(f"✅ تمام اخطارهای {name} پاک شد.")
+    await update.effective_message.reply_text(f"✅ تمام اخطارهای کاربر {name} پاک شد.")
     raise ApplicationHandlerStop()
 
 async def mute_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -277,6 +265,10 @@ async def member_mgmt_buttons_handler(update: Update, context: ContextTypes.DEFA
         await update.effective_message.reply_text("💡 روی کاربر ریپلای کنید و دستور /ban را بزنید.")
     elif text == "♻️ رفع بن":
         await update.effective_message.reply_text("💡 دستور /unban را همراه با آیدی عددی کاربر بزنید.")
+    elif text == "👥 بن چند کاربر":
+        await update.effective_message.reply_text("💡 این قابلیت بزودی اضافه می‌شود.")
+    elif text == "📋 لیست بن‌ها":
+        await update.effective_message.reply_text("💡 لیست بن‌ها بزودی در این بخش نمایش داده می‌شود.")
 
     elif text == "👤 اطلاعات کاربر":
         await update.effective_message.reply_text("👤 دریافت آمار و اطلاعات اعضا:", reply_markup=get_user_info_mgmt_menu())
@@ -291,13 +283,24 @@ async def member_mgmt_buttons_handler(update: Update, context: ContextTypes.DEFA
 
     elif text == "🛡 امنیت":
         await update.effective_message.reply_text("🛡 تنظیمات امنیتی گروه:", reply_markup=get_security_mgmt_menu())
+    elif text == "🆕 جلوگیری از ورود ربات":
+         await update.effective_message.reply_text("💡 برای فعال/غیرفعال کردن این گزینه از بخش تنظیمات استفاده کنید.")
+    elif text == "👤 محدودیت عضو جدید":
+         await update.effective_message.reply_text("💡 برای فعال/غیرفعال کردن این گزینه از بخش تنظیمات استفاده کنید.")
+    elif text == "⏳ تایید عضو جدید":
+         await update.effective_message.reply_text("💡 برای فعال/غیرفعال کردن این گزینه از بخش تنظیمات استفاده کنید.")
+    elif text == "📢 گزارش فعالیت":
+         await update.effective_message.reply_text("💡 برای فعال/غیرفعال کردن این گزینه از بخش تنظیمات استفاده کنید.")
+
     elif text == "🔙 بازگشت به مدیریت اعضا":
         await update.effective_message.reply_text("👤 بازگشت به مدیریت اعضا:", reply_markup=get_member_mgmt_menu())
+    elif text == "🔙 بازگشت به مدیریت":
+        await update.effective_message.reply_text("🛡 بازگشت به منوی مدیریت:", reply_markup=get_admin_menu())
 
     raise ApplicationHandlerStop()
 
 def get_handlers():
-    nav_regex = "^(⚠️ اخطارها|➕ اخطار کاربر|📋 لیست اخطارها|🗑 حذف آخرین اخطار|🔄 پاک کردن همه اخطارها|🔇 محدودیت‌ها|🔇 سکوت کاربر|⏱ سکوت زمان‌دار|🔊 رفع سکوت|📊 لیست کاربران محدود شده|🚫 مسدودسازی|🚫 بن کاربر|♻️ رفع بن|👥 بن چند کاربر|📋 لیست بن‌ها|👤 اطلاعات کاربر|🔎 پروفایل کاربر|📈 آمار پیام‌ها|⭐ XP و سطح|💰 موجودی سکه|🛡 امنیت|🔙 بازگشت به مدیریت اعضا)$"
+    nav_regex = "^(⚠️ اخطارها|➕ اخطار کاربر|📋 لیست اخطارها|🗑 حذف آخرین اخطار|🔄 پاک کردن همه اخطارها|🔇 محدودیت‌ها|🔇 سکوت کاربر|⏱ سکوت زمان‌دار|🔊 رفع سکوت|📊 لیست کاربران محدود شده|🚫 مسدودسازی|🚫 بن کاربر|♻️ رفع بن|👥 بن چند کاربر|📋 لیست بن‌ها|👤 اطلاعات کاربر|🔎 پروفایل کاربر|📈 آمار پیام‌ها|⭐ XP و سطح|💰 موجودی سکه|🛡 امنیت|🆕 جلوگیری از ورود ربات|👤 محدودیت عضو جدید|⏳ تایید عضو جدید|📢 گزارش فعالیت|🔙 بازگشت به مدیریت اعضا|🔙 بازگشت به مدیریت)$"
     return [
         CommandHandler("warn", warn_cmd),
         CommandHandler("warns", warns_cmd),
