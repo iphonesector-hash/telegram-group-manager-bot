@@ -73,10 +73,9 @@ def main():
     for handler in get_economy_handlers():
         app.add_handler(handler, group=2)
 
-    # Register profile handlers BEFORE game handlers to avoid games' catch-all swallowing profile buttons
+    # Register ALL profile handlers BEFORE game handlers to avoid games' catch-all swallowing profile buttons
     for handler in get_profile_handlers():
-        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=2)
+        app.add_handler(handler, group=2)
 
     for handler in get_entertainment_handlers():
         app.add_handler(handler, group=2)
@@ -123,9 +122,7 @@ def main():
 
 
     # گروه 5 - آمار و اقتصاد (XP/Coins)
-    for handler in get_profile_handlers():
-        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=5)
+    # Profile handlers already registered in Group 2 to handle buttons and count messages correctly.
 
 
     app.add_error_handler(error_handler)
