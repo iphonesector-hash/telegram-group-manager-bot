@@ -12,7 +12,7 @@ async def story_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[TRACE] ent:story_handler")
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز استفاده کن."
+    prompt = "یک داستان کوتاه، خلاقانه و جدید به زبان فارسی بنویس. از اینترنت برای الهام گرفتن از سوژه‌های روز است[...]
     res = await get_ai_response(persona, prompt, use_search=True)
     await update.effective_message.reply_text(res or "📖 کتاب قصه‌هام فعلاً باز نمیشه!")
     print(f"[TRACE] ent:story_handler | handled | ApplicationHandlerStop")
@@ -171,7 +171,8 @@ async def stop_tod_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
-    print(f"[TRACE] ent:ent_button_handler | text: {text}")
+    # use repr to show invisible characters in logs
+    print(f"[TRACE] ent:ent_button_handler | text: {repr(text)}")
 
     if text == "💡 دانستنی":
         await get_new_fact(update, context)
@@ -189,6 +190,7 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await get_motivation(update, context)
     elif text == "🎮 بازی‌ها":
         from bot.utils.keyboards import get_games_menu
+        # Protective logging: print before sending, and catch any exception to log it.
         try:
             print("[TRACE] ent:ent_button_handler | sending games menu")
             await update.effective_message.reply_text(
