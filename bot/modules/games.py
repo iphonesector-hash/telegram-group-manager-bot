@@ -18,14 +18,13 @@ async def games_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def dice_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[TRACE] games:dice_game")
-    await update.effective_message.reply_dice()
+    await update.effective_message.reply_dice(emoji="🎲")
     print(f"[TRACE] games:dice_game | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 async def coin_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[TRACE] games:coin_game")
-    res = random.choice(["شیر 🦁", "خط 📏"])
-    await update.effective_message.reply_text(f"🪙 سکه انداخته شد:\n\nنتیجه: {res}")
+    await update.effective_message.reply_dice(emoji="🪙")
     print(f"[TRACE] games:coin_game | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
@@ -50,7 +49,8 @@ async def start_number_guess(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def handle_number_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, state):
     text = update.effective_message.text
     if not text.isdigit():
-        return
+        # Raise stop to prevent AI responding to invalid guesses in game
+        raise ApplicationHandlerStop()
 
     guess = int(text)
     state["attempts"] += 1
@@ -66,6 +66,7 @@ async def handle_number_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.effective_message.reply_text(f"📈 بزرگتر! (فرصت باقی‌مانده: {state['max_attempts'] - state['attempts']})")
     else:
         await update.effective_message.reply_text(f"📉 کوچکتر! (فرصت باقی‌مانده: {state['max_attempts'] - state['attempts']})")
+
     print(f"[TRACE] games:handle_number_guess | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
@@ -87,7 +88,8 @@ async def start_word_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "user_id": update.effective_user.id
     }
     await update.effective_message.reply_text(
-        f"📝 بازی حدس کلمه!\nحروف این کلمه رو به هم ریختم:\n\n`{scrambled}`\n\nکلمه درست چیه؟"
+        f"📝 بازی حدس کلمه!\nحروف این کلمه رو به هم ریختم:\n\n`{scrambled}`\n\nکلمه درست چیه؟",
+        parse_mode="Markdown"
     )
     print(f"[TRACE] games:start_word_guess | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
@@ -97,8 +99,9 @@ async def handle_word_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if text == state["word"]:
         await update.effective_message.reply_text(f"✅ آفرین! درست بود. کلمه مورد نظر '{state['word']}' بود. 🏆")
         del game_states[update.effective_chat.id]
-        print(f"[TRACE] games:handle_word_guess | handled | ApplicationHandlerStop")
-        raise ApplicationHandlerStop()
+
+    print(f"[TRACE] games:handle_word_guess | handled | ApplicationHandlerStop")
+    raise ApplicationHandlerStop()
 
 # --- Flag Guess Game ---
 async def start_flag_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -124,8 +127,9 @@ async def handle_flag_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if text == state["country"]:
         await update.effective_message.reply_text(f"✅ درسته! این پرچم کشور {state['country']} بود. 🌟")
         del game_states[update.effective_chat.id]
-        print(f"[TRACE] games:handle_flag_guess | handled | ApplicationHandlerStop")
-        raise ApplicationHandlerStop()
+
+    print(f"[TRACE] games:handle_flag_guess | handled | ApplicationHandlerStop")
+    raise ApplicationHandlerStop()
 
 # --- Rock Paper Scissors ---
 async def rps_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -205,7 +209,7 @@ async def intelligence_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[TRACE] games:intelligence_test")
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک سوال تست هوش کوتاه و جالب به زبان فارسی بگو. خروجی: سوال: [متن] | پاسخ: [متن]"
+    prompt = "یک تست هوش واقعی، استاندارد و چالش‌برانگیز به زبان فارسی بگو. سوال باید منطقی باشد و جواب مشخصی داشته باشد. خروجی دقیقاً با این فرمت: سوال: [متن] | پاسخ: [متن]"
     res = await get_ai_response(persona, prompt)
     if res and "|" in res:
         parts = res.split("|")
@@ -223,7 +227,7 @@ async def logic_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[TRACE] games:logic_riddle")
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک معمای منطقی (Logic Puzzle) جذاب بگو. خروجی: معما: [متن] | پاسخ: [متن]"
+    prompt = "یک معمای منطقی (Logic Riddle) کلاسیک و جذاب به زبان فارسی بگو که نیاز به فکر کردن داشته باشد. خروجی دقیقاً با این فرمت: معما: [متن] | پاسخ: [متن]"
     res = await get_ai_response(persona, prompt)
     if res and "|" in res:
         parts = res.split("|")
@@ -291,10 +295,17 @@ async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif state["type"] == "speed_contest":
         if text == state["text"]:
             elapsed = round(time.time() - state["start_time"], 2)
-            await update.effective_message.reply_text(f"🎉 تبریک {update.effective_user.mention_html()}! تو زودتر از همه فرستادی. ✅\n⏱ زمان: {elapsed} ثانیه")
+            await update.effective_message.reply_text(
+                f"🎉 تبریک {update.effective_user.mention_html()}! تو زودتر از همه فرستادی. ✅\n⏱ زمان: {elapsed} ثانیه",
+                parse_mode="HTML"
+            )
             del game_states[chat_id]
             print(f"[TRACE] games:game_input_handler | speed contest handled | ApplicationHandlerStop")
             raise ApplicationHandlerStop()
+
+    # Catch-all for any other text while a game is active in this chat to prevent AI fallback
+    print(f"[TRACE] games:game_input_handler | game active | blocking AI | ApplicationHandlerStop")
+    raise ApplicationHandlerStop()
 
 def get_handlers():
     return [

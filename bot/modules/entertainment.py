@@ -126,6 +126,6 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 def get_handlers():
     return [
         CommandHandler("riddle", get_riddle_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(جواب معما|جوابش؟)$"), reveal_riddle_answer),
+        MessageHandler(filters.TEXT & filters.Regex("^(جواب معما|جوابش|جوابش؟)$"), reveal_riddle_answer),
         MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|🎲 تاس|🪙 پرتاب سکه|🎯 چالش|📜 فال حافظ|🎮 بازی‌ها|🎭 جرات و حقیقت|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه|🎯 جرات|💬 حقیقت|🎲 تصادفی|🎯 چالش تصادفی|⚡ چالش سخت|😂 چالش خنده‌دار|🧠 چالش ذهنی)$"), ent_button_handler),
     ]
