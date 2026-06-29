@@ -73,16 +73,15 @@ def main():
     for handler in get_economy_handlers():
         app.add_handler(handler, group=2)
 
-    # Correct Order: Games -> Entertainment -> Others
-    for handler in get_game_handlers():
-        app.add_handler(handler, group=2)
+    for handler in get_profile_handlers():
+        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
+            app.add_handler(handler, group=2)
 
     for handler in get_entertainment_handlers():
         app.add_handler(handler, group=2)
 
-    for handler in get_profile_handlers():
-        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=2)
+    for handler in get_game_handlers():
+        app.add_handler(handler, group=2)
 
     for handler in get_lock_handlers():
         if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
