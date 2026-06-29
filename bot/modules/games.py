@@ -271,7 +271,7 @@ async def speed_contest(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if chat_id not in game_states:
-        return
+        return  # ✅ اگر بازی‌ای در جریان نیست، بگذار دیگری‌ها کار کنن
 
     state = game_states[chat_id]
     text = update.effective_message.text.strip()

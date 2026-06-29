@@ -73,6 +73,7 @@ def main():
     for handler in get_economy_handlers():
         app.add_handler(handler, group=2)
 
+    # Register profile handlers BEFORE game handlers to avoid games' catch-all swallowing profile buttons
     for handler in get_profile_handlers():
         if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
             app.add_handler(handler, group=2)

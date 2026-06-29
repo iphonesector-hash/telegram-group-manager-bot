@@ -172,6 +172,24 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"[TRACE] ai:ai_chat_handler | excluded: {text}")
         return
 
+    print(f"[TRACE] ai:ai_chat_handler | text: {text}")
+
+    # Comprehensive exclusion list to prevent conflicts with entertainment/games
+    excluded_keywords = [
+        "👤 پروفایل", "👤 حساب کاربری", "🎮 سرگرمی", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
+        "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه",
+        "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم", "✂️ سنگ کاغذ قیچی",
+        "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه",
+        "🏆 مسابقه سرعت پاسخ", "🎯 چالش", "😂 خنده‌دار", "😈 شیطنتی",
+        "🧠 هوشمندانه", "🤣 کوتاه", "🎯 جرات", "💬 حقیقت", "🎲 تصادفی",
+        "🤝 پیوستن به بازی", "🏁 شروع بازی", "🔄 نوبت بعدی", "🛑 توقف",
+        "جواب معما", "جوابش", "انصراف از بازی"
+    ]
+
+    if any(text == kw for kw in excluded_keywords) or any(text.startswith(kw) for kw in excluded_keywords):
+        print(f"[TRACE] ai:ai_chat_handler | excluded: {text}")
+        return
+
     trigger_words = ["سکتور", "sector", f"@{context.bot.username}"]
     triggered = any(text.lower().startswith(word) for word in trigger_words) or is_private
 

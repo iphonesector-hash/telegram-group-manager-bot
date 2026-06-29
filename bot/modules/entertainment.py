@@ -136,7 +136,7 @@ async def next_tod_turn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tod_action_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
     chat_id = update.effective_chat.id
-    print(f"[TRACE] ent:tod_action_handler | text: {text}")
+    print(f"[TRACE] ent:tod_action_handler | text: {repr(text)}")
 
     if chat_id not in tod_sessions or not tod_sessions[chat_id]["active"]:
         if text in ["🎯 جرات", "💬 حقیقت", "🎲 تصادفی"]:
@@ -189,7 +189,15 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await get_motivation(update, context)
     elif text == "🎮 بازی‌ها":
         from bot.utils.keyboards import get_games_menu
-        await update.effective_message.reply_text("🎮 به بخش بازی‌های سکتور خوش اومدی!\nیکی رو انتخاب کن و شروع کنیم:", reply_markup=get_games_menu())
+        try:
+            print("[TRACE] ent:ent_button_handler | sending games menu")
+            await update.effective_message.reply_text(
+                "🎮 به بخش بازی‌های سکتور خوش اومدی!\nیکی رو انتخاب کن و شروع کنیم:",
+                reply_markup=get_games_menu()
+            )
+        except Exception as e:
+            print(f"[ERROR] ent:ent_button_handler | exception while sending games menu: {e}", flush=True)
+            raise
     else:
         return
     print(f"[TRACE] ent:ent_button_handler | handled | ApplicationHandlerStop")
