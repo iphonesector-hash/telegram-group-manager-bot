@@ -302,6 +302,14 @@ async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             del game_states[chat_id]
             print(f"[TRACE] games:game_input_handler | speed contest handled | ApplicationHandlerStop")
             raise ApplicationHandlerStop()
+    elif text == "انصراف از بازی":
+        del game_states[chat_id]
+        await update.effective_message.reply_text("❌ بازی متوقف شد.")
+        raise ApplicationHandlerStop()
+    elif text == "🔙 بازگشت به سرگرمی":
+        from bot.utils.keyboards import get_entertainment_menu
+        await update.effective_message.reply_text("🎮 بازگشت به منوی سرگرمی:", reply_markup=get_entertainment_menu())
+        raise ApplicationHandlerStop()
 
     # Catch-all for any other text while a game is active in this chat to prevent AI fallback
     print(f"[TRACE] games:game_input_handler | game active | blocking AI | ApplicationHandlerStop")
@@ -320,5 +328,6 @@ def get_handlers():
         MessageHandler(filters.TEXT & filters.Regex("^🧩 معمای منطقی$"), logic_riddle),
         MessageHandler(filters.TEXT & filters.Regex("^🎲 بازی شانسی روزانه$"), daily_lucky_game),
         MessageHandler(filters.TEXT & filters.Regex("^🏆 مسابقه سرعت پاسخ$"), speed_contest),
+        MessageHandler(filters.TEXT & filters.Regex("^(انصراف از بازی|🔙 بازگشت به سرگرمی)$"), game_input_handler),
         MessageHandler(filters.TEXT & ~filters.COMMAND, game_input_handler),
     ]
