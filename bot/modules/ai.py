@@ -11,7 +11,6 @@ from bot.database.models import Group, User
 from bot.utils.helpers import is_admin, get_group
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 # Simple in-memory context memory (per chat)
@@ -47,7 +46,7 @@ def get_sector_prompt(user=None):
     return full_prompt
 
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
-    if not OPENROUTER_API_KEY and not GROQ_API_KEY:
+    if not GROQ_API_KEY:
         return None
 
     context_text = ""
@@ -72,32 +71,17 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     messages.append({"role": "user", "content": user_query})
 
     try:
-        if OPENROUTER_API_KEY:
-            url = "https://openrouter.ai/api/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/iphonesector-hash/telegram-group-manager-bot",
-                "X-OpenRouter-Title": "Sector AI"
-            }
-            payload = {
-                "model": "openrouter/auto",
-                "messages": messages,
-                "temperature": 0.8
-            }
-        else:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-            payload = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": messages,
-                "temperature": 0.8
-            }
-
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": messages,
+            "temperature": 0.8
+        }
         async with httpx.AsyncClient() as client:
-            res = await client.post(url, headers=headers, json=payload, timeout=30.0)
+            res = await client.post(url, headers=headers, json=payload, timeout=20.0)
             if res.status_code != 200:
-                print(f"AI API ERROR ({url}):", res.text)
+                print("GROQ ERROR:", res.text)
                 return "خطای API: " + res.text
 
             data = res.json()
