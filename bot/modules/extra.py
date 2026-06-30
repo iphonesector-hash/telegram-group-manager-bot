@@ -69,8 +69,24 @@ async def general_utils_handler(update: Update, context: ContextTypes.DEFAULT_TY
     print(f"[TRACE] extra:general_utils_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
+async def user_mgmt_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await is_admin(update, context): return
+    text = (
+        "👤 بخش مدیریت اعضا\n\n"
+        "از دستورات زیر برای مدیریت استفاده کنید:\n"
+        "🔸 /warn - اخطار (ریپلای)\n"
+        "🔸 /mute - بی‌صدا (ریپلای + زمان)\n"
+        "🔸 /ban - اخراج و مسدود (ریپلای)\n"
+        "🔸 /unmute - آزاد کردن (ریپلای)\n"
+        "🔸 /unban - رفع مسدودیت (آیدی عددی)"
+    )
+    await update.effective_message.reply_text(text, parse_mode=None)
+    print(f"[TRACE] extra:user_mgmt_button_handler | handled | ApplicationHandlerStop")
+    raise ApplicationHandlerStop()
+
 def get_extra_handlers():
     return [
+        MessageHandler(filters.TEXT & filters.Regex("^👤 مدیریت اعضا$"), user_mgmt_button_handler),
         MessageHandler(filters.TEXT & filters.Regex("^(🌐 مترجم|🧮 ماشین حساب|⛅️ هواشناسی|📅 تاریخ و زمان)$"), general_utils_handler),
         MessageHandler(filters.TEXT & filters.Regex("^ترجمه:"), translator_handler),
         MessageHandler(filters.TEXT & filters.Regex("^هوای "), weather_handler),

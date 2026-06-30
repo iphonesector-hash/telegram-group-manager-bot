@@ -148,15 +148,12 @@ async def rank_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def economy_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
-    if text == "💰 موجودی کیف پول" or text == "💰 موجودی سکه": await coins_cmd(update, context)
+    if text == "💰 موجودی کیف پول": await coins_cmd(update, context)
     elif text == "🎁 هدیه روزانه": await daily_cmd(update, context)
     elif text == "💸 انتقال سکه": await update.effective_message.reply_text("💸 برای انتقال سکه، روی پیام کاربر مورد نظر ریپلای کرده و دستور /transfer [مقدار] را بزنید.")
     elif text == "🏦 وام بانکی": await loan_cmd(update, context)
     elif text == "📉 بازپرداخت وام": await repay_cmd(update, context)
     elif text == "🏆 برترین‌های ثروت": await top_coins_cmd(update, context)
-    elif text == "🔙 بازگشت به منوی اصلی":
-        from bot.utils.keyboards import get_main_menu
-        await update.effective_message.reply_text("🏠 بازگشت به منوی اصلی:", reply_markup=get_main_menu())
     raise ApplicationHandlerStop()
 
 def get_handlers():
@@ -167,5 +164,5 @@ def get_handlers():
         CommandHandler("loan", loan_cmd),
         CommandHandler("repay", repay_cmd),
         CommandHandler("rank", rank_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(💰 موجودی کیف پول|💰 موجودی سکه|🎁 هدیه روزانه|💸 انتقال سکه|🏦 وام بانکی|📉 بازپرداخت وام|🏆 برترین‌های ثروت|🔙 بازگشت به منوی اصلی)$"), economy_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(💰 موجودی کیف پول|🎁 هدیه روزانه|💸 انتقال سکه|🏦 وام بانکی|📉 بازپرداخت وام|🏆 برترین‌های ثروت)$"), economy_button_handler),
     ]

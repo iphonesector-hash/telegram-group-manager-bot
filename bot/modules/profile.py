@@ -39,14 +39,6 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text_val == "📊 آمار گروه":
         await group_stats_cmd(update, context)
         raise ApplicationHandlerStop()
-    elif text_val == "🔙 بازگشت به منوی اصلی":
-        from bot.utils.keyboards import get_main_menu
-        await update.effective_message.reply_text("🏠 بازگشت به منوی اصلی:", reply_markup=get_main_menu())
-        raise ApplicationHandlerStop()
-    elif text_val == "🔙 بازگشت به مدیریت اعضا":
-        from bot.utils.keyboards import get_member_mgmt_menu
-        await update.effective_message.reply_text("👤 بازگشت به مدیریت اعضا:", reply_markup=get_member_mgmt_menu())
-        raise ApplicationHandlerStop()
 
     user_obj = update.effective_user
     session = get_session()
@@ -100,6 +92,6 @@ async def group_stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_profile_handlers():
     return [
         CommandHandler("profile", profile_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(👤 پروفایل|👤 حساب کاربری|🏆 رتبه جهانی|📜 سوابق اخطار|📊 آمار گروه|🔙 بازگشت به منوی اصلی|🔙 بازگشت به مدیریت اعضا)$"), profile_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("^(👤 پروفایل|👤 حساب کاربری|🏆 رتبه جهانی|📜 سوابق اخطار|📊 آمار گروه)$"), profile_cmd),
         MessageHandler(filters.ALL & ~filters.COMMAND, count_message),
     ]

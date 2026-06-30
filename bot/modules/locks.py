@@ -55,10 +55,6 @@ async def lock_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(f"{icon} قفل {text.split()[-1]} {status} شد.")
         session.close()
         raise ApplicationHandlerStop()
-    elif text == "🔙 بازگشت به مدیریت":
-        from bot.utils.keyboards import get_admin_menu
-        await update.effective_message.reply_text("🛡 بازگشت به منوی مدیریت:", reply_markup=get_admin_menu())
-        raise ApplicationHandlerStop()
 
 async def lock_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_chat: return
@@ -98,6 +94,6 @@ def get_handlers():
     return [
         CommandHandler("lock", lock_cmd),
         CommandHandler("locks", lock_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^(🔗 لینک|👤 یوزرنیم|↪️ فوروارد|🖼 عکس|🎬 ویدیو|📁 فایل|🎭 استیکر|🎞 گیف|🎙 ویس|📱 مخاطب|🔙 بازگشت به مدیریت)$"), lock_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(🔗 لینک|👤 یوزرنیم|↪️ فوروارد|🖼 عکس|🎬 ویدیو|📁 فایل|🎭 استیکر|🎞 گیف|🎙 ویس|📱 مخاطب)$"), lock_button_handler),
         MessageHandler(filters.ALL & ~filters.COMMAND, lock_filter),
     ]
