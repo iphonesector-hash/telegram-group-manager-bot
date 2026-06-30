@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API = "http://130.185.122.76:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -34,7 +34,10 @@ const App = () => {
         fetch(`${API}/api/user/${tgUser.id}`, {
           headers: { 'init-data': rawInitData }
         })
-          .then(r => r.json())
+          .then(r => {
+            if (!r.ok) throw new Error(r.status);
+            return r.json();
+          })
           .then(data => {
             if (data.id) {
               setDbUser(data);
@@ -44,7 +47,7 @@ const App = () => {
             setLoading(false);
           })
           .catch(err => {
-            console.error("Fetch user error:", err);
+            handleApiError(err, "دریافت اطلاعات کاربر");
             setLoading(false);
           });
       } else {
@@ -55,7 +58,14 @@ const App = () => {
     }
   }, []);
 
-  // Cooldown timer
+  const handleApiError = (err, context) => {
+    console.error(`API Error [${context}]:`, err);
+    let msg = `خطا در ${context}. لطفاً دوباره تلاش کنید.`;
+    if (err.message === "403") msg = "نشست تلگرام شما منقضی شده یا نامعتبر است.";
+    if (err.message === "404") msg = "اطلاعات یافت نشد.";
+    alert(`⚠️ ${msg}`);
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setDailyCooldown(c => Math.max(0, c - 1));
@@ -73,10 +83,10 @@ const App = () => {
           'init-data': initData
         }
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(response.status);
       return await response.json();
     } catch (error) {
-      console.error(`API Call Failed [${endpoint}]:`, error);
+      handleApiError(error, endpoint);
       return null;
     }
   };
@@ -88,7 +98,6 @@ const App = () => {
       if (data.status === "success") {
         setDbUser({ ...dbUser, coins: data.coins });
         setDailyCooldown(data.cooldown);
-        alert(`✅ ${data.reward} سکه گرفتی!`);
       } else {
         alert(`❌ ${data.message}`);
       }
@@ -134,7 +143,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen p-4 pb-32 max-w-md mx-auto text-white bg-[#0f172a] font-sans rtl" dir="rtl">
-       {/* Profile Header */}
        <div className="glass p-6 bg-gradient-to-br from-blue-600 to-purple-700 rounded-3xl mb-6 flex items-center gap-4 shadow-xl border border-white/10">
         <img
           className="w-16 h-16 rounded-2xl border-2 border-white/20 shadow-lg"
@@ -157,7 +165,6 @@ const App = () => {
         {activeTab === 'groups' && <GroupsTab groups={groups} />}
       </AnimatePresence>
 
-      {/* Bottom Nav */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#0f172a]/90 backdrop-blur-xl border-t border-white/10 z-50">
         <div className="max-w-md mx-auto flex justify-between items-center gap-1">
           <NavButton icon="🏠" label="خانه" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
@@ -217,6 +224,7 @@ const WheelGame = ({ user, setDbUser, cooldown, setWheelCooldown, apiFetch, onBa
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const prizes = [10, 20, 50, 100, 200, 0, 5, 10];
+  const colors = ['#3b82f6', '#1d4ed8', '#3b82f6', '#1d4ed8', '#3b82f6', '#1d4ed8', '#3b82f6', '#1d4ed8'];
 
   const spin = async () => {
     if (spinning || cooldown > 0) return;
@@ -232,8 +240,6 @@ const WheelGame = ({ user, setDbUser, cooldown, setWheelCooldown, apiFetch, onBa
         alert(`🎁 برنده شدی: ${res.reward} سکه!`);
         setRotation(targetRotation % 360);
       }, 4000);
-    } else {
-      alert(res?.message || 'خطا');
     }
   };
 
@@ -245,12 +251,13 @@ const WheelGame = ({ user, setDbUser, cooldown, setWheelCooldown, apiFetch, onBa
          <motion.div
            animate={{ rotate: rotation }}
            transition={{ duration: 4, ease: "circOut" }}
-           className="w-full h-full rounded-full border-4 border-white/20 relative overflow-hidden shadow-2xl"
-           style={{ background: 'conic-gradient(#3b82f6 0deg 45deg, #1d4ed8 45deg 90deg, #3b82f6 90deg 135deg, #1d4ed8 135deg 180deg, #3b82f6 180deg 225deg, #1d4ed8 225deg 270deg, #3b82f6 270deg 315deg, #1d4ed8 315deg 360deg)' }}
+           className="w-full h-full rounded-full border-4 border-white/20 relative overflow-hidden shadow-2xl bg-slate-800"
          >
            {prizes.map((p, i) => (
-             <div key={i} className="absolute w-full h-full text-xs font-bold pt-4" style={{ transform: `rotate(${i * 45 + 22.5}deg)` }}>
-               {p}
+             <div key={i} className="absolute w-full h-full" style={{ transform: `rotate(${i * 45}deg)` }}>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 h-1/2 w-16 flex items-start justify-center pt-4 font-bold" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', background: colors[i] }}>
+                  <span style={{ transform: `rotate(0deg)` }}>{p}</span>
+                </div>
              </div>
            ))}
          </motion.div>
@@ -337,13 +344,12 @@ const ShopTab = ({ items, buyItem, updateCoins }) => (
     {items.map(item => (
       <div key={item.id} className="glass p-4 bg-white/5 border border-white/10 rounded-2xl flex justify-between items-center">
         <div>
-          <div className="font-bold">{item.name || item.pake}</div>
+          <div className="font-bold">{item.name}</div>
           <div className="text-yellow-400 text-sm">{item.price} سکه</div>
         </div>
         <button onClick={async () => {
-          const res = await buyItem(item.id);
-          const data = await res.json();
-          if (data.status === 'success') { updateCoins(data.coins); alert('✅ خریدی!'); } else alert('❌ سکه نداری');
+          const data = await buyItem(item.id);
+          if (data?.status === 'success') { updateCoins(data.coins); alert('✅ خریدی!'); }
         }} className="bg-blue-600 px-4 py-2 rounded-xl text-sm font-bold">خرید</button>
       </div>
     ))}
@@ -398,7 +404,7 @@ const GameCard = ({ icon, name, onClick }) => (
 const NavButton = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl flex-1 transition-all duration-300 ${active ? 'bg-blue-600/20 text-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.2)]' : 'text-gray-500'}`}
+    className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl flex-1 transition-all duration-200 ${active ? 'bg-blue-600/20 text-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.2)]' : 'text-gray-500'}`}
   >
     <span className="text-2xl mb-1">{icon}</span>
     <span className="text-[10px] font-extrabold uppercase tracking-tighter">{label}</span>
