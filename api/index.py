@@ -22,6 +22,28 @@ async def health():
     }
 
 
+async def _application_self_test():
+    test = {"ok": False}
+    telegram_app = None
+    try:
+        telegram_app = build_application()
+        await telegram_app.initialize()
+        test["initialized"] = True
+        fake = Update.de_json({"update_id": 999999999}, telegram_app.bot)
+        await telegram_app.process_update(fake)
+        test["processed"] = True
+        test["ok"] = True
+    except Exception as exc:
+        test["error"] = f"{type(exc).__name__}: {exc}"
+    finally:
+        if telegram_app is not None:
+            try:
+                await telegram_app.shutdown()
+            except Exception as exc:
+                test["shutdown_error"] = f"{type(exc).__name__}: {exc}"
+    return test
+
+
 @app.get("/api/setup-webhook")
 async def setup_webhook(request: Request):
     configured = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
@@ -69,7 +91,10 @@ async def setup_webhook(request: Request):
                     probe.append({"host": host, "ok": False, "error": str(pexc).split("\n")[0][:180]})
         result["pooler_probe"] = probe
         if not result.get("working_pooler_host"):
+            result["application_self_test"] = await _application_self_test()
             return result
+
+    result["application_self_test"] = await _application_self_test()
 
     try:
         webhook_url = "https://telegram-group-manager-bot-iota.vercel.app/api/telegram"
@@ -83,7 +108,7 @@ async def setup_webhook(request: Request):
         )
         info = await bot.get_webhook_info()
         result.update({
-            "ok": bool(set_result),
+            "ok": bool(set_result) and bool(result["application_self_test"].get("ok")),
             "telegram_ok": True,
             "bot": {"id": me.id, "username": me.username},
             "webhook": {
