@@ -21,9 +21,15 @@ async def health():
 @app.post("/api/telegram")
 async def telegram_webhook(request: Request):
     configured = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    if not configured:
+        raise HTTPException(status_code=503, detail="webhook secret not configured")
+
     received = request.headers.get("x-telegram-bot-api-secret-token", "")
-    if configured and not hmac.compare_digest(received, configured):
+    if not hmac.compare_digest(received, configured):
         raise HTTPException(status_code=401, detail="invalid webhook secret")
+
+    if not os.getenv("BOT_TOKEN") or not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="bot runtime not fully configured")
 
     payload = await request.json()
     telegram_app = build_application()
