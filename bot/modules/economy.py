@@ -7,7 +7,15 @@ from bot.database.models import User
 
 
 def _now():
-    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _aware(value):
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=datetime.timezone.utc)
+    return value.astimezone(datetime.timezone.utc)
 
 
 def _get_user(session, update: Update):
@@ -25,15 +33,17 @@ async def daily_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise ApplicationHandlerStop()
 
     now = _now()
-    if user.last_daily_claim and now - user.last_daily_claim < datetime.timedelta(hours=24):
-        left = datetime.timedelta(hours=24) - (now - user.last_daily_claim)
+    last_claim = _aware(user.last_daily_claim)
+    vip_until = _aware(user.vip_until)
+    if last_claim and now - last_claim < datetime.timedelta(hours=24):
+        left = datetime.timedelta(hours=24) - (now - last_claim)
         hours, rem = divmod(int(left.total_seconds()), 3600)
         minutes = rem // 60
         session.close()
         await update.effective_message.reply_text(f"⏳ جایزه امروز را گرفتی؛ {hours} ساعت و {minutes} دقیقه دیگه دوباره بیا.")
         raise ApplicationHandlerStop()
 
-    reward = 75 if user.vip_until and user.vip_until > now else 50
+    reward = 75 if vip_until and vip_until > now else 50
     user.coins += reward
     user.last_daily_claim = now
     session.commit()
