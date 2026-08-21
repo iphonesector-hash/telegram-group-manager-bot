@@ -1,25 +1,15 @@
 import sys
 import os
 from dotenv import load_dotenv
+from telegram.ext import Application, CommandHandler
 
-# مسیر اصلی پروژه
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
-
-# خواندن .env از ریشه پروژه
 load_dotenv(os.path.join(BASE_DIR, ".env"))
-
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    filters
-)
 
 from bot.database.session import init_db
 from bot.handlers.start import start_handler
 from bot.handlers.errors import error_handler
-
 from bot.modules.panel import get_panel_handlers
 from bot.modules.locks import get_handlers as get_lock_handlers
 from bot.modules.welcome import get_welcome_handlers
@@ -34,109 +24,55 @@ from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
 
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
-def main():
-
+def build_application() -> Application:
     if not BOT_TOKEN:
-        print("❌ BOT_TOKEN پیدا نشد. فایل .env را چک کنید.")
-        return
+        raise RuntimeError("BOT_TOKEN is not configured")
 
-    # دیتابیس (با قابلیت مایگریشن خودکار)
     init_db()
-
     app = Application.builder().token(BOT_TOKEN).build()
 
+    for h in get_registration_handlers(): app.add_handler(h, group=0)
+    for h in get_warning_handlers():
+        if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
+    for h in get_antispam_handlers():
+        if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
 
-    # گروه 0 - ثبت کاربران (Middleware)
-    for handler in get_registration_handlers():
-        app.add_handler(handler, group=0)
-
-    # گروه 1 - فیلترهای مسدودکننده (Mute & Antispam)
-    for handler in get_warning_handlers():
-        if not isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-
-    for handler in get_antispam_handlers():
-        if not isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=1)
-
-
-    # گروه 2 - دستورات و هندلرهای منو (Commands & Navigation)
     app.add_handler(start_handler, group=2)
-
-    for handler in get_panel_handlers():
-        app.add_handler(handler, group=2)
-
-    for handler in get_economy_handlers():
-        app.add_handler(handler, group=2)
-
-    # Register profile handlers BEFORE entertainment/game handlers
-    for handler in get_profile_handlers():
-        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=2)
-
-    # Register entertainment handlers BEFORE games to ensure entertainment buttons work
-    for handler in get_entertainment_handlers():
-        app.add_handler(handler, group=2)
-
-    for handler in get_lock_handlers():
-        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=2)
-
-    for handler in get_warning_handlers():
-        if isinstance(handler, CommandHandler):
-            app.add_handler(handler, group=2)
-
-    for handler in get_rules_handlers():
-        app.add_handler(handler, group=2)
-
-    for handler in get_welcome_handlers():
-        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=2)
-
-    for handler in get_antispam_handlers():
-        if isinstance(handler, CommandHandler) or (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=2)
-
-    for handler in get_extra_handlers():
-        app.add_handler(handler, group=2)
-
-    # Register game handlers LAST in Group 2 because it contains a catch-all TEXT filter
-    for handler in get_game_handlers():
-        app.add_handler(handler, group=2)
-
-
-    # گروه 3 - هوش مصنوعی (فقط اگر به دستورات یا منو برنخورد)
-    for handler in get_ai_handlers():
-        app.add_handler(handler, group=3)
-
-
-    # گروه 4 - فیلترهای پس‌زمینه (Welcome, Content Locks)
-    for handler in get_welcome_handlers():
-        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=4)
-
-    for handler in get_lock_handlers():
-        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=4)
-
-
-    # گروه 5 - آمار و اقتصاد (XP/Coins)
-    for handler in get_profile_handlers():
-        if not isinstance(handler, CommandHandler) and not (hasattr(handler, "filters") and "TEXT" in str(handler.filters)):
-            app.add_handler(handler, group=5)
-
+    for h in get_panel_handlers(): app.add_handler(h, group=2)
+    for h in get_economy_handlers(): app.add_handler(h, group=2)
+    for h in get_profile_handlers():
+        if isinstance(h, CommandHandler) or (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=2)
+    for h in get_entertainment_handlers(): app.add_handler(h, group=2)
+    for h in get_lock_handlers():
+        if isinstance(h, CommandHandler) or (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=2)
+    for h in get_warning_handlers():
+        if isinstance(h, CommandHandler): app.add_handler(h, group=2)
+    for h in get_rules_handlers(): app.add_handler(h, group=2)
+    for h in get_welcome_handlers():
+        if isinstance(h, CommandHandler) or (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=2)
+    for h in get_antispam_handlers():
+        if isinstance(h, CommandHandler) or (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=2)
+    for h in get_extra_handlers(): app.add_handler(h, group=2)
+    for h in get_game_handlers(): app.add_handler(h, group=2)
+    for h in get_ai_handlers(): app.add_handler(h, group=3)
+    for h in get_welcome_handlers():
+        if not isinstance(h, CommandHandler) and not (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=4)
+    for h in get_lock_handlers():
+        if not isinstance(h, CommandHandler) and not (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=4)
+    for h in get_profile_handlers():
+        if not isinstance(h, CommandHandler) and not (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=5)
 
     app.add_error_handler(error_handler)
+    return app
 
 
-    print("✅ ربات SectorBot با موفقیت روشن شد و آماده به کار است.")
-
-    app.run_polling()
-
+def main():
+    app = build_application()
+    print("✅ iSectorLand unified bot started in polling mode.")
+    app.run_polling(allowed_updates=None)
 
 
 if __name__ == "__main__":
