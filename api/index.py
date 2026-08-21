@@ -31,29 +31,38 @@ async def setup_webhook(request: Request):
     if not token or engine is None:
         raise HTTPException(status_code=503, detail="runtime not fully configured")
 
-    with engine.connect() as conn:
-        db_ok = conn.execute(text("select 1")).scalar() == 1
+    result = {"ok": False, "database_ok": False, "telegram_ok": False}
+    try:
+        with engine.connect() as conn:
+            result["database_ok"] = conn.execute(text("select 1")).scalar() == 1
+    except Exception as exc:
+        result["database_error"] = f"{type(exc).__name__}: {exc}"
+        return result
 
-    webhook_url = "https://telegram-group-manager-bot-iota.vercel.app/api/telegram"
-    bot = Bot(token=token)
-    me = await bot.get_me()
-    result = await bot.set_webhook(
-        url=webhook_url,
-        secret_token=configured,
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=False,
-    )
-    info = await bot.get_webhook_info()
-    return {
-        "ok": bool(result),
-        "database_ok": db_ok,
-        "bot": {"id": me.id, "username": me.username},
-        "webhook": {
-            "url": info.url,
-            "pending_update_count": info.pending_update_count,
-            "last_error_message": info.last_error_message,
-        },
-    }
+    try:
+        webhook_url = "https://telegram-group-manager-bot-iota.vercel.app/api/telegram"
+        bot = Bot(token=token)
+        me = await bot.get_me()
+        set_result = await bot.set_webhook(
+            url=webhook_url,
+            secret_token=configured,
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=False,
+        )
+        info = await bot.get_webhook_info()
+        result.update({
+            "ok": bool(set_result),
+            "telegram_ok": True,
+            "bot": {"id": me.id, "username": me.username},
+            "webhook": {
+                "url": info.url,
+                "pending_update_count": info.pending_update_count,
+                "last_error_message": info.last_error_message,
+            },
+        })
+    except Exception as exc:
+        result["telegram_error"] = f"{type(exc).__name__}: {exc}"
+    return result
 
 
 @app.post("/api/telegram")
