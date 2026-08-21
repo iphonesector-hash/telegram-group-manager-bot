@@ -1,8 +1,10 @@
 import os
 import hmac
+import psycopg2
 from fastapi import Request, HTTPException
 from telegram import Update, Bot
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from api.main import app
 from bot.main import build_application
@@ -28,16 +30,46 @@ async def setup_webhook(request: Request):
         raise HTTPException(status_code=401, detail="unauthorized")
 
     token = os.getenv("BOT_TOKEN", "")
-    if not token or engine is None:
+    raw_db = os.getenv("DATABASE_URL", "")
+    if not token or not raw_db:
         raise HTTPException(status_code=503, detail="runtime not fully configured")
 
     result = {"ok": False, "database_ok": False, "telegram_ok": False}
+
     try:
         with engine.connect() as conn:
             result["database_ok"] = conn.execute(text("select 1")).scalar() == 1
     except Exception as exc:
         result["database_error"] = f"{type(exc).__name__}: {exc}"
-        return result
+
+        parsed = make_url(raw_db.replace("postgres://", "postgresql://", 1))
+        direct_host = parsed.host or ""
+        project_ref = direct_host.split(".")[1] if direct_host.startswith("db.") else ""
+        probe = []
+        if project_ref and parsed.password:
+            for idx in range(0, 6):
+                host = f"aws-{idx}-eu-west-1.pooler.supabase.com"
+                try:
+                    conn = psycopg2.connect(
+                        host=host,
+                        port=6543,
+                        dbname=parsed.database or "postgres",
+                        user=f"postgres.{project_ref}",
+                        password=parsed.password,
+                        connect_timeout=3,
+                        sslmode="require",
+                    )
+                    cur = conn.cursor(); cur.execute("select 1"); ok = cur.fetchone()[0] == 1
+                    cur.close(); conn.close()
+                    probe.append({"host": host, "ok": ok})
+                    if ok:
+                        result["working_pooler_host"] = host
+                        break
+                except Exception as pexc:
+                    probe.append({"host": host, "ok": False, "error": str(pexc).split("\n")[0][:180]})
+        result["pooler_probe"] = probe
+        if not result.get("working_pooler_host"):
+            return result
 
     try:
         webhook_url = "https://telegram-group-manager-bot-iota.vercel.app/api/telegram"
