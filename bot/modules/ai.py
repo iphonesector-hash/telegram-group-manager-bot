@@ -12,38 +12,29 @@ from bot.utils.helpers import is_admin, get_group
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
+AI_MODEL = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
-# Simple in-memory context memory (per chat)
+# Per-instance short memory. Durable user/group state lives in Postgres.
 ai_memory = {}
 
+
 def get_sector_prompt(user=None):
-    # Identity rules
     identity = (
         "نام تو سکتور (Sector) است. تو داخل ربات تلگرامی سکتورلند (SectorLand) هستی. "
-        "یک هوش مصنوعی باحال، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
-        "کمی کنایه‌آمیز (Sarcastic) و مثل یک دستیار هوشمند تلگرامی رفتار کن. اصلا شبیه ChatGPT رسمی نباش. "
-        "اصلا رسمی حرف نزن. پاسخ‌ها کوتاه (۲ تا ۵ خط) باشد. حرف اضافه نزن. همیشه فارسی جواب بده. از ایموجی استفاده کن. "
-        "اگر چیزی را نمی‌دانی بگو: 'نمی‌دونم 😅 بذار پیداش کنم'. "
-        "لحن تو همیشه باید محاوره‌ای، گرم و تلگرامی باشد (Casual Telegram style). "
+        "یک دستیار فارسی، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
+        "پاسخ‌ها را کوتاه و کاربردی نگه دار و همیشه فارسی جواب بده. از ایموجی به‌اندازه استفاده کن. "
+        "اگر چیزی را مطمئن نیستی، صریح بگو مطمئن نیستی و اطلاعات جعل نکن. "
     )
-
-    owner_id = 5147526780
-
+    extra = ""
     if user:
-        user_name = user.first_name
-        is_peyman = user.id == owner_id
-        if is_peyman:
-            extra = "کاربر مقابل تو 'فرمانده پیمان' (صاحب و فرمانده تو) است. او را 'فرمانده' یا 'فرمانده پیمان' خطاب کن. هرگز نگو او را نمی‌شناسی. با او بسیار صمیمی و وفادار باش."
+        if user.id == OWNER_ID:
+            extra = "کاربر مقابل صاحب ربات است؛ با او صمیمی و محترمانه صحبت کن."
         else:
-            extra = f"اسم کاربر مقابل تو '{user_name}' است. او را با اسم خودش (مثلا {user_name} جان) صدا بزن."
-    else:
-        extra = ""
+            extra = f"اسم کاربر مقابل '{user.first_name}' است و می‌توانی او را با اسمش خطاب کنی."
+    return f"{identity}\n{extra}"
 
-    # Models follow instructions at the end better
-    reminder = "\n\nیادت نره: نام تو سکتور است، لحنت خودمانی و تلگرامی، و فرمانده تو پیمان است. هرگز مثل ChatGPT رسمی حرف نزن."
-
-    full_prompt = f"{identity}\n{extra}{reminder}"
-    return full_prompt
 
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
@@ -52,16 +43,17 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     context_text = ""
     if use_search and TAVILY_API_KEY:
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 search_res = await client.post(
                     "https://api.tavily.com/search",
                     json={"api_key": TAVILY_API_KEY, "query": user_query, "search_depth": "basic"},
-                    timeout=10.0
                 )
-                search_data = search_res.json()
-                results = search_data.get("results", [])
-                if results:
-                    context_text = "\n\nSearch Results:\n" + "\n".join([f"- {r['title']}: {r['content']}" for r in results[:3]])
+                if search_res.is_success:
+                    results = search_res.json().get("results", [])
+                    if results:
+                        context_text = "\n\nنتایج جستجو:\n" + "\n".join(
+                            f"- {r.get('title','')}: {r.get('content','')}" for r in results[:3]
+                        )
         except Exception as e:
             print(f"Search Error: {e}")
 
@@ -71,151 +63,94 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     messages.append({"role": "user", "content": user_query})
 
     try:
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": messages,
-            "temperature": 0.8
-        }
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, headers=headers, json=payload, timeout=20.0)
-            if res.status_code != 200:
-                print("GROQ ERROR:", res.text)
-                return "خطای API: " + res.text
-
-            data = res.json()
-            if "choices" not in data:
-                return "خطای API: " + str(data)
-
-            return data["choices"][0]["message"]["content"]
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            res = await client.post(
+                f"{GROQ_BASE_URL.rstrip('/')}/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={"model": AI_MODEL, "messages": messages, "temperature": 0.75},
+            )
+        if not res.is_success:
+            print("AI provider error:", res.status_code, res.text[:500])
+            return None
+        data = res.json()
+        return data.get("choices", [{}])[0].get("message", {}).get("content")
     except Exception as e:
         print(f"AI API Error: {e}")
         return None
 
+
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    persona = get_sector_prompt(update.effective_user)
-    prompt = "یک جوک جدید، باحال و خیلی خنده‌دار (حداکثر ۴ خط) به زبان فارسی بگو. از اینترنت برای پیدا کردن جوک‌های جدید استفاده کن تا تکراری نباشد."
-    res = await get_ai_response(persona, prompt, use_search=True)
-    if res:
-        await update.effective_message.reply_text(res)
-    else:
-        await update.effective_message.reply_text("❌ فعلاً جوکم نمیاد!")
+    res = await get_ai_response(get_sector_prompt(update.effective_user), "یک جوک فارسی کوتاه و تازه بگو.", use_search=True)
+    await update.effective_message.reply_text(res or "❌ فعلاً جوکم نمیاد!")
+
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    persona = get_sector_prompt(update.effective_user)
-    prompt = "یک معمای جدید و چالش‌برانگیز به زبان فارسی بگو. در پایان پاسخ را هم بگو. از اینترنت کمک بگیر. فرمت: معما: [متن] | پاسخ: [متن]"
-    res = await get_ai_response(persona, prompt, use_search=True)
-    return res
+    return await get_ai_response(get_sector_prompt(update.effective_user), "یک معمای فارسی کوتاه همراه پاسخ بگو.", use_search=True)
+
 
 async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    persona = get_sector_prompt(update.effective_user)
-    prompt = "یک فکت یا دانستنی علمی، عجیب یا جالب جدید به زبان فارسی بگو. از منابع معتبر اینترنتی استفاده کن تا محتوای تازه ارائه بدهی."
-    res = await get_ai_response(persona, prompt, use_search=True)
-    if res:
-        await update.effective_message.reply_text(f"💡 **آیا می‌دانستی؟**\n\n{res}")
-    else:
-        await update.effective_message.reply_text("❌ فعلاً چیز جالبی پیدا نکردم!")
+    res = await get_ai_response(get_sector_prompt(update.effective_user), "یک دانستنی علمی معتبر و جالب به فارسی بگو.", use_search=True)
+    await update.effective_message.reply_text(f"💡 آیا می‌دانستی؟\n\n{res}" if res else "❌ فعلاً چیزی پیدا نکردم!")
+
 
 async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    persona = get_sector_prompt(update.effective_user)
-    prompt = "یک جمله انگیزشی قوی، عمیق و جدید (حداکثر ۳ جمله) به زبان فارسی بگو. از سخنان بزرگان یا جملات مدرن استفاده کن."
-    res = await get_ai_response(persona, prompt, use_search=True)
-    if res:
-        await update.effective_message.reply_text(f"✨ {res}")
-    else:
-        await update.effective_message.reply_text("❌ فعلاً انگیزه‌ای پیدا نکردم!")
+    res = await get_ai_response(get_sector_prompt(update.effective_user), "یک جمله انگیزشی کوتاه و غیرکلیشه‌ای فارسی بگو.")
+    await update.effective_message.reply_text(f"✨ {res}" if res else "❌ فعلاً انگیزه‌ای پیدا نکردم!")
+
 
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    persona = get_sector_prompt(update.effective_user)
-    prompt = (
-        "یک فال حافظ واقعی و حرفه‌ای بگیر. از اینترنت برای پیدا کردن یک غزل واقعی استفاده کن. خروجی دقیقاً با این فرمت باشد:\n"
-        "📜 **فال حافظ شما**\n\n"
-        "🔹 **نام غزل:** [نام یا شماره غزل]\n"
-        "🔸 **ابیات منتخب:**\n[۲ یا ۳ بیت اصلی غزل]\n\n"
-        "📝 **معنی ساده:** [یک خط معنی ابیات]\n"
-        "🔍 **تفسیر کامل:** [۳ خط تفسیر عرفانی و کاربردی]\n"
-        "📢 **تعبیر برای نیت شما:** [یک جمله خطاب به کاربر درباره نیتش]\n"
-        "💡 **توصیه و پیام حافظ:** [یک جمله کاربردی]\n\n"
-        "لحن تو صمیمی و سکتوری بماند."
-    )
-    res = await get_ai_response(persona, prompt, use_search=True)
-    if res:
-        await update.effective_message.reply_text(res)
-    else:
-        await update.effective_message.reply_text("❌ دیوان حافظ در دسترس نیست!")
+    prompt = "یک فال حافظ فارسی با ذکر اینکه تعبیر جنبه سرگرمی دارد ارائه کن؛ شعر را فقط اگر مطمئن هستی نقل کن و چیزی جعل نکن."
+    res = await get_ai_response(get_sector_prompt(update.effective_user), prompt, use_search=True)
+    await update.effective_message.reply_text(res or "❌ فعلاً فال در دسترس نیست!")
+
 
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
-
     user = update.effective_user
-    text = update.message.text
+    text = update.message.text.strip()
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
 
-    print(f"[TRACE] ai:ai_chat_handler | text: {text}")
-
-    # Comprehensive exclusion list to prevent conflicts with entertainment/games
-    excluded_keywords = [
+    excluded = {
         "👤 پروفایل", "👤 حساب کاربری", "🎮 سرگرمی", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
-        "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه",
-        "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم", "✂️ سنگ کاغذ قیچی",
-        "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه",
-        "🏆 مسابقه سرعت پاسخ", "🎯 چالش", "😂 خنده‌دار", "😈 شیطنتی",
-        "🧠 هوشمندانه", "🤣 کوتاه", "🎯 جرات", "💬 حقیقت", "🎲 تصادفی",
-        "🤝 پیوستن به بازی", "🏁 شروع بازی", "🔄 نوبت بعدی", "🛑 توقف",
-        "جواب معما", "جوابش", "انصراف از بازی"
-    ]
-
-    if any(text == kw for kw in excluded_keywords) or any(text.startswith(kw) for kw in excluded_keywords):
-        print(f"[TRACE] ai:ai_chat_handler | excluded: {text}")
+        "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه", "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم",
+        "✂️ سنگ کاغذ قیچی", "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه", "🏆 مسابقه سرعت پاسخ",
+        "🤝 پیوستن به بازی", "🏁 شروع بازی", "🔄 نوبت بعدی", "🛑 توقف", "جواب معما", "جوابش", "انصراف از بازی"
+    }
+    if text in excluded or text.startswith("/"):
         return
 
-    trigger_words = ["سکتور", "sector", f"@{context.bot.username}"]
-    triggered = any(text.lower().startswith(word) for word in trigger_words) or is_private
-
-    if not triggered or text.startswith("/"):
+    username = (context.bot.username or "").lower()
+    lower = text.lower()
+    triggered = is_private or lower.startswith("سکتور") or lower.startswith("sector") or (username and f"@{username}" in lower)
+    if not triggered:
         return
 
+    # Group-level AI toggle
     if not is_private:
         session = get_session()
-        group = get_group(session, update.effective_chat.id, update.effective_chat.title)
-        if not group or not group.ai_enabled:
-            session.close()
-            return
+        group = session.query(Group).filter(Group.id == chat_id).first()
+        enabled = True if not group else group.ai_enabled
         session.close()
+        if not enabled:
+            return
 
-    query = text
-    for word in trigger_words:
-        if query.lower().startswith(word):
-            query = query[len(word):].strip()
-            break
-
-    if not query:
-        return
-
-    await update.message.reply_chat_action("typing")
-
-    search_keywords = ["خبر", "جدید", "آخرین", "دیروز", "امروز", "الان", "news", "latest", "current", "weather", "هواشناسی"]
-    use_search = any(word in query.lower() for word in search_keywords)
-
+    history = ai_memory.setdefault(chat_id, [])
     prompt = get_sector_prompt(user)
+    query = re.sub(r"^(سکتور|sector)\s*[:,،-]?\s*", "", text, flags=re.I).strip() or text
+    await update.effective_message.reply_chat_action("typing")
+    response = await get_ai_response(prompt, query, history=history)
+    if not response:
+        await update.effective_message.reply_text("الان به مدل هوش مصنوعی وصل نیستم 😅")
+        raise ApplicationHandlerStop()
 
-    if chat_id not in ai_memory:
-        ai_memory[chat_id] = []
+    history.append({"role": "user", "content": query})
+    history.append({"role": "assistant", "content": response})
+    del history[:-8]
+    await update.effective_message.reply_text(response[:4000])
+    raise ApplicationHandlerStop()
 
-    response = await get_ai_response(prompt, query, use_search=use_search, history=ai_memory[chat_id])
-
-    if response:
-        ai_memory[chat_id].append({"role": "user", "content": query})
-        ai_memory[chat_id].append({"role": "assistant", "content": response})
-        await update.message.reply_text(response)
-        print(f"[TRACE] ai:ai_chat_handler | handled | returned")
-    else:
-        await update.message.reply_text("❌ متأسفانه در حال حاضر قادر به ارتباط با مغز مرکزی نیستم.")
 
 def get_handlers():
-    return [
-        MessageHandler(filters.TEXT & ~filters.COMMAND, ai_chat_handler),
-    ]
+    return [MessageHandler(filters.TEXT & ~filters.COMMAND, ai_chat_handler)]
