@@ -17,18 +17,19 @@ def _normalize_database_url(raw_url: str) -> str:
     host = url.host or ""
 
     # Supabase Direct connections are IPv6-first. Vercel serverless may not have
-    # usable IPv6 egress, so transparently route Direct URLs through Supabase's
-    # transaction pooler while preserving the configured database password.
+    # usable IPv6 egress, so transparently route this project through its verified
+    # Supabase transaction pooler while preserving the configured DB password.
     if host.startswith("db.") and host.endswith(".supabase.co"):
         parts = host.split(".")
         if len(parts) >= 4:
             project_ref = parts[1]
             region = os.getenv("SUPABASE_DB_REGION", "eu-west-1")
+            pooler_cluster = os.getenv("SUPABASE_POOLER_CLUSTER", "1")
             pooled = URL.create(
                 drivername="postgresql+psycopg2",
                 username=f"postgres.{project_ref}",
                 password=url.password,
-                host=f"aws-0-{region}.pooler.supabase.com",
+                host=f"aws-{pooler_cluster}-{region}.pooler.supabase.com",
                 port=6543,
                 database=url.database or "postgres",
             )
@@ -44,7 +45,7 @@ if DATABASE_URL:
         pool_pre_ping=True,
         pool_recycle=300,
         pool_timeout=10,
-        connect_args={"connect_timeout": 10},
+        connect_args={"connect_timeout": 10, "sslmode": "require"},
     )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
