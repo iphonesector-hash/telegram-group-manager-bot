@@ -1,41 +1,29 @@
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from bot.database.models import Base
 import os
 
-DATABASE_URL = "sqlite:///bot_database.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is required; local SQLite fallback is disabled in production.")
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def init_db():
+    # Tables are managed by Supabase migrations. create_all is idempotent and useful
+    # for local/dev parity, but all runtime models are namespaced with isectorbot_.
     Base.metadata.create_all(engine)
+    print(f"✅ iSectorLand database ready ({engine.url.get_backend_name()}).")
 
-    inspector = inspect(engine)
-    with engine.connect() as conn:
-        columns = [c['name'] for c in inspector.get_columns('groups')]
-
-        new_columns = {
-            'prevent_bots': 'BOOLEAN DEFAULT 0',
-            'new_member_limit': 'BOOLEAN DEFAULT 0',
-            'approval_mode': 'BOOLEAN DEFAULT 0',
-            'activity_logging': 'BOOLEAN DEFAULT 1',
-            'rules_enabled': 'BOOLEAN DEFAULT 1'
-        }
-
-        for col, col_type in new_columns.items():
-            if col not in columns:
-                try:
-                    conn.execute(text(f"ALTER TABLE groups ADD COLUMN {col} {col_type}"))
-                except:
-                    pass
-
-        conn.commit()
-
-    print("✅ Database initialized and migrated successfully.")
 
 def get_session():
     return SessionLocal()
