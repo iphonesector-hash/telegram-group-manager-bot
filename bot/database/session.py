@@ -4,26 +4,32 @@ from bot.database.models import Base
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is required; local SQLite fallback is disabled in production.")
+engine = None
+SessionLocal = None
 
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=300,
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+    )
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def _require_database():
+    if engine is None or SessionLocal is None:
+        raise RuntimeError("DATABASE_URL is required for database-backed bot features.")
 
 
 def init_db():
-    # Tables are managed by Supabase migrations. create_all is idempotent and useful
-    # for local/dev parity, but all runtime models are namespaced with isectorbot_.
+    _require_database()
     Base.metadata.create_all(engine)
     print(f"✅ iSectorLand database ready ({engine.url.get_backend_name()}).")
 
 
 def get_session():
+    _require_database()
     return SessionLocal()
