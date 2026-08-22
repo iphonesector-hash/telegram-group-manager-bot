@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
 
-MINI_APP_URL = "https://telegram-group-manager-bot-iota.vercel.app"
+MINI_APP_URL = "https://isectorland-miniapp.vercel.app"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
