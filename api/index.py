@@ -1,14 +1,16 @@
 import os
 import hmac
 import psycopg2
-from fastapi import Request, HTTPException
+from fastapi import Request, HTTPException, Header
 from telegram import Update, Bot
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from typing import Optional
 
-from api.main import app
+from api.main import app, require_user, serialize_purchase
 from bot.main import build_application
-from bot.database.session import engine
+from bot.database.session import engine, get_session
+from bot.database.models import Purchase
 
 
 @app.get("/api/health")
@@ -20,6 +22,67 @@ async def health():
         "database_configured": bool(os.getenv("DATABASE_URL")),
         "webhook_secret_configured": bool(os.getenv("TELEGRAM_WEBHOOK_SECRET")),
     }
+
+
+@app.get("/api/orders/{user_id}")
+async def miniapp_orders(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data, user_id)
+    session = get_session()
+    try:
+        rows = (
+            session.query(Purchase)
+            .filter(Purchase.user_id == user_id, Purchase.status == "coin_purchase")
+            .order_by(Purchase.created_at.desc())
+            .limit(50)
+            .all()
+        )
+        return [serialize_purchase(p) for p in rows]
+    finally:
+        session.close()
+
+
+@app.get("/api/transactions/{user_id}")
+async def miniapp_transactions(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data, user_id)
+    session = get_session()
+    try:
+        rows = (
+            session.query(Purchase)
+            .filter(Purchase.user_id == user_id)
+            .order_by(Purchase.created_at.desc())
+            .limit(60)
+            .all()
+        )
+        result = []
+        for p in rows:
+            raw = serialize_purchase(p)
+            status = p.status or ""
+            item_id = p.item_id or ""
+            amount = int(p.amount or 0)
+            positive = status in ("reward", "quiz_correct") or item_id in ("loan", "bank_withdraw")
+            if status == "coin_purchase" or item_id in ("bank_deposit", "loan_repay"):
+                positive = False
+            labels = {
+                "daily_reward": "هدیه روزانه",
+                "bank_deposit": "واریز به بانک",
+                "bank_withdraw": "برداشت از بانک",
+                "loan": "دریافت وام",
+                "loan_repay": "تسویه وام",
+            }
+            if str(item_id).startswith("intel-") or str(item_id).startswith("logic-") or str(item_id).startswith("flag-"):
+                label = "پاداش پاسخ صحیح" if status == "quiz_correct" else "پاسخ مسابقه"
+            else:
+                label = labels.get(item_id, raw.get("name") or str(item_id))
+            result.append({
+                "id": p.id,
+                "label": label,
+                "amount": amount if positive else -amount,
+                "status": status,
+                "date": p.created_at.isoformat() if p.created_at else None,
+            })
+        return result
+    finally:
+        session.close()
 
 
 async def _application_self_test():
