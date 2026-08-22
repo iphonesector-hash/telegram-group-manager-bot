@@ -16,14 +16,12 @@ OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
 AI_MODEL = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
-# Known Groq production fallbacks. The configured model is always tried first.
 AI_FALLBACK_MODELS = [
     "llama-3.1-8b-instant",
     "openai/gpt-oss-20b",
     "openai/gpt-oss-120b",
 ]
 
-# Per-instance short memory. Durable user/group state lives in Postgres.
 ai_memory = {}
 
 
@@ -94,10 +92,8 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
 
                 body = res.text[:500]
                 print(f"AI provider error ({model}):", res.status_code, body)
-                # A model-level 400/404 should not kill AI; try next production model.
                 if res.status_code in (400, 404):
                     continue
-                # Auth / quota / server errors are unlikely to improve by changing model.
                 if res.status_code in (401, 403, 429) or res.status_code >= 500:
                     break
         return None
@@ -131,10 +127,38 @@ async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(res or "❌ فعلاً فال در دسترس نیست!")
 
 
+def _is_reply_to_this_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    reply = update.effective_message.reply_to_message if update.effective_message else None
+    return bool(
+        reply
+        and reply.from_user
+        and context.bot
+        and reply.from_user.id == context.bot.id
+    )
+
+
+def _sector_called(text: str, bot_username: str) -> bool:
+    lower = text.lower().strip()
+    if re.match(r"^(سکتور|sector)(?:\s|$|[:،,:؛;\-])", lower, flags=re.I):
+        return True
+    if bot_username and f"@{bot_username.lower()}" in lower:
+        return True
+    return False
+
+
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
+
     user = update.effective_user
+    if not user:
+        return
+
+    # Never react to automated posts or messages sent by other bots.
+    # This prevents Sector from replying to SectorLand NewsBot and creating bot-to-bot chatter.
+    if user.is_bot:
+        return
+
     text = update.message.text.strip()
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
@@ -149,8 +173,12 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     username = (context.bot.username or "").lower()
-    lower = text.lower()
-    triggered = is_private or lower.startswith("سکتور") or lower.startswith("sector") or (username and f"@{username}" in lower)
+    replied_to_sector = _is_reply_to_this_bot(update, context)
+    explicitly_called = _sector_called(text, username)
+
+    # Private chat remains conversational. In groups, Sector stays silent unless
+    # explicitly called by name/mention or the user replies to Sector's own message.
+    triggered = is_private or explicitly_called or replied_to_sector
     if not triggered:
         return
 
@@ -164,7 +192,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     history = ai_memory.setdefault(chat_id, [])
     prompt = get_sector_prompt(user)
-    query = re.sub(r"^(سکتور|sector)\s*[:,،-]?\s*", "", text, flags=re.I).strip() or text
+    query = re.sub(r"^(سکتور|sector)\s*[:,،:؛;\-]?\s*", "", text, flags=re.I).strip() or text
     await update.effective_message.reply_chat_action("typing")
     response = await get_ai_response(prompt, query, history=history)
     if not response:
