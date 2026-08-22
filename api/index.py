@@ -2,7 +2,7 @@ import os
 import hmac
 import psycopg2
 from fastapi import Request, HTTPException, Header
-from telegram import Update, Bot
+from telegram import Update, Bot, WebAppInfo, MenuButtonWebApp
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from typing import Optional
@@ -11,6 +11,19 @@ from api.main import app, require_user, serialize_purchase
 from bot.main import build_application
 from bot.database.session import engine, get_session
 from bot.database.models import Purchase
+
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
+_menu_registered = False
+
+
+async def _register_default_menu(bot: Bot) -> bool:
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="🚀 SectorLand",
+            web_app=WebAppInfo(url=MINI_APP_URL),
+        )
+    )
+    return True
 
 
 @app.get("/api/health")
@@ -21,6 +34,7 @@ async def health():
         "bot_configured": bool(os.getenv("BOT_TOKEN")),
         "database_configured": bool(os.getenv("DATABASE_URL")),
         "webhook_secret_configured": bool(os.getenv("TELEGRAM_WEBHOOK_SECRET")),
+        "mini_app_url": MINI_APP_URL,
     }
 
 
@@ -119,7 +133,7 @@ async def setup_webhook(request: Request):
     if not token or not raw_db:
         raise HTTPException(status_code=503, detail="runtime not fully configured")
 
-    result = {"ok": False, "database_ok": False, "telegram_ok": False}
+    result = {"ok": False, "database_ok": False, "telegram_ok": False, "menu_registered": False}
 
     try:
         with engine.connect() as conn:
@@ -163,6 +177,7 @@ async def setup_webhook(request: Request):
         webhook_url = "https://telegram-group-manager-bot-iota.vercel.app/api/telegram"
         bot = Bot(token=token)
         me = await bot.get_me()
+        result["menu_registered"] = await _register_default_menu(bot)
         set_result = await bot.set_webhook(
             url=webhook_url,
             secret_token=configured,
@@ -171,7 +186,7 @@ async def setup_webhook(request: Request):
         )
         info = await bot.get_webhook_info()
         result.update({
-            "ok": bool(set_result) and bool(result["application_self_test"].get("ok")),
+            "ok": bool(set_result) and bool(result["application_self_test"].get("ok")) and bool(result["menu_registered"]),
             "telegram_ok": True,
             "bot": {"id": me.id, "username": me.username},
             "webhook": {
@@ -187,6 +202,8 @@ async def setup_webhook(request: Request):
 
 @app.post("/api/telegram")
 async def telegram_webhook(request: Request):
+    global _menu_registered
+
     configured = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
     if not configured:
         raise HTTPException(status_code=503, detail="webhook secret not configured")
@@ -202,6 +219,12 @@ async def telegram_webhook(request: Request):
     telegram_app = build_application()
     await telegram_app.initialize()
     try:
+        if not _menu_registered:
+            try:
+                _menu_registered = await _register_default_menu(telegram_app.bot)
+            except Exception as exc:
+                print(f"Default Mini App menu registration failed: {exc}")
+
         update = Update.de_json(payload, telegram_app.bot)
         await telegram_app.process_update(update)
     finally:
