@@ -16,6 +16,13 @@ OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
 AI_MODEL = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
+# Known Groq production fallbacks. The configured model is always tried first.
+AI_FALLBACK_MODELS = [
+    "llama-3.1-8b-instant",
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+]
+
 # Per-instance short memory. Durable user/group state lives in Postgres.
 ai_memory = {}
 
@@ -38,6 +45,7 @@ def get_sector_prompt(user=None):
 
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
+        print("AI provider error: GROQ_API_KEY is missing")
         return None
 
     context_text = ""
@@ -62,18 +70,37 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
         messages.extend(history[-6:])
     messages.append({"role": "user", "content": user_query})
 
+    models = []
+    for model in [AI_MODEL, *AI_FALLBACK_MODELS]:
+        if model and model not in models:
+            models.append(model)
+
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            res = await client.post(
-                f"{GROQ_BASE_URL.rstrip('/')}/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": AI_MODEL, "messages": messages, "temperature": 0.75},
-            )
-        if not res.is_success:
-            print("AI provider error:", res.status_code, res.text[:500])
-            return None
-        data = res.json()
-        return data.get("choices", [{}])[0].get("message", {}).get("content")
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            for model in models:
+                res = await client.post(
+                    f"{GROQ_BASE_URL.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": messages, "temperature": 0.75},
+                )
+                if res.is_success:
+                    data = res.json()
+                    content = data.get("choices", [{}])[0].get("message", {}).get("content")
+                    if content:
+                        if model != AI_MODEL:
+                            print(f"AI fallback model selected: {model}")
+                        return content
+                    continue
+
+                body = res.text[:500]
+                print(f"AI provider error ({model}):", res.status_code, body)
+                # A model-level 400/404 should not kill AI; try next production model.
+                if res.status_code in (400, 404):
+                    continue
+                # Auth / quota / server errors are unlikely to improve by changing model.
+                if res.status_code in (401, 403, 429) or res.status_code >= 500:
+                    break
+        return None
     except Exception as e:
         print(f"AI API Error: {e}")
         return None
@@ -127,7 +154,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not triggered:
         return
 
-    # Group-level AI toggle
     if not is_private:
         session = get_session()
         group = session.query(Group).filter(Group.id == chat_id).first()
