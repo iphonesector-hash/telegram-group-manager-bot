@@ -8,11 +8,12 @@ import time
 import datetime
 from typing import Optional
 from urllib.parse import unquote
+from sqlalchemy import func
 
 from bot.database.session import get_session
 from bot.database.models import User, Group, Purchase
 
-app = FastAPI(title="iSectorLand Unified API", version="3.0")
+app = FastAPI(title="iSectorLand Unified API", version="3.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -31,7 +32,6 @@ def validate_telegram_init_data(init_data: Optional[str]) -> dict:
         raise HTTPException(status_code=500, detail="Bot token not configured")
     if not init_data:
         raise HTTPException(status_code=401, detail="Missing Telegram init data")
-
     try:
         pairs = []
         values = {}
@@ -46,22 +46,18 @@ def validate_telegram_init_data(init_data: Optional[str]) -> dict:
             else:
                 values[key] = value
                 pairs.append(f"{key}={value}")
-
         if not received_hash:
             raise HTTPException(status_code=401, detail="Telegram hash missing")
-
         pairs.sort()
         data_check_string = "\n".join(pairs)
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
         calculated = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calculated, received_hash):
             raise HTTPException(status_code=403, detail="Invalid Telegram signature")
-
         auth_date = int(values.get("auth_date", "0"))
         now = int(time.time())
         if not auth_date or abs(now - auth_date) > MAX_INIT_DATA_AGE:
             raise HTTPException(status_code=403, detail="Expired Telegram init data")
-
         user = json.loads(values.get("user", "{}"))
         if not user.get("id"):
             raise HTTPException(status_code=403, detail="Telegram user missing")
@@ -79,6 +75,18 @@ def require_user(init_data: Optional[str], requested_user_id: Optional[int] = No
     return user
 
 
+def serialize_purchase(p: Purchase):
+    item = SHOP_ITEMS.get(int(p.item_id)) if str(p.item_id).isdigit() else None
+    return {
+        "id": p.id,
+        "item_id": p.item_id,
+        "name": item["name"] if item else p.item_id,
+        "amount": int(p.amount or 0),
+        "status": p.status,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
+
+
 @app.get("/api/user/{user_id}")
 async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data, user_id)
@@ -88,18 +96,23 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         rank = session.query(User).filter(User.coins > user.coins).count() + 1
+        orders_count = session.query(Purchase).filter(Purchase.user_id == user_id).count()
+        total_spent = session.query(func.coalesce(func.sum(Purchase.amount), 0)).filter(Purchase.user_id == user_id).scalar() or 0
         return {
             "id": user.id,
             "first_name": user.first_name,
             "username": user.username,
-            "coins": user.coins,
-            "bank_balance": user.bank_balance,
-            "loan_balance": user.loan_balance,
-            "xp": user.xp,
-            "level": user.level,
+            "coins": int(user.coins or 0),
+            "bank_balance": int(user.bank_balance or 0),
+            "loan_balance": int(user.loan_balance or 0),
+            "xp": int(user.xp or 0),
+            "level": int(user.level or 1),
             "rank": rank,
             "joined_at": user.joined_at.isoformat() if user.joined_at else None,
-            "achievements": ["عضو قدیمی"] if user.joined_at and (datetime.datetime.utcnow() - user.joined_at).days > 30 else [],
+            "achievements": ["عضو قدیمی"] if user.joined_at and (datetime.datetime.utcnow() - user.joined_at.replace(tzinfo=None)).days > 30 else [],
+            "orders_count": orders_count,
+            "total_spent": int(total_spent),
+            "referrals": 0,
         }
     finally:
         session.close()
@@ -110,14 +123,17 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alia
     require_user(init_data, user_id)
     session = get_session()
     try:
-        user = session.query(User).filter(User.id == user_id).first()
+        user = session.query(User).filter(User.id == user_id).with_for_update().first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         now = datetime.datetime.utcnow()
-        if user.last_daily_claim and now - user.last_daily_claim < datetime.timedelta(hours=24):
-            return {"status": "error", "message": "هنوز ۲۴ ساعت کامل نشده."}
-        reward = 75 if user.vip_until and user.vip_until > now else 50
-        user.coins += reward
+        last = user.last_daily_claim.replace(tzinfo=None) if user.last_daily_claim and user.last_daily_claim.tzinfo else user.last_daily_claim
+        if last and now - last < datetime.timedelta(hours=24):
+            remaining = datetime.timedelta(hours=24) - (now - last)
+            return {"status": "error", "message": "هنوز ۲۴ ساعت کامل نشده.", "remaining_seconds": int(remaining.total_seconds())}
+        vip_until = user.vip_until.replace(tzinfo=None) if user.vip_until and user.vip_until.tzinfo else user.vip_until
+        reward = 75 if vip_until and vip_until > now else 50
+        user.coins = int(user.coins or 0) + reward
         user.last_daily_claim = now
         session.commit()
         return {"status": "success", "reward": reward, "coins": user.coins}
@@ -131,7 +147,35 @@ async def get_leaderboard(init_data: Optional[str] = Header(None, alias="init-da
     session = get_session()
     try:
         users = session.query(User).order_by(User.coins.desc()).limit(10).all()
-        return [{"rank": i + 1, "name": u.first_name, "coins": u.coins, "level": u.level} for i, u in enumerate(users)]
+        return [{"rank": i + 1, "name": u.first_name or "کاربر", "coins": int(u.coins or 0), "level": int(u.level or 1)} for i, u in enumerate(users)]
+    finally:
+        session.close()
+
+
+@app.get("/api/orders/{user_id}")
+async def get_orders(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data, user_id)
+    session = get_session()
+    try:
+        rows = session.query(Purchase).filter(Purchase.user_id == user_id).order_by(Purchase.created_at.desc()).limit(50).all()
+        return [serialize_purchase(p) for p in rows]
+    finally:
+        session.close()
+
+
+@app.get("/api/transactions/{user_id}")
+async def get_transactions(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data, user_id)
+    session = get_session()
+    try:
+        rows = session.query(Purchase).filter(Purchase.user_id == user_id).order_by(Purchase.created_at.desc()).limit(50).all()
+        return [{
+            "id": p.id,
+            "type": "spend" if p.status == "coin_purchase" else "activity",
+            "label": (SHOP_ITEMS.get(int(p.item_id), {}).get("name") if str(p.item_id).isdigit() else None) or str(p.item_id),
+            "amount": -int(p.amount or 0) if p.status == "coin_purchase" else int(p.amount or 0),
+            "date": p.created_at.isoformat() if p.created_at else None,
+        } for p in rows]
     finally:
         session.close()
 
@@ -146,9 +190,9 @@ async def get_shop(init_data: Optional[str] = Header(None, alias="init-data")):
 async def get_games(init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data)
     return [
-        {"id": "snake", "name": "مار بازی", "active": False},
-        {"id": "hokm", "name": "حکم", "active": False},
         {"id": "quiz", "name": "کوییز", "active": True},
+        {"id": "logic", "name": "معمای منطقی", "active": True},
+        {"id": "flag", "name": "حدس پرچم", "active": True},
     ]
 
 
@@ -158,11 +202,7 @@ async def get_user_groups(user_id: int, init_data: Optional[str] = Header(None, 
     session = get_session()
     try:
         groups = session.query(Group).filter(Group.is_active.is_(True)).limit(10).all()
-        return [{
-            "id": g.id,
-            "title": g.title,
-            "settings": {"welcome": g.welcome_enabled, "ai": g.ai_enabled, "antispam": g.antispam_enabled},
-        } for g in groups]
+        return [{"id": g.id, "title": g.title, "settings": {"welcome": g.welcome_enabled, "ai": g.ai_enabled, "antispam": g.antispam_enabled}} for g in groups]
     finally:
         session.close()
 
@@ -182,13 +222,12 @@ async def buy_item(user_id: int, item_id: int, init_data: Optional[str] = Header
     item = SHOP_ITEMS.get(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-
     session = get_session()
     try:
         user = session.query(User).filter(User.id == user_id).with_for_update().first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        if user.coins < item["price"]:
+        if int(user.coins or 0) < item["price"]:
             return {"status": "error", "message": "سکه کافی نداری."}
         user.coins -= item["price"]
         session.add(Purchase(user_id=user.id, item_id=str(item_id), amount=item["price"], status="coin_purchase"))
