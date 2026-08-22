@@ -43,16 +43,11 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if use_search and TAVILY_API_KEY:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                search_res = await client.post(
-                    "https://api.tavily.com/search",
-                    json={"api_key": TAVILY_API_KEY, "query": user_query, "search_depth": "basic"},
-                )
+                search_res = await client.post("https://api.tavily.com/search", json={"api_key": TAVILY_API_KEY, "query": user_query, "search_depth": "basic"})
                 if search_res.is_success:
                     results = search_res.json().get("results", [])
                     if results:
-                        context_text = "\n\nنتایج جستجو:\n" + "\n".join(
-                            f"- {r.get('title','')}: {r.get('content','')}" for r in results[:3]
-                        )
+                        context_text = "\n\nنتایج جستجو:\n" + "\n".join(f"- {r.get('title','')}: {r.get('content','')}" for r in results[:3])
         except Exception as e:
             print(f"Search Error: {e}")
     messages = [{"role": "system", "content": prompt + context_text}]
@@ -66,24 +61,12 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     try:
         async with httpx.AsyncClient(timeout=25.0) as client:
             for model in models:
-                res = await client.post(
-                    f"{GROQ_BASE_URL.rstrip('/')}/chat/completions",
-                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": model, "messages": messages, "temperature": 0.75},
-                )
+                res = await client.post(f"{GROQ_BASE_URL.rstrip('/')}/chat/completions", headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}, json={"model": model, "messages": messages, "temperature": 0.7})
                 if res.is_success:
-                    data = res.json()
-                    content = data.get("choices", [{}])[0].get("message", {}).get("content")
+                    content = res.json().get("choices", [{}])[0].get("message", {}).get("content")
                     if content:
-                        if model != AI_MODEL:
-                            print(f"AI fallback model selected: {model}")
                         return content
-                    continue
-                body = res.text[:500]
-                print(f"AI provider error ({model}):", res.status_code, body)
-                if res.status_code in (400, 404):
-                    continue
-                if res.status_code in (401, 403, 429) or res.status_code >= 500:
+                elif res.status_code not in (400, 404):
                     break
         return None
     except Exception as e:
@@ -92,12 +75,19 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
 
 
 async def get_new_joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    res = await get_ai_response(get_sector_prompt(update.effective_user), "یک جوک فارسی کوتاه و تازه بگو.", use_search=True)
-    await update.effective_message.reply_text(res or "❌ فعلاً جوکم نمیاد!")
+    joke_prompt = get_sector_prompt(update.effective_user) + (
+        "\nبرای جوک، فقط یک جوک فارسی واقعاً قابل‌فهم و دارای منطق طنز بگو. "
+        "جوک باید setup و punchline روشن داشته باشد و برای فارسی‌زبان طبیعی باشد. "
+        "ترجمه تحت‌اللفظی شوخی انگلیسی، بازی با کلمه‌ای که در فارسی معنی ندارد، توضیح دادن جوک بعد از punchline، "
+        "شوخی بی‌ربط یا ساختن جمله‌ای صرفاً برای قافیه ممنوع است. اگر از کیفیت جوک مطمئن نیستی، یک جوک کوتاه روزمره و ساده انتخاب کن. "
+        "بعد از جوک هیچ توضیح، تحلیل یا پرانتز اضافه نکن."
+    )
+    res = await get_ai_response(joke_prompt, "یک جوک فارسی کوتاه، طبیعی، بامزه و منطقی بگو. فقط خود جوک را بنویس.")
+    await update.effective_message.reply_text(res or "❌ فعلاً جوک خوبی گیرم نیومد 😅")
 
 
 async def get_new_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    return await get_ai_response(get_sector_prompt(update.effective_user), "یک معمای فارسی کوتاه همراه پاسخ بگو.", use_search=True)
+    return await get_ai_response(get_sector_prompt(update.effective_user), "یک معمای فارسی کوتاه همراه پاسخ بگو.")
 
 
 async def get_new_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -111,8 +101,7 @@ async def get_motivation(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    prompt = "یک فال حافظ فارسی با ذکر اینکه تعبیر جنبه سرگرمی دارد ارائه کن؛ شعر را فقط اگر مطمئن هستی نقل کن و چیزی جعل نکن."
-    res = await get_ai_response(get_sector_prompt(update.effective_user), prompt, use_search=True)
+    res = await get_ai_response(get_sector_prompt(update.effective_user), "یک فال حافظ فارسی با ذکر اینکه تعبیر جنبه سرگرمی دارد ارائه کن؛ شعر را فقط اگر مطمئن هستی نقل کن و چیزی جعل نکن.", use_search=True)
     await update.effective_message.reply_text(res or "❌ فعلاً فال در دسترس نیست!")
 
 
@@ -123,7 +112,8 @@ def _is_reply_to_this_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 def _sector_called(text: str, bot_username: str) -> bool:
     lower = text.lower().strip()
-    if re.match(r"^(سکتور|sector)(?:\s|$|[:،,:؛;\-])", lower, flags=re.I):
+    # Sector may appear naturally anywhere as a standalone word: «سلام سکتور»، «سکتور خوبی؟».
+    if re.search(r"(?<![\w\u0600-\u06ff])(سکتور|sector)(?![\w\u0600-\u06ff])", lower, flags=re.I):
         return True
     if bot_username and f"@{bot_username.lower()}" in lower:
         return True
@@ -142,11 +132,7 @@ MENU_BUTTONS = {
 
 def _looks_like_menu_button(text: str) -> bool:
     t = text.strip()
-    if t in MENU_BUTTONS:
-        return True
-    if t.startswith("🔙 بازگشت"):
-        return True
-    return False
+    return t in MENU_BUTTONS or t.startswith("🔙 بازگشت")
 
 
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -158,16 +144,13 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     if text.startswith("/") or _looks_like_menu_button(text):
         return
-
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
     username = (context.bot.username or "").lower()
     replied_to_sector = _is_reply_to_this_bot(update, context)
     explicitly_called = _sector_called(text, username)
-    triggered = is_private or explicitly_called or replied_to_sector
-    if not triggered:
+    if not (is_private or explicitly_called or replied_to_sector):
         return
-
     if not is_private:
         session = get_session()
         group = session.query(Group).filter(Group.id == chat_id).first()
@@ -175,10 +158,9 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
         if not enabled:
             return
-
     history = ai_memory.setdefault(chat_id, [])
     prompt = get_sector_prompt(user)
-    query = re.sub(r"^(سکتور|sector)\s*[:,،:؛;\-]?\s*", "", text, flags=re.I).strip() or text
+    query = re.sub(r"(?<![\w\u0600-\u06ff])(سکتور|sector)(?![\w\u0600-\u06ff])", "", text, count=1, flags=re.I).strip(" ،,:؛;-") or text
     await update.effective_message.reply_chat_action("typing")
     response = await get_ai_response(prompt, query, history=history)
     if not response:
