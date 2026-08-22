@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { useTelegram } from './hooks/useTelegram'
 import { useToast } from './hooks/useToast'
 import { api } from './services/api'
-import { MOCK_USER, NAV_ITEMS } from './utils/mock'
+import { NAV_ITEMS } from './utils/mock'
 
 import BottomNav from './components/ui/BottomNav'
 import Toast from './components/ui/Toast'
@@ -16,23 +16,55 @@ import ReferralPage from './pages/ReferralPage'
 import ProfilePage from './pages/ProfilePage'
 import SupportPage from './pages/SupportPage'
 
-// ── App Context ──────────────────────────────────────────────────────
 var AppContext = createContext(null)
 export function useAppContext() { return useContext(AppContext) }
 
-// ── Page registry ───────────────────────────────────────────────────
 var PAGES = {
-  home:     HomePage,
-  shop:     ShopPage,
-  wallet:   WalletPage,
-  games:    GamesPage,
-  orders:   OrdersPage,
+  home: HomePage,
+  shop: ShopPage,
+  wallet: WalletPage,
+  games: GamesPage,
+  orders: OrdersPage,
   referral: ReferralPage,
-  profile:  ProfilePage,
-  support:  SupportPage,
+  profile: ProfilePage,
+  support: SupportPage,
 }
 
 var NAV_KEYS = NAV_ITEMS.map(function(n) { return n.key })
+
+var EMPTY_USER = {
+  id: 0,
+  first_name: '',
+  username: '',
+  coins: 0,
+  bank_balance: 0,
+  loan_balance: 0,
+  xp: 0,
+  level: 1,
+  rank: 0,
+  joined_at: null,
+  achievements: [],
+  orders_count: 0,
+  total_spent: 0,
+  referrals: 0,
+}
+
+function normalizeUser(data) {
+  var d = data || {}
+  return {
+    ...EMPTY_USER,
+    ...d,
+    coins: Number(d.coins || 0),
+    bank_balance: Number(d.bank_balance || 0),
+    loan_balance: Number(d.loan_balance || 0),
+    xp: Number(d.xp || 0),
+    level: Number(d.level || 1),
+    rank: Number(d.rank || 0),
+    orders_count: Number(d.orders_count || 0),
+    total_spent: Number(d.total_spent || 0),
+    referrals: Number(d.referrals || 0),
+  }
+}
 
 export default function App() {
   var telegram = useTelegram()
@@ -44,69 +76,79 @@ export default function App() {
   var toast = toastState.toast
   var showToast = toastState.showToast
 
-  var [page, setPage]         = useState('home')
+  var [page, setPage] = useState('home')
   var [prevPage, setPrevPage] = useState('home')
-  var [dbUser, setDbUser]     = useState(MOCK_USER)
+  var [dbUser, setDbUser] = useState(EMPTY_USER)
   var [bootLoading, setBootLoading] = useState(true)
 
-  // Navigate helper
   var navigate = useCallback(function(to) {
     setPrevPage(page)
     setPage(to)
   }, [page])
 
-  // Telegram BackButton
   useEffect(function() {
     if (!tg) return
     var isMain = NAV_KEYS.indexOf(page) !== -1
+    var onBack = function() { setPage(prevPage || 'home') }
     if (!isMain) {
       tg.BackButton.show()
-      tg.BackButton.onClick(function() {
-        setPage(prevPage || 'home')
-      })
+      tg.BackButton.onClick(onBack)
     } else {
       tg.BackButton.hide()
     }
+    return function() {
+      try { tg.BackButton.offClick(onBack) } catch (_) {}
+    }
   }, [page, prevPage, tg])
 
-  // Initial user load from API — falls back to MOCK_USER if API is down
   useEffect(function() {
-    if (!tgUser) { setBootLoading(false); return }
+    if (!tgUser || !initData) {
+      setBootLoading(false)
+      return
+    }
     api.getUser(tgUser.id, initData).then(function(result) {
       if (result && result.data && result.data.id) {
-        setDbUser(function(prev) { return Object.assign({}, prev, result.data) })
+        setDbUser(normalizeUser(result.data))
+      } else {
+        showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
       }
       setBootLoading(false)
     })
-  }, [tgUser, initData])
+  }, [tgUser, initData, showToast])
 
-  // Unified API caller passed via context
   var apiCall = useCallback(function(method) {
     var args = Array.prototype.slice.call(arguments, 1)
     args.push(initData)
     return api[method].apply(api, args)
   }, [initData])
 
-  // Context value
+  var refreshUser = useCallback(function() {
+    if (!tgUser || !initData) return Promise.resolve(null)
+    return api.getUser(tgUser.id, initData).then(function(result) {
+      if (result && result.data && result.data.id) {
+        var normalized = normalizeUser(result.data)
+        setDbUser(normalized)
+        return normalized
+      }
+      return null
+    })
+  }, [tgUser, initData])
+
   var ctx = {
-    tgUser:   tgUser,
+    tgUser: tgUser,
     initData: initData,
-    dbUser:   dbUser,
+    dbUser: dbUser,
     setDbUser: setDbUser,
-    page:     page,
+    refreshUser: refreshUser,
+    page: page,
     navigate: navigate,
     showToast: showToast,
-    apiCall:  apiCall,
+    apiCall: apiCall,
   }
 
-  // ── Boot loading screen
   if (bootLoading) {
     return (
-      <div style={{
-        height: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        gap: 20, background: 'var(--bg)'
-      }}>
+      <div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20,background:'var(--bg)'}}>
         <div style={{ fontSize: 52 }}>🌐</div>
         <div className="spinner" />
         <div style={{ color: 'var(--muted)', fontSize: 14 }}>SectorLand در حال بارگذاری...</div>
@@ -114,48 +156,28 @@ export default function App() {
     )
   }
 
-  // ── No Telegram context
   if (!tgUser) {
     return (
-      <div style={{
-        height: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        gap: 16, padding: 24, background: 'var(--bg)', textAlign: 'center'
-      }}>
+      <div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,background:'var(--bg)',textAlign:'center'}}>
         <div style={{ fontSize: 56 }}>🔒</div>
         <div style={{ fontWeight: 800, fontSize: 20 }}>فقط داخل تلگرام</div>
         <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.7 }}>
-          لطفاً این اپ رو از داخل تلگرام باز کنید.
-          <br />از طریق بات @SectorLandBot وارد بشید.
+          لطفاً این اپ رو از داخل تلگرام باز کنید.<br />از طریق بات @iSectorlandbot وارد بشید.
         </div>
-        <a href="https://t.me/SectorLandBot"
-          className="btn btn-primary"
-          style={{ textDecoration: 'none', padding: '12px 30px', borderRadius: 12, marginTop: 8, width: 'auto' }}>
-          باز کردن در تلگرام
-        </a>
       </div>
     )
   }
 
-  var PageComponent = PAGES[page] || PAGES['home']
+  var PageComponent = PAGES[page] || PAGES.home
   var showNav = NAV_KEYS.indexOf(page) !== -1
 
   return (
     <AppContext.Provider value={ctx}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-
-        {/* Page */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
-          key={page}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} key={page}>
           <PageComponent />
         </div>
-
-        {/* Bottom Nav — only for main tabs */}
-        {showNav && (
-          <BottomNav page={page} onNavigate={navigate} />
-        )}
-
-        {/* Toast */}
+        {showNav && <BottomNav page={page} onNavigate={navigate} />}
         <Toast toast={toast} />
       </div>
     </AppContext.Provider>
