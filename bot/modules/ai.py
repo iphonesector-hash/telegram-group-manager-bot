@@ -13,15 +13,9 @@ from bot.utils.helpers import is_admin, get_group
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
-# The previous Llama defaults return model_not_found for this Groq account.
-# Use the model already confirmed in production logs as the default.
 AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-20b")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-
-AI_FALLBACK_MODELS = [
-    "openai/gpt-oss-120b",
-]
-
+AI_FALLBACK_MODELS = ["openai/gpt-oss-120b"]
 ai_memory = {}
 
 
@@ -45,7 +39,6 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
         print("AI provider error: GROQ_API_KEY is missing")
         return None
-
     context_text = ""
     if use_search and TAVILY_API_KEY:
         try:
@@ -62,17 +55,14 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
                         )
         except Exception as e:
             print(f"Search Error: {e}")
-
     messages = [{"role": "system", "content": prompt + context_text}]
     if history:
         messages.extend(history[-6:])
     messages.append({"role": "user", "content": user_query})
-
     models = []
     for model in [AI_MODEL, *AI_FALLBACK_MODELS]:
         if model and model not in models:
             models.append(model)
-
     try:
         async with httpx.AsyncClient(timeout=25.0) as client:
             for model in models:
@@ -89,7 +79,6 @@ async def get_ai_response(prompt, user_query, use_search=False, history=None):
                             print(f"AI fallback model selected: {model}")
                         return content
                     continue
-
                 body = res.text[:500]
                 print(f"AI provider error ({model}):", res.status_code, body)
                 if res.status_code in (400, 404):
@@ -129,12 +118,7 @@ async def hafez_fortune(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def _is_reply_to_this_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     reply = update.effective_message.reply_to_message if update.effective_message else None
-    return bool(
-        reply
-        and reply.from_user
-        and context.bot
-        and reply.from_user.id == context.bot.id
-    )
+    return bool(reply and reply.from_user and context.bot and reply.from_user.id == context.bot.id)
 
 
 def _sector_called(text: str, bot_username: str) -> bool:
@@ -146,37 +130,40 @@ def _sector_called(text: str, bot_username: str) -> bool:
     return False
 
 
+MENU_BUTTONS = {
+    "🛡 مدیریت", "👤 حساب کاربری", "🏦 بانک و اقتصاد", "🎮 سرگرمی", "🛠 کاربردی", "⚙️ تنظیمات", "🤖 دستیار هوشمند", "🤝 پشتیبانی",
+    "👤 پروفایل", "🏆 رتبه جهانی", "📜 سوابق اخطار", "💰 موجودی کیف پول", "💰 موجودی سکه", "🎁 هدیه روزانه", "💸 انتقال سکه", "🏦 وام بانکی", "📉 بازپرداخت وام", "🏆 برترین‌های ثروت",
+    "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ", "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه", "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم", "✂️ سنگ کاغذ قیچی", "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه", "🏆 مسابقه سرعت پاسخ",
+    "🌐 مترجم", "🧮 ماشین حساب", "⛅️ هواشناسی", "📅 تاریخ و زمان", "🔒 قفل‌های گروه", "🔒 قفل‌ها", "👋 خوشامدگویی", "📜 قوانین", "📊 آمار گروه", "👤 مدیریت اعضا", "⚙️ تنظیمات گروه", "⚙️ تنظیمات عمومی", "🤖 تنظیمات هوش مصنوعی", "💰 تنظیمات اقتصاد", "🛡 ضد اسپم", "🆕 جلوگیری از ورود ربات", "👤 محدودیت عضو جدید", "⏳ تایید عضو جدید", "📢 گزارش فعالیت",
+    "🔘 فعال/غیرفعال سازی خوشامدگویی", "🔘 فعال/غیرفعال سازی قوانین", "🔙 بازگشت به منوی اصلی", "🔙 بازگشت به سرگرمی", "🔙 بازگشت به مدیریت", "🔙 بازگشت به مدیریت اعضا",
+    "🤝 پیوستن به بازی", "🏁 شروع بازی", "🔄 نوبت بعدی", "🛑 توقف", "جواب معما", "جوابش", "انصراف از بازی"
+}
+
+
+def _looks_like_menu_button(text: str) -> bool:
+    t = text.strip()
+    if t in MENU_BUTTONS:
+        return True
+    if t.startswith("🔙 بازگشت"):
+        return True
+    return False
+
+
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
-
     user = update.effective_user
-    if not user:
+    if not user or user.is_bot:
         return
-
-    # Never react to automated posts or messages sent by other bots.
-    if user.is_bot:
-        return
-
     text = update.message.text.strip()
+    if text.startswith("/") or _looks_like_menu_button(text):
+        return
+
     chat_id = update.effective_chat.id
     is_private = update.effective_chat.type == "private"
-
-    excluded = {
-        "👤 پروفایل", "👤 حساب کاربری", "🎮 سرگرمی", "😂 جوک", "💡 دانستنی", "❓ معما", "📖 داستان", "📜 فال حافظ",
-        "🎭 جرات و حقیقت", "🎮 بازی‌ها", "🎲 تاس", "🪙 پرتاب سکه", "🔢 حدس عدد", "📝 حدس کلمه", "🚩 حدس پرچم",
-        "✂️ سنگ کاغذ قیچی", "⚔️ دوئل", "🧠 تست هوش", "🧩 معمای منطقی", "🎲 بازی شانسی روزانه", "🏆 مسابقه سرعت پاسخ",
-        "🤝 پیوستن به بازی", "🏁 شروع بازی", "🔄 نوبت بعدی", "🛑 توقف", "جواب معما", "جوابش", "انصراف از بازی"
-    }
-    if text in excluded or text.startswith("/"):
-        return
-
     username = (context.bot.username or "").lower()
     replied_to_sector = _is_reply_to_this_bot(update, context)
     explicitly_called = _sector_called(text, username)
-
-    # Private remains conversational. Group AI stays silent unless explicitly
-    # called by name/mention or the user replies to Sector's own message.
     triggered = is_private or explicitly_called or replied_to_sector
     if not triggered:
         return
@@ -197,7 +184,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not response:
         await update.effective_message.reply_text("الان به مدل هوش مصنوعی وصل نیستم 😅")
         raise ApplicationHandlerStop()
-
     history.append({"role": "user", "content": query})
     history.append({"role": "assistant", "content": response})
     del history[:-8]
