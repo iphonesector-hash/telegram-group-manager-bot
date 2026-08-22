@@ -1,15 +1,11 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ApplicationHandlerStop
-from bot.utils.keyboards import (
-    get_main_menu, get_admin_menu, get_user_menu, get_economy_menu,
-    get_entertainment_menu, get_utility_menu, get_settings_menu,
-)
-from bot.utils.helpers import is_admin, get_group, get_reply_text, get_user_badge
+from bot.utils.helpers import is_admin, get_group, get_user_badge
 from bot.database.session import get_session
 from bot.database.models import User
 
 
-def _inline_main():
+def _main():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎮 سرگرمی", callback_data="menu:ent"), InlineKeyboardButton("🛠 کاربردی", callback_data="menu:util")],
         [InlineKeyboardButton("👤 حساب کاربری", callback_data="menu:account"), InlineKeyboardButton("🏦 بانک و اقتصاد", callback_data="menu:economy")],
@@ -18,7 +14,11 @@ def _inline_main():
     ])
 
 
-def _inline_ent():
+def _back():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🔙 منوی اصلی", callback_data="menu:main")]])
+
+
+def _ent():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("😂 جوک", callback_data="act:joke"), InlineKeyboardButton("💡 دانستنی", callback_data="act:fact")],
         [InlineKeyboardButton("❓ معما", callback_data="act:riddle"), InlineKeyboardButton("📖 داستان", callback_data="act:story")],
@@ -28,7 +28,7 @@ def _inline_ent():
     ])
 
 
-def _inline_util():
+def _util():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🌐 مترجم", callback_data="util:translate"), InlineKeyboardButton("🧮 ماشین حساب", callback_data="util:calc")],
         [InlineKeyboardButton("⛅️ هواشناسی", callback_data="util:weather"), InlineKeyboardButton("📅 تاریخ و زمان", callback_data="util:time")],
@@ -36,7 +36,7 @@ def _inline_util():
     ])
 
 
-def _inline_account():
+def _account():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("👤 پروفایل", callback_data="account:profile"), InlineKeyboardButton("🏆 رتبه", callback_data="account:rank")],
         [InlineKeyboardButton("📜 اخطارهای من", callback_data="account:warnings")],
@@ -44,7 +44,7 @@ def _inline_account():
     ])
 
 
-def _inline_economy():
+def _economy():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💰 موجودی", callback_data="eco:coins"), InlineKeyboardButton("🎁 هدیه روزانه", callback_data="eco:daily")],
         [InlineKeyboardButton("🏦 وام ۲۰۰", callback_data="eco:loan"), InlineKeyboardButton("📉 تسویه وام", callback_data="eco:repay")],
@@ -53,25 +53,13 @@ def _inline_economy():
     ])
 
 
-def _inline_admin():
+def _admin():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 آمار گروه", callback_data="admin:stats"), InlineKeyboardButton("🛡 ضد اسپم", callback_data="admin:antispam")],
         [InlineKeyboardButton("🤖 هوش مصنوعی", callback_data="admin:ai"), InlineKeyboardButton("👋 خوشامدگویی", callback_data="admin:welcome")],
         [InlineKeyboardButton("📜 قوانین", callback_data="admin:rules"), InlineKeyboardButton("🆕 جلوگیری از ربات", callback_data="admin:prevent_bots")],
         [InlineKeyboardButton("🔙 منوی اصلی", callback_data="menu:main")],
     ])
-
-
-def _inline_back():
-    return InlineKeyboardMarkup([[InlineKeyboardButton("🔙 منوی اصلی", callback_data="menu:main")]])
-
-
-async def _cleanup_group_button_press(update: Update):
-    if update.effective_chat and update.effective_chat.type != "private" and update.effective_message:
-        try:
-            await update.effective_message.delete()
-        except Exception as e:
-            print(f"[TRACE] panel:cleanup_skip | {e}")
 
 
 def _user_row(update: Update):
@@ -84,15 +72,11 @@ async def _account_text(update: Update, mode: str):
     session, user = _user_row(update)
     if not user:
         session.close()
-        return "❌ هنوز پروفایلی برای شما ثبت نشده. یک پیام در گروه بفرست و دوباره امتحان کن."
+        return "❌ هنوز پروفایلی برای شما ثبت نشده."
     if mode == "profile":
         rank = session.query(User).filter(User.coins > user.coins).count() + 1
         badge = get_user_badge(user)
-        text = (
-            f"⚡ Sector Profile\n━━━━━━━━━━━━\n👤 {update.effective_user.full_name}\n"
-            f"🏅 {badge}\n🌟 سطح: {user.level}\n✨ XP: {user.xp}\n🪙 سکه: {user.coins:,}\n"
-            f"📨 پیام: {user.message_count:,}\n🏆 رتبه: {rank}"
-        )
+        text = f"⚡ Sector Profile\n━━━━━━━━━━━━\n👤 {update.effective_user.full_name}\n🏅 {badge}\n🌟 سطح: {user.level}\n✨ XP: {user.xp}\n🪙 سکه: {user.coins:,}\n📨 پیام: {user.message_count:,}\n🏆 رتبه: {rank}"
     elif mode == "rank":
         total = session.query(User).count()
         wealth = session.query(User).filter(User.coins > user.coins).count() + 1
@@ -104,7 +88,7 @@ async def _account_text(update: Update, mode: str):
             n = session.query(Warning).filter(Warning.user_id == user.id).count()
             text = f"📜 سابقه اخطار\n\n⚠️ تعداد اخطارهای ثبت‌شده: {n}"
         except Exception:
-            text = "📜 سابقه اخطار در حال حاضر در دسترس نیست."
+            text = "📜 سابقه اخطار در دسترس نیست."
     session.close()
     return text
 
@@ -128,11 +112,10 @@ async def _economy_text(update: Update, action: str):
             m = (int(left.total_seconds()) % 3600) // 60
             text = f"⏳ هدیه امروز را گرفتی؛ {h} ساعت و {m} دقیقه دیگه دوباره بیا."
         else:
-            reward = 50
-            user.coins += reward
+            user.coins += 50
             user.last_daily_claim = now
             session.commit()
-            text = f"🎁 +{reward} سکه گرفتی\n👛 موجودی: {user.coins:,}"
+            text = f"🎁 +50 سکه گرفتی\n👛 موجودی: {user.coins:,}"
     elif action == "loan":
         if user.loan_balance > 0:
             text = f"📛 اول وام قبلی را تسویه کن. بدهی: {user.loan_balance:,}"
@@ -159,7 +142,7 @@ async def _economy_text(update: Update, action: str):
     return text
 
 
-async def _toggle_admin(update: Update, attr: str, label: str):
+async def _toggle(update: Update, attr: str, label: str):
     session = get_session()
     group = get_group(session, update.effective_chat.id)
     if not group or not hasattr(group, attr):
@@ -172,160 +155,111 @@ async def _toggle_admin(update: Update, attr: str, label: str):
     return f"{label}: {state}"
 
 
-async def group_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     if not q:
         return
     await q.answer()
     data = q.data or ""
 
-    if data == "menu:main":
-        return await q.edit_message_text("🏠 منوی اصلی SectorBot", reply_markup=_inline_main())
-    if data == "menu:ent":
-        return await q.edit_message_text("🎮 سرگرمی و بازی", reply_markup=_inline_ent())
-    if data == "menu:util":
-        return await q.edit_message_text("🛠 ابزارهای کاربردی", reply_markup=_inline_util())
-    if data == "menu:account":
-        return await q.edit_message_text("👤 حساب کاربری", reply_markup=_inline_account())
-    if data == "menu:economy":
-        return await q.edit_message_text("🏦 بانک و اقتصاد", reply_markup=_inline_economy())
-    if data in ("menu:admin", "menu:settings"):
-        if update.effective_chat.type == "private":
-            return await q.edit_message_text("⚙️ تنظیمات مدیریتی فقط داخل گروه قابل استفاده است.", reply_markup=_inline_back())
-        if not await is_admin(update, context):
-            return await q.answer("این بخش مخصوص مدیران گروه است.", show_alert=True)
-        return await q.edit_message_text("🛡 مدیریت گروه", reply_markup=_inline_admin())
+    if data == "menu:main": return await q.edit_message_text("🏠 منوی اصلی SectorBot", reply_markup=_main())
+    if data == "menu:ent": return await q.edit_message_text("🎮 سرگرمی و بازی", reply_markup=_ent())
+    if data == "menu:util": return await q.edit_message_text("🛠 ابزارهای کاربردی", reply_markup=_util())
+    if data == "menu:account": return await q.edit_message_text("👤 حساب کاربری", reply_markup=_account())
+    if data == "menu:economy": return await q.edit_message_text("🏦 بانک و اقتصاد", reply_markup=_economy())
     if data == "menu:ai":
-        return await q.edit_message_text("🤖 در گروه من را با «سکتور» صدا بزن، منشن کن یا روی پیامم ریپلای کن.", reply_markup=_inline_back())
+        msg = "🤖 همین‌جا هر سوالی داری بپرس." if update.effective_chat.type == "private" else "🤖 در گروه من را با «سکتور» صدا بزن، منشن کن یا روی پیامم ریپلای کن."
+        return await q.edit_message_text(msg, reply_markup=_back())
+    if data in ("menu:admin", "menu:settings"):
+        if update.effective_chat.type == "private": return await q.edit_message_text("⚙️ تنظیمات مدیریتی فقط داخل گروه قابل استفاده است.", reply_markup=_back())
+        if not await is_admin(update, context): return await q.answer("این بخش مخصوص مدیران گروه است.", show_alert=True)
+        return await q.edit_message_text("🛡 مدیریت گروه", reply_markup=_admin())
 
     if data.startswith("account:"):
-        mode = data.split(":", 1)[1]
-        return await q.edit_message_text(await _account_text(update, mode), reply_markup=_inline_account())
+        return await q.edit_message_text(await _account_text(update, data.split(":",1)[1]), reply_markup=_account())
     if data.startswith("eco:"):
-        action = data.split(":", 1)[1]
-        return await q.edit_message_text(await _economy_text(update, action), reply_markup=_inline_economy())
+        return await q.edit_message_text(await _economy_text(update, data.split(":",1)[1]), reply_markup=_economy())
     if data.startswith("admin:"):
-        if update.effective_chat.type == "private" or not await is_admin(update, context):
-            return await q.answer("فقط مدیران گروه", show_alert=True)
-        action = data.split(":", 1)[1]
+        if update.effective_chat.type == "private" or not await is_admin(update, context): return await q.answer("فقط مدیران گروه", show_alert=True)
+        action = data.split(":",1)[1]
         if action == "stats":
             n = await context.bot.get_chat_member_count(update.effective_chat.id)
             text = f"📊 آمار گروه\n\n👥 اعضا: {n}\n🤖 ربات: آنلاین 🟢"
-        elif action == "antispam":
-            text = await _toggle_admin(update, "antispam_enabled", "🛡 ضد اسپم")
-        elif action == "ai":
-            text = await _toggle_admin(update, "ai_enabled", "🤖 هوش مصنوعی")
-        elif action == "welcome":
-            text = await _toggle_admin(update, "welcome_enabled", "👋 خوشامدگویی")
-        elif action == "rules":
-            text = await _toggle_admin(update, "rules_enabled", "📜 قوانین")
-        else:
-            text = await _toggle_admin(update, "prevent_bots", "🆕 جلوگیری از ورود ربات")
-        return await q.edit_message_text(text, reply_markup=_inline_admin())
+        elif action == "antispam": text = await _toggle(update,"antispam_enabled","🛡 ضد اسپم")
+        elif action == "ai": text = await _toggle(update,"ai_enabled","🤖 هوش مصنوعی")
+        elif action == "welcome": text = await _toggle(update,"welcome_enabled","👋 خوشامدگویی")
+        elif action == "rules": text = await _toggle(update,"rules_enabled","📜 قوانین")
+        else: text = await _toggle(update,"prevent_bots","🆕 جلوگیری از ورود ربات")
+        return await q.edit_message_text(text, reply_markup=_admin())
 
     if data.startswith("act:"):
         from bot.modules.ai import get_new_joke, get_new_fact, hafez_fortune
         from bot.modules.entertainment import get_riddle_cmd, get_story_cmd, dice_cmd, coin_cmd
-        action = data.split(":", 1)[1]
+        a = data.split(":",1)[1]
         try:
-            if action == "joke":
-                await get_new_joke(update, context)
-            elif action == "fact":
-                await get_new_fact(update, context)
-            elif action == "riddle":
-                await get_riddle_cmd(update, context)
-            elif action == "story":
-                await get_story_cmd(update, context)
-            elif action == "hafez":
-                await hafez_fortune(update, context)
-            elif action == "dice":
-                await dice_cmd(update, context)
-            elif action == "coin":
-                await coin_cmd(update, context)
+            if a == "joke": await get_new_joke(update,context)
+            elif a == "fact": await get_new_fact(update,context)
+            elif a == "riddle": await get_riddle_cmd(update,context)
+            elif a == "story": await get_story_cmd(update,context)
+            elif a == "hafez": await hafez_fortune(update,context)
+            elif a == "dice": await dice_cmd(update,context)
+            elif a == "coin": await coin_cmd(update,context)
         except ApplicationHandlerStop:
             pass
         return
 
-    if data == "util:translate":
-        return await q.edit_message_text("🌐 برای ترجمه بنویس:\nترجمه: متن موردنظر", reply_markup=_inline_util())
-    if data == "util:calc":
-        return await q.edit_message_text("🧮 عبارت را مستقیم بفرست؛ مثال: 10 + 5", reply_markup=_inline_util())
-    if data == "util:weather":
-        return await q.edit_message_text("⛅️ بنویس: هوای تهران", reply_markup=_inline_util())
+    if data == "util:translate": return await q.edit_message_text("🌐 متن را این‌طور بفرست:\nترجمه: متن موردنظر", reply_markup=_util())
+    if data == "util:calc": return await q.edit_message_text("🧮 عبارت را بفرست؛ مثال: 10 + 5", reply_markup=_util())
+    if data == "util:weather": return await q.edit_message_text("⛅️ بنویس: هوای تهران", reply_markup=_util())
     if data == "util:time":
         import datetime
-        now = datetime.datetime.now()
-        return await q.edit_message_text(f"📅 {now:%Y-%m-%d}\n🕒 {now:%H:%M:%S}", reply_markup=_inline_util())
+        now=datetime.datetime.now()
+        return await q.edit_message_text(f"📅 {now:%Y-%m-%d}\n🕒 {now:%H:%M:%S}", reply_markup=_util())
 
 
-async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def legacy_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_message or not update.effective_message.text:
         return
     text = update.effective_message.text
-    handled = True
-
-    if update.effective_chat.type != "private":
-        await _cleanup_group_button_press(update)
-        mapping = {
-            "🎮 سرگرمی": ("🎮 سرگرمی و بازی", _inline_ent()),
-            "🛠 کاربردی": ("🛠 ابزارهای کاربردی", _inline_util()),
-            "👤 حساب کاربری": ("👤 حساب کاربری", _inline_account()),
-            "🏦 بانک و اقتصاد": ("🏦 بانک و اقتصاد", _inline_economy()),
-            "🔙 بازگشت به منوی اصلی": ("🏠 منوی اصلی SectorBot", _inline_main()),
-        }
-        if text in mapping:
-            title, kb = mapping[text]
-            await context.bot.send_message(update.effective_chat.id, title, reply_markup=kb)
-        elif text in ("🛡 مدیریت", "⚙️ تنظیمات"):
-            if await is_admin(update, context):
-                await context.bot.send_message(update.effective_chat.id, "🛡 مدیریت گروه", reply_markup=_inline_admin())
-            else:
-                await context.bot.send_message(update.effective_chat.id, "❌ این بخش مخصوص مدیران گروه است.")
-        elif text == "🤖 دستیار هوشمند":
-            await context.bot.send_message(update.effective_chat.id, "🤖 من را با «سکتور» صدا بزن، منشن کن یا روی پیامم ریپلای کن.", reply_markup=_inline_main())
+    mapping = {
+        "🎮 سرگرمی": ("🎮 سرگرمی و بازی", _ent()),
+        "🛠 کاربردی": ("🛠 ابزارهای کاربردی", _util()),
+        "👤 حساب کاربری": ("👤 حساب کاربری", _account()),
+        "🏦 بانک و اقتصاد": ("🏦 بانک و اقتصاد", _economy()),
+        "🔙 بازگشت به منوی اصلی": ("🏠 منوی اصلی SectorBot", _main()),
+    }
+    if text in mapping:
+        title,kb = mapping[text]
+        if update.effective_chat.type != "private":
+            try: await update.effective_message.delete()
+            except Exception: pass
+        await context.bot.send_message(update.effective_chat.id,title,reply_markup=kb)
+        raise ApplicationHandlerStop()
+    if text in ("🛡 مدیریت","⚙️ تنظیمات"):
+        if update.effective_chat.type == "private":
+            await context.bot.send_message(update.effective_chat.id,"⚙️ تنظیمات مدیریتی فقط داخل گروه قابل استفاده است.",reply_markup=_back())
+        elif await is_admin(update,context):
+            try: await update.effective_message.delete()
+            except Exception: pass
+            await context.bot.send_message(update.effective_chat.id,"🛡 مدیریت گروه",reply_markup=_admin())
         else:
-            handled = False
-    else:
-        # Private keeps the familiar reply-keyboard flow, but every button is
-        # consumed here so it can never leak into the AI chat handler.
-        if text == "🎮 سرگرمی":
-            await update.effective_message.reply_text("🎮 سرگرمی و بازی", reply_markup=get_entertainment_menu())
-        elif text == "🛠 کاربردی":
-            await update.effective_message.reply_text("🛠 ابزارهای کاربردی", reply_markup=get_utility_menu())
-        elif text == "👤 حساب کاربری":
-            await update.effective_message.reply_text("👤 حساب کاربری", reply_markup=get_user_menu())
-        elif text == "🏦 بانک و اقتصاد":
-            await update.effective_message.reply_text("🏦 بانک و اقتصاد", reply_markup=get_economy_menu())
-        elif text == "🛡 مدیریت":
-            await update.effective_message.reply_text("🛡 مدیریت فقط داخل گروه قابل استفاده است.", reply_markup=get_main_menu())
-        elif text == "⚙️ تنظیمات":
-            await update.effective_message.reply_text("⚙️ تنظیمات", reply_markup=get_settings_menu())
-        elif text == "🤖 دستیار هوشمند":
-            await update.effective_message.reply_text("🤖 همین‌جا هر سوالی داری بپرس؛ در گروه فقط با «سکتور» یا ریپلای فعال می‌شم.", reply_markup=get_main_menu())
-        elif text == "🔙 بازگشت به منوی اصلی":
-            await update.effective_message.reply_text("🏠 منوی اصلی SectorBot", reply_markup=get_main_menu())
-        else:
-            handled = False
-
-    if handled:
+            await context.bot.send_message(update.effective_chat.id,"❌ این بخش مخصوص مدیران گروه است.")
+        raise ApplicationHandlerStop()
+    if text == "🤖 دستیار هوشمند":
+        msg = "🤖 همین‌جا هر سوالی داری بپرس." if update.effective_chat.type == "private" else "🤖 من را با «سکتور» صدا بزن، منشن کن یا روی پیامم ریپلای کن."
+        await context.bot.send_message(update.effective_chat.id,msg,reply_markup=_back())
         raise ApplicationHandlerStop()
 
 
 async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type == "private":
-        reply = await get_reply_text(update.effective_user, "🏠 منوی اصلی SectorBot 2.0\nلطفاً یک بخش را انتخاب کنید:")
-        await update.effective_message.reply_text(reply, reply_markup=get_main_menu(), parse_mode=None)
-    elif await is_admin(update, context):
-        await update.effective_message.reply_text("🏠 منوی اصلی SectorBot", reply_markup=_inline_main())
-    else:
-        await update.effective_message.reply_text("❌ شما دسترسی لازم برای باز کردن پنل را ندارید.")
+    await update.effective_message.reply_text("🏠 منوی اصلی SectorBot", reply_markup=_main())
     raise ApplicationHandlerStop()
 
 
 def get_panel_handlers():
-    nav_regex = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🔙 بازگشت به منوی اصلی)$"
+    nav = "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🔙 بازگشت به منوی اصلی)$"
     return [
         CommandHandler("panel", panel_cmd),
-        CallbackQueryHandler(group_menu_callback, pattern=r"^(menu|act|util|account|eco|admin):"),
-        MessageHandler(filters.TEXT & filters.Regex(nav_regex), menu_navigation_handler),
+        CallbackQueryHandler(menu_callback, pattern=r"^(menu|act|util|account|eco|admin):"),
+        MessageHandler(filters.TEXT & filters.Regex(nav), legacy_button),
     ]
