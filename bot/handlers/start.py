@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
 
-MINI_APP_URL = "https://mini-app-sector.vercel.app"
+MINI_APP_URL = "https://telegram-group-manager-bot-iota.vercel.app"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -30,7 +30,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(
         "🌐 به iSectorLand خوش اومدی ✨\n\n"
-        "از اینجا می‌تونی وارد مینی‌اپ بشی و امکانات حساب، اقتصاد و مدیریت SectorLand رو باز کنی.\n\n"
+        "از اینجا می‌تونی وارد مینی‌اپ مدیریت خود ربات بشی و امکانات حساب، اقتصاد، بازی‌ها و مدیریت SectorLand رو باز کنی.\n\n"
         "💡 در چت خصوصی، دکمه مینی‌اپ به منوی پایین تلگرام هم اضافه می‌شه.",
         reply_markup=keyboard,
     )
