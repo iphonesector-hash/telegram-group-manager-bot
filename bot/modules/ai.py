@@ -13,12 +13,12 @@ from bot.utils.helpers import is_admin, get_group
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
-AI_MODEL = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
+# The previous Llama defaults return model_not_found for this Groq account.
+# Use the model already confirmed in production logs as the default.
+AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-20b")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
 AI_FALLBACK_MODELS = [
-    "llama-3.1-8b-instant",
-    "openai/gpt-oss-20b",
     "openai/gpt-oss-120b",
 ]
 
@@ -155,7 +155,6 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Never react to automated posts or messages sent by other bots.
-    # This prevents Sector from replying to SectorLand NewsBot and creating bot-to-bot chatter.
     if user.is_bot:
         return
 
@@ -176,8 +175,8 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     replied_to_sector = _is_reply_to_this_bot(update, context)
     explicitly_called = _sector_called(text, username)
 
-    # Private chat remains conversational. In groups, Sector stays silent unless
-    # explicitly called by name/mention or the user replies to Sector's own message.
+    # Private remains conversational. Group AI stays silent unless explicitly
+    # called by name/mention or the user replies to Sector's own message.
     triggered = is_private or explicitly_called or replied_to_sector
     if not triggered:
         return
