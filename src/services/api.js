@@ -10,8 +10,9 @@ async function request(endpoint, options, initData) {
         ...(options && options.headers),
       },
     })
-    if (!res.ok) throw new Error('HTTP ' + res.status)
-    return { data: await res.json(), error: null }
+    const payload = await res.json().catch(function() { return null })
+    if (!res.ok) throw new Error((payload && payload.detail) || ('HTTP ' + res.status))
+    return { data: payload, error: null }
   } catch (err) {
     console.warn('[API]', endpoint, err.message)
     return { data: null, error: err.message }
@@ -28,4 +29,12 @@ export const api = {
   getTransactions: function(userId, initData) { return request('/api/transactions/' + userId, {}, initData) },
   getGames: function(initData) { return request('/api/games', {}, initData) },
   getGroups: function(userId, initData) { return request('/api/groups/' + userId, {}, initData) },
+  getBank: function(userId, initData) { return request('/api/bank/' + userId, {}, initData) },
+  bankAction: function(userId, action, amount, initData) {
+    return request('/api/bank/' + userId + '/' + action + '?amount=' + Number(amount || 0), { method: 'POST' }, initData)
+  },
+  getQuiz: function(kind, initData) { return request('/api/quiz?kind=' + encodeURIComponent(kind || 'intel'), {}, initData) },
+  answerQuiz: function(userId, questionId, choice, initData) {
+    return request('/api/quiz/answer/' + userId + '?question_id=' + encodeURIComponent(questionId) + '&choice=' + Number(choice), { method: 'POST' }, initData)
+  },
 }
