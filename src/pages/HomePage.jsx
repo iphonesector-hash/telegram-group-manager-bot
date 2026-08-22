@@ -83,7 +83,7 @@ export default function HomePage() {
       <div className="glass" style={{padding:'12px 16px',marginBottom:8,display:'flex',alignItems:'center',gap:10,borderColor:'rgba(34,216,122,.2)'}}><span style={{fontSize:22}}>🔄</span><span style={{fontSize:13}}>این صفحه مستقیماً با حساب ربات SectorLand همگام است.</span></div>
 
       <div className="sec-title" style={{marginTop:18}}>⚡ دسترسی سریع</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>{quickActions.map(function(item,i){return <button key={i} onClick={item.fn} disabled={item.loading} className="glass btn" style={{flexDirection:'column',padding:'18px 10px',gap:6,border:'1px solid var(--border)',cursor:'pointer',textAlign:'center',opacity:item.loading?.6:1}}><span style={{fontSize:28}}>{item.loading?'⏳':item.icon}</span><span style={{fontWeight:700,fontSize:13}}>{item.label}</span><span style={{fontSize:11,color:'var(--muted)'}}>{item.sub}</span></button>})}</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>{quickActions.map(function(item,i){return <button key={i} onClick={item.fn} disabled={item.loading} className="glass btn" style={{flexDirection:'column',padding:'18px 10px',gap:6,border:'1px solid var(--border)',cursor:'pointer',textAlign:'center',opacity:item.loading ? 0.6 : 1}}><span style={{fontSize:28}}>{item.loading?'⏳':item.icon}</span><span style={{fontWeight:700,fontSize:13}}>{item.label}</span><span style={{fontSize:11,color:'var(--muted)'}}>{item.sub}</span></button>})}</div>
 
       <div className="sec-title">🔥 فروشگاه واقعی</div>
       <div className="scroll-row" style={{marginBottom:20}}>
