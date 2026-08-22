@@ -1,8 +1,7 @@
-import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
 
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://mini-app-sector.vercel.app")
+MINI_APP_URL = "https://mini-app-sector.vercel.app"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
