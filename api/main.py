@@ -1,5 +1,8 @@
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy import text
+import httpx
 import hmac
 import hashlib
 import json
@@ -12,11 +15,15 @@ from urllib.parse import unquote
 from bot.database.session import get_session
 from bot.database.models import User, Group, Purchase
 
-app = FastAPI(title="iSectorLand Unified API", version="3.0")
+app = FastAPI(title="iSectorLand Unified API", version="3.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 MAX_INIT_DATA_AGE = int(os.getenv("TELEGRAM_INIT_DATA_MAX_AGE", "3600"))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+AI_MODEL = os.getenv("AI_MODEL", "llama-3.1-8b-instant")
+AI_FALLBACK_MODELS = ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]
 
 SHOP_ITEMS = {
     1: {"name": "VPN یک ماهه", "price": 1000},
@@ -24,6 +31,10 @@ SHOP_ITEMS = {
     3: {"name": "پک استیکر اختصاصی", "price": 500},
     4: {"name": "لقب سفارشی در گروه", "price": 2000},
 }
+
+
+class RewriteJobRequest(BaseModel):
+    job_id: str
 
 
 def validate_telegram_init_data(init_data: Optional[str]) -> dict:
@@ -77,6 +88,116 @@ def require_user(init_data: Optional[str], requested_user_id: Optional[int] = No
     if requested_user_id is not None and int(user["id"]) != int(requested_user_id):
         raise HTTPException(status_code=403, detail="User mismatch")
     return user
+
+
+@app.post("/api/internal/news-rewrite")
+async def news_rewrite(req: RewriteJobRequest):
+    """One-shot capability bridge: only a fresh pending DB job can invoke Groq."""
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="Groq API key not configured")
+
+    session = get_session()
+    try:
+        claimed = session.execute(
+            text(
+                """
+                update sectorland_ai_rewrite_jobs
+                   set status='processing'
+                 where id=cast(:job_id as uuid)
+                   and status='pending'
+                   and expires_at > now()
+                returning raw_text, topic
+                """
+            ),
+            {"job_id": req.job_id},
+        ).mappings().first()
+        session.commit()
+    except Exception:
+        session.rollback()
+        session.close()
+        raise HTTPException(status_code=404, detail="Invalid or expired rewrite job")
+
+    if not claimed:
+        session.close()
+        raise HTTPException(status_code=404, detail="Invalid or expired rewrite job")
+
+    raw_text = str(claimed["raw_text"])
+    topic = str(claimed["topic"])
+    system_prompt = (
+        "تو ویراستار حرفه‌ای کانال فارسی SectorLand هستی. متن ورودی را بدون جعل اطلاعات، "
+        "به فارسی روان، کوتاه، دقیق و خوش‌خوان بازنویسی کن. لحن متناسب با موضوع باشد. "
+        "تبلیغ، دعوت به کانال منبع، نام کاربری منبع، t.me و لینک تلگرامی منبع را حذف کن. "
+        "اگر لینک رسمی غیرتلگرامیِ خود سرویس/سایت در متن هست و برای کاربر مفید است حفظش کن. "
+        "از تیتر جذاب و ایموجی کم و مرتبط استفاده کن، اما شلوغ و زرد ننویس. "
+        "هیچ ادعای جدیدی که در متن نیست اضافه نکن. فقط متن نهایی پست را برگردان."
+    )
+    user_prompt = f"موضوع: {topic}\n\nمتن خام:\n{raw_text[:6000]}"
+
+    models = []
+    for model in [AI_MODEL, *AI_FALLBACK_MODELS]:
+        if model and model not in models:
+            models.append(model)
+
+    last_error = "AI request failed"
+    output = None
+    used_model = None
+    async with httpx.AsyncClient(timeout=35.0) as client:
+        for model in models:
+            try:
+                response = await client.post(
+                    f"{GROQ_BASE_URL}/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "temperature": 0.35,
+                        "max_tokens": 1000,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                    },
+                )
+                if response.status_code >= 400:
+                    last_error = f"{model}: HTTP {response.status_code}"
+                    continue
+                data = response.json()
+                candidate = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+                if candidate:
+                    output = candidate
+                    used_model = model
+                    break
+            except Exception as exc:
+                last_error = f"{model}: {type(exc).__name__}"
+
+    try:
+        if output:
+            session.execute(
+                text(
+                    """
+                    update sectorland_ai_rewrite_jobs
+                       set status='done', result_text=:result, used_at=now(), error=null
+                     where id=cast(:job_id as uuid)
+                    """
+                ),
+                {"job_id": req.job_id, "result": output},
+            )
+            session.commit()
+            return {"ok": True, "text": output, "model": used_model}
+
+        session.execute(
+            text(
+                """
+                update sectorland_ai_rewrite_jobs
+                   set status='failed', error=:error, used_at=now()
+                 where id=cast(:job_id as uuid)
+                """
+            ),
+            {"job_id": req.job_id, "error": last_error[:500]},
+        )
+        session.commit()
+        raise HTTPException(status_code=502, detail=last_error)
+    finally:
+        session.close()
 
 
 @app.get("/api/user/{user_id}")
