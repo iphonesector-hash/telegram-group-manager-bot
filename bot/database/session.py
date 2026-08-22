@@ -8,32 +8,49 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 engine = None
 SessionLocal = None
 
+PROJECT_REF = "yqefvpuegmpibyupnsjj"
+PROJECT_REGION = "eu-west-1"
+# This project is on the aws-1 pooler cluster. Older Vercel env values pointed
+# to aws-0, which returns tenant/user not found for this project.
+PROJECT_POOLER_CLUSTER = "1"
+
+
+def _pooler_url(url, project_ref: str) -> str:
+    pooled = URL.create(
+        drivername="postgresql+psycopg2",
+        username=f"postgres.{project_ref}",
+        password=url.password,
+        host=f"aws-{PROJECT_POOLER_CLUSTER}-{PROJECT_REGION}.pooler.supabase.com",
+        port=6543,
+        database=url.database or "postgres",
+    )
+    return pooled.render_as_string(hide_password=False)
+
 
 def _normalize_database_url(raw_url: str) -> str:
     if raw_url.startswith("postgres://"):
         raw_url = raw_url.replace("postgres://", "postgresql://", 1)
 
     url = make_url(raw_url)
-    host = url.host or ""
+    host = (url.host or "").lower()
 
-    # Supabase Direct connections are IPv6-first. Vercel serverless may not have
-    # usable IPv6 egress, so transparently route this project through its verified
-    # Supabase transaction pooler while preserving the configured DB password.
+    # Direct Supabase DB URL -> transaction pooler for reliable Vercel egress.
     if host.startswith("db.") and host.endswith(".supabase.co"):
         parts = host.split(".")
-        if len(parts) >= 4:
-            project_ref = parts[1]
-            region = os.getenv("SUPABASE_DB_REGION", "eu-west-1")
-            pooler_cluster = os.getenv("SUPABASE_POOLER_CLUSTER", "1")
-            pooled = URL.create(
-                drivername="postgresql+psycopg2",
-                username=f"postgres.{project_ref}",
-                password=url.password,
-                host=f"aws-{pooler_cluster}-{region}.pooler.supabase.com",
-                port=6543,
-                database=url.database or "postgres",
-            )
-            return pooled.render_as_string(hide_password=False)
+        project_ref = parts[1] if len(parts) >= 4 else PROJECT_REF
+        return _pooler_url(url, project_ref)
+
+    # Repair stale/incorrect Supabase pooler hosts (notably aws-0 from the old
+    # Vercel configuration) while preserving the existing database password.
+    if host.endswith(".pooler.supabase.com"):
+        username = url.username or ""
+        project_ref = PROJECT_REF
+        if username.startswith("postgres.") and len(username.split(".", 1)) == 2:
+            project_ref = username.split(".", 1)[1] or PROJECT_REF
+        expected_host = f"aws-{PROJECT_POOLER_CLUSTER}-{PROJECT_REGION}.pooler.supabase.com"
+        expected_user = f"postgres.{project_ref}"
+        if host != expected_host or username != expected_user or url.port != 6543:
+            return _pooler_url(url, project_ref)
 
     return raw_url
 
