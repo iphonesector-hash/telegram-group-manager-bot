@@ -1,6 +1,7 @@
 import sys
 import os
 from dotenv import load_dotenv
+from telegram import WebAppInfo, MenuButtonWebApp
 from telegram.ext import Application, CommandHandler
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,6 +26,25 @@ from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
+
+
+async def setup_telegram_ui(app: Application):
+    """Register the Mini App as the default private-chat menu button.
+
+    This makes the Telegram-native WebApp launcher available without requiring
+    each user to run /start first. Per-chat /start setup remains as a fallback.
+    """
+    try:
+        await app.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="🚀 SectorLand",
+                web_app=WebAppInfo(url=MINI_APP_URL),
+            )
+        )
+        print("✅ Default SectorLand Mini App menu button registered.")
+    except Exception as exc:
+        print(f"⚠️ Could not register default Mini App menu button: {exc}")
 
 
 def build_application() -> Application:
@@ -32,7 +52,7 @@ def build_application() -> Application:
         raise RuntimeError("BOT_TOKEN is not configured")
 
     init_db()
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(setup_telegram_ui).build()
 
     for h in get_registration_handlers(): app.add_handler(h, group=0)
     for h in get_warning_handlers():
