@@ -2,7 +2,7 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
 
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://telegram-group-manager-bot-iota.vercel.app")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://mini-app-sector.vercel.app")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -25,7 +25,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🚀 باز کردن SectorLand Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
         ])
     else:
-        # Telegram WebApp buttons are intended for private bot chats; in groups use a normal URL button.
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🚀 باز کردن SectorLand Mini App", url=MINI_APP_URL)]
         ])
