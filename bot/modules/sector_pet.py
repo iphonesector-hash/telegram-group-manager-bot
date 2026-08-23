@@ -3,7 +3,7 @@ import datetime
 import random
 import html
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardButtonRequestUsers, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, WebAppInfo
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, ApplicationHandlerStop, filters
 
 from bot.database.session import get_session
@@ -66,6 +66,21 @@ SOCIAL_HELP = (
 )
 
 
+def social_keyboard():
+    icon=sector_emoji_id()
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("تغییر نام",callback_data="sector_ui:rename",style="primary",icon_custom_emoji_id=icon),InlineKeyboardButton("گفت‌وگو",callback_data="sector_ui:talk",style="success")],
+        [InlineKeyboardButton("بازی دونفره",callback_data="sector_ui:play",style="primary"),InlineKeyboardButton("عملیات بانکی",callback_data="sector_ui:rob",style="danger")],
+        [InlineKeyboardButton("بازگشت به سکتور",callback_data="sector_pet",style="primary")],
+    ])
+
+
+def user_picker(action):
+    request_id=9101 if action=="play" else 9102
+    title="یک دوست برای بازی انتخاب کن" if action=="play" else "هدف عملیات را انتخاب کن"
+    return title,ReplyKeyboardMarkup([[KeyboardButton("انتخاب کاربر",request_users=KeyboardButtonRequestUsers(request_id=request_id,user_is_bot=False,max_quantity=1))],[KeyboardButton("لغو عملیات",style="danger")]],resize_keyboard=True,one_time_keyboard=True)
+
+
 def load_pet(user_id):
     session = get_session()
     try:
@@ -94,7 +109,17 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if query.data == "sector_social":
             await query.answer()
-            await query.message.reply_text(SOCIAL_HELP, parse_mode="HTML")
+            await query.edit_message_text("🤝 <b>تعامل‌های سکتور</b>\n\nهمه امکانات را از دکمه‌های زیر اجرا کن.",parse_mode="HTML",reply_markup=social_keyboard())
+            return
+        if query.data.startswith("sector_ui:"):
+            action=query.data.split(":",1)[1];await query.answer()
+            if action in ("rename","talk"):
+                context.user_data["sector_pending"]=action
+                prompt="اسم جدید سکتورت را بفرست:" if action=="rename" else "پیامت را برای سکتور بنویس:"
+                await query.message.reply_text(prompt,reply_markup=ReplyKeyboardMarkup([[KeyboardButton("لغو عملیات",style="danger")]],resize_keyboard=True,one_time_keyboard=True))
+            else:
+                context.user_data["sector_pending"]=action
+                title,markup=user_picker(action);await query.message.reply_text(title,reply_markup=markup)
             return
         if query.data.startswith("sector_action:"):
             result = service.perform_action(session, query.from_user.id, query.data.split(":", 1)[1])
@@ -226,5 +251,68 @@ async def capture_sector_emoji(update: Update, context: ContextTypes.DEFAULT_TYP
     await set_sector_emoji(update,context)
 
 
+async def pending_text(update:Update,context:ContextTypes.DEFAULT_TYPE):
+    action=context.user_data.get("sector_pending")
+    if not action:return
+    text=(update.effective_message.text or "").strip()
+    if text=="لغو عملیات":
+        context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("عملیات لغو شد.",reply_markup=ReplyKeyboardRemove());raise ApplicationHandlerStop()
+    if action=="rename":
+        context.args=[text];context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("نام دریافت شد.",reply_markup=ReplyKeyboardRemove());await sector_name(update,context)
+    elif action=="talk":
+        context.args=[text];context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("سکتور در حال فکرکردن است…",reply_markup=ReplyKeyboardRemove());await sector_talk(update,context)
+
+
+async def selected_user(update:Update,context:ContextTypes.DEFAULT_TYPE):
+    shared=update.effective_message.users_shared
+    action=context.user_data.pop("sector_pending",None)
+    if not shared or action not in ("play","rob") or not shared.users:return
+    target_id=shared.users[0].user_id
+    if target_id==update.effective_user.id:
+        await update.effective_message.reply_text("خودت را نمی‌توانی انتخاب کنی.",reply_markup=ReplyKeyboardRemove());raise ApplicationHandlerStop()
+    session=get_session()
+    try: target=session.query(User).filter(User.id==target_id).first();target_name=target.first_name if target else f"کاربر {target_id}"
+    finally:session.close()
+    context.user_data["sector_selected_target"]={"id":target_id,"name":target_name}
+    await update.effective_message.reply_text(f"✅ {target_name} انتخاب شد.",reply_markup=ReplyKeyboardRemove())
+    await run_selected_action(update,context,action,target_id,target_name)
+
+
+async def run_selected_action(update,context,action,target_id,target_name):
+    attacker_id=update.effective_user.id
+    if action=="play":
+        dice=await update.effective_message.reply_dice(emoji="🎲");session=get_session()
+        try:
+            for uid in (attacker_id,target_id):
+                if not session.query(User.id).filter(User.id==uid).first():continue
+                pet=service.get_or_create_pet(session,uid,lock=True);service.touch_daily_visit(pet);pet.happiness=min(100,int(pet.happiness or 0)+8);pet.xp=int(pet.xp or 0)+5
+            session.commit()
+        finally:session.close()
+        await update.effective_message.reply_text(f"🎉 بازی با {target_name} انجام شد؛ تاس {dice.dice.value} و هر سکتور +۵ XP گرفت.")
+    else:
+        await execute_robbery(update,attacker_id,target_id,target_name)
+    raise ApplicationHandlerStop()
+
+
+async def execute_robbery(update,attacker_id,target_id,target_name):
+    slot=await update.effective_message.reply_dice(emoji="🎰");session=get_session()
+    try:
+        now=datetime.datetime.utcnow();start=now.replace(hour=0,minute=0,second=0,microsecond=0)
+        attempts=session.query(Purchase).filter(Purchase.user_id==attacker_id,Purchase.item_id=="sector_rob_attempt",Purchase.created_at>=start).count()
+        attacker=session.query(User).filter(User.id==attacker_id).with_for_update().first();victim=session.query(User).filter(User.id==target_id).with_for_update().first()
+        if attempts>=3:message="⏳ سهمیه سه عملیات امروزت تمام شده."
+        elif not attacker or not victim:message="هر دو کاربر باید قبلاً /start را زده باشند."
+        elif int(attacker.coins or 0)<25:message="برای عملیات ۲۵ سکه لازم داری."
+        else:
+            attacker.coins=int(attacker.coins or 0)-25;ap=service.get_or_create_pet(session,attacker_id);vp=service.get_or_create_pet(session,target_id)
+            chance=max(18,min(45,28+(int(ap.knowledge or 0)-int(vp.knowledge or 0))//10));success=random.randint(1,100)<=chance and int(victim.bank_balance or 0)>0
+            amount=min(500,max(1,int(victim.bank_balance or 0)*2//100)) if success else 0
+            if success:victim.bank_balance=int(victim.bank_balance or 0)-amount;attacker.coins+=amount;ap.xp=int(ap.xp or 0)+12
+            session.add(Purchase(user_id=attacker_id,item_id="sector_rob_attempt",amount=amount,status="success" if success else "failed",telegram_payment_charge_id=f"sectorrob:{attacker_id}:{target_id}:{now.timestamp()}"));session.commit()
+            message=(f"🎰 عملیات موفق شد؛ {amount} سکه از بانک {target_name} گرفتی!" if success else "🚨 عملیات لو رفت و ۲۵ سکه هزینه از دست رفت.")+f"\nنتیجه: {slot.dice.value} • شانس: {chance}٪"
+        await update.effective_message.reply_text(message)
+    finally:session.close()
+
+
 def get_handlers():
-    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(5147526780)&filters.Entity("custom_emoji"),capture_sector_emoji),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social)")]
+    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(5147526780)&filters.Entity("custom_emoji"),capture_sector_emoji),MessageHandler(filters.StatusUpdate.USERS_SHARED,selected_user),MessageHandler(filters.TEXT&~filters.COMMAND,pending_text),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social|ui:)")]

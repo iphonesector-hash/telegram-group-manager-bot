@@ -47,6 +47,15 @@ async def health():
     }
 
 
+@app.post("/api/miniapp-diagnostic")
+async def miniapp_diagnostic(request: Request):
+    data = await request.json()
+    # No Telegram initData or personal information is logged here.
+    safe = {key: data.get(key) for key in ("bridge", "user", "init", "version", "platform", "phase")}
+    logging.getLogger(__name__).warning("MiniApp diagnostic: %s", safe)
+    return {"ok": True}
+
+
 @app.get("/api/user-photo/{user_id}")
 async def user_photo(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data, user_id)

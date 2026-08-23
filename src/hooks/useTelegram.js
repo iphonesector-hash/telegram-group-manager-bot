@@ -55,6 +55,11 @@ export function useTelegram() {
 
       attempts += 1
       var next = readLaunchData(tg)
+      if (attempts === 1 || next.launchChecked) {
+        try {
+          fetch('https://telegram-group-manager-bot-iota.vercel.app/api/miniapp-diagnostic', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bridge:Boolean(tg),user:Boolean(next.tgUser),init:Boolean(next.initData),version:(tg&&tg.version)||'',platform:(tg&&tg.platform)||'',phase:'launch'})})
+        } catch (_) {}
+      }
       next.launchChecked = Boolean(next.initData && next.tgUser) || attempts >= 18
       setTelegram(next)
 
