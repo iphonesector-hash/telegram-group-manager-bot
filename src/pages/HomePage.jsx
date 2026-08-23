@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Avatar from '../components/ui/Avatar'
+import SectorCelebration from '../components/ui/SectorCelebration'
 import { useAppContext } from '../App'
 
 function formatDate(value) {
@@ -28,6 +29,7 @@ export default function HomePage() {
   var [claiming, setClaiming] = useState(false)
   var [products, setProducts] = useState([])
   var [transactions, setTransactions] = useState([])
+  var [celebration, setCelebration] = useState(null)
 
   var xp = Number(dbUser.xp || 0)
   var level = Number(dbUser.level || 1)
@@ -47,13 +49,29 @@ export default function HomePage() {
 
   function handleClaim() {
     if (claiming || !tgUser) return
+    var beforeLevel = level
+    var beforeRank = rankName(beforeLevel)
     setClaiming(true)
     apiCall('dailyClaim', tgUser.id).then(function(result) {
       var data = result && result.data
       if (data && data.status === 'success') {
+        var reward = Number(data.reward || 0)
         setDbUser(function(u) { return { ...u, coins: Number(data.coins || u.coins || 0) } })
-        showToast('🎁 ' + Number(data.reward || 0) + ' سکه دریافت شد!', 'success')
-        refreshUser()
+        showToast('🎁 ' + reward + ' سکه دریافت شد!', 'success')
+        refreshUser().then(function(updated) {
+          var nextLevel = Number(updated && updated.level || beforeLevel)
+          var nextRank = rankName(nextLevel)
+          var leveled = nextLevel > beforeLevel
+          var ranked = nextRank !== beforeRank
+          setCelebration({
+            title: ranked ? '🏆 RANK UP!' : leveled ? '⚡ LEVEL UP!' : '🎁 هدیه روزانه',
+            text: ranked
+              ? '+' + reward + ' سکه گرفتی و به ' + nextRank + ' رسیدی!'
+              : leveled
+                ? '+' + reward + ' سکه گرفتی و سطح ' + nextLevel + ' شدی!'
+                : '+' + reward + ' سکه مستقیم روی حساب SectorLand ثبت شد.'
+          })
+        })
         apiCall('getTransactions', tgUser.id).then(function(r) {
           setTransactions(Array.isArray(r && r.data) ? r.data.slice(0, 4) : [])
         })
@@ -126,6 +144,7 @@ export default function HomePage() {
         {transactions.length === 0 && <div style={{padding:18,textAlign:'center',color:'var(--muted)',fontSize:12}}>هنوز تراکنشی ثبت نشده.</div>}
         {transactions.map(function(tx,i){var earn=Number(tx.amount)>=0;return <div key={tx.id || i} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',borderBottom:i<transactions.length-1?'1px solid var(--border)':'none'}}><div style={{width:36,height:36,borderRadius:'50%',flexShrink:0,background:earn?'rgba(34,216,122,.12)':'rgba(255,79,106,.12)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{earn?'⬆️':'⬇️'}</div><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{tx.label}</div><div style={{fontSize:11,color:'var(--muted)'}}>{formatDate(tx.date)}</div></div><div style={{fontWeight:700,color:earn?'var(--green)':'var(--red)'}}>{earn?'+':''}{Number(tx.amount || 0).toLocaleString()} 🪙</div></div>})}
       </div>
+      <SectorCelebration open={!!celebration} title={celebration&&celebration.title} text={celebration&&celebration.text} onClose={function(){setCelebration(null)}} />
       <div style={{height:16}} />
     </div>
   )

@@ -9,6 +9,15 @@ function memberSince(value) {
   } catch (_) { return '—' }
 }
 
+function rankName(level) {
+  if (level >= 30) return 'Legend Sector'
+  if (level >= 24) return 'Galaxy Elite'
+  if (level >= 18) return 'Diamond Master'
+  if (level >= 12) return 'Gold Champion'
+  if (level >= 6) return 'Silver Explorer'
+  return 'Bronze Newbie'
+}
+
 export default function ProfilePage() {
   var ctx = useAppContext()
   var tgUser = ctx.tgUser
@@ -21,6 +30,8 @@ export default function ProfilePage() {
     if (refreshUser) refreshUser()
   }, [refreshUser])
 
+  var level = Number(dbUser.level || 1)
+  var rank = rankName(level)
   var menuItems = [
     { icon: '📦', label: 'سفارش‌هام', fn: function() { navigate('orders') } },
     { icon: '👥', label: 'معرفی دوستان', fn: function() { navigate('referral') } },
@@ -40,21 +51,31 @@ export default function ProfilePage() {
 
   return (
     <div className="page fade-up">
-      <div className="glass" style={{padding:24,textAlign:'center',marginBottom:16,background:'linear-gradient(135deg,rgba(79,123,255,.15),rgba(162,89,255,.1))'}}>
+      <div className="glass" style={{padding:0,overflow:'hidden',marginBottom:12,border:'1px solid rgba(112,88,255,.3)'}}>
+        <img src="/assets/sector/brand-hero.webp" alt="Sector profile" style={{display:'block',width:'100%',maxHeight:160,objectFit:'cover'}} />
+      </div>
+
+      <div className="glass" style={{padding:24,textAlign:'center',marginBottom:16,background:'radial-gradient(circle at 50% 0%,rgba(99,77,255,.2),transparent 48%),linear-gradient(135deg,rgba(79,123,255,.14),rgba(162,89,255,.09))'}}>
         <div style={{display:'flex',justifyContent:'center',marginBottom:12}}>
-          <div style={{position:'relative'}}>
-            <Avatar user={tgUser} size={80} />
-            <div style={{position:'absolute',bottom:0,right:0,background:'var(--accent)',borderRadius:'50%',width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,border:'2px solid var(--bg)',fontWeight:700,color:'#fff'}}>{Number(dbUser.level || 1)}</div>
+          <div style={{position:'relative',padding:4,borderRadius:'50%',background:'linear-gradient(135deg,#55d8ff,#7d55ff,#ffc857)',boxShadow:'0 0 28px rgba(113,86,255,.28)'}}>
+            <div style={{borderRadius:'50%',padding:3,background:'var(--bg)'}}><Avatar user={tgUser} size={80} /></div>
+            <div style={{position:'absolute',bottom:1,right:1,background:'linear-gradient(135deg,var(--accent),var(--accent2))',borderRadius:'50%',width:27,height:27,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,border:'2px solid var(--bg)',fontWeight:900,color:'#fff'}}>{level}</div>
           </div>
         </div>
         <div style={{fontWeight:800,fontSize:20,marginBottom:4}}>{tgUser ? tgUser.first_name : (dbUser.first_name || 'کاربر')} {tgUser && tgUser.last_name ? tgUser.last_name : ''}</div>
+        <div style={{fontSize:11,fontWeight:900,color:'#8fdcff',marginBottom:5}}>{rank}</div>
         {dbUser.role && dbUser.role !== 'کاربر' && <div style={{color:'var(--gold)',fontSize:12,fontWeight:900,marginBottom:8}}>👑 {dbUser.role}</div>}
         {tgUser && tgUser.username && <div style={{color:'var(--muted)',fontSize:13,marginBottom:10}}>@{tgUser.username}</div>}
         <div style={{display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap'}}>
-          <span className="badge badge-blue">سطح {Number(dbUser.level || 1).toLocaleString('fa-IR')}</span>
+          <span className="badge badge-blue">سطح {level.toLocaleString('fa-IR')}</span>
           <span className="badge badge-gold">رتبه #{Number(dbUser.rank || 0).toLocaleString('fa-IR')}</span>
           <span className="badge badge-green">عضو از {memberSince(dbUser.joined_at)}</span>
         </div>
+      </div>
+
+      <div className="glass" style={{padding:'11px 11px 9px',marginBottom:14,overflow:'hidden'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><b style={{fontSize:12}}>🏆 مسیر رتبه تو</b><span style={{fontSize:10,color:'var(--gold)'}}>{rank}</span></div>
+        <img src="/assets/sector/rank-badges.webp" alt="Sector rank badges" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:16}}>
@@ -69,10 +90,15 @@ export default function ProfilePage() {
       <div className="glass" style={{padding:14,marginBottom:12}}>
         <div style={{fontSize:11,color:'var(--muted)',fontWeight:800,marginBottom:10}}>🏅 نشان‌های من</div>
         {(!dbUser.achievements||dbUser.achievements.length===0)&&<div style={{fontSize:11,color:'var(--muted)'}}>اولین نشان هنوز باز نشده؛ یک مسابقه را درست جواب بده.</div>}
-        <div style={{display:'flex',gap:8,overflowX:'auto'}}>{(dbUser.achievements||[]).map(function(a){return <div key={a.id||a.title} style={{minWidth:92,textAlign:'center',padding:10,borderRadius:12,background:'rgba(255,255,255,.04)',border:'1px solid var(--border)'}}><div style={{fontSize:25}}>{a.icon||'🏅'}</div><div style={{fontSize:9,fontWeight:800,marginTop:5}}>{a.title||a}</div></div>})}</div>
+        <div style={{display:'flex',gap:8,overflowX:'auto'}}>{(dbUser.achievements||[]).map(function(a){return <div key={a.id||a.title} style={{minWidth:92,textAlign:'center',padding:10,borderRadius:12,background:'linear-gradient(145deg,rgba(112,87,255,.11),rgba(255,255,255,.03))',border:'1px solid rgba(112,87,255,.22)'}}><div style={{fontSize:25}}>{a.icon||'🏅'}</div><div style={{fontSize:9,fontWeight:800,marginTop:5}}>{a.title||a}</div></div>})}</div>
       </div>
 
       <div className="glass" style={{padding:'10px 16px',marginBottom:12}}><div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{fontSize:12,color:'var(--muted)'}}>✅ پاسخ درست</span><b>{Number(dbUser.correct_answers||0).toLocaleString('fa-IR')}</b></div><div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{fontSize:12,color:'var(--muted)'}}>💬 پیام‌های ثبت‌شده</span><b>{Number(dbUser.message_count||0).toLocaleString('fa-IR')}</b></div></div>
+
+      <button onClick={function(){navigate('sectorpet')}} className="glass" style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:0,overflow:'hidden',marginBottom:12,color:'inherit',border:'1px solid rgba(80,215,255,.22)',cursor:'pointer',textAlign:'right'}}>
+        <img src="/assets/sector/mascot-emotions.webp" alt="Sector Koochooloo" loading="lazy" style={{width:118,height:82,objectFit:'cover',objectPosition:'left center'}} />
+        <div style={{flex:1,padding:'10px 0'}}><b style={{fontSize:13}}>🤖 سکتور کوچولوی من</b><div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>مراقبت، بازی، رشد و خاطره‌های مشترک</div></div><span style={{paddingLeft:12,fontSize:20}}>‹</span>
+      </button>
 
       <div className="glass" style={{overflow:'hidden',marginBottom:12}}>
         {menuItems.map(function(item,i){return <button key={i} onClick={item.fn} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 16px',width:'100%',background:'transparent',border:'none',borderBottom:i<menuItems.length-1?'1px solid var(--border)':'none',color:'var(--text)',cursor:'pointer',textAlign:'right',fontFamily:'Vazirmatn, sans-serif'}}><span style={{fontSize:20}}>{item.icon}</span><span style={{flex:1,fontSize:14,fontWeight:500}}>{item.label}</span><span style={{color:'var(--muted)',fontSize:18}}>‹</span></button>})}
