@@ -78,8 +78,8 @@ def _build_details(manifest):
 async def maybe_publish_current_release(bot, force=False):
     """Publish release/current.json to @sectorlandS once per release_id.
 
-    State is persisted in AppSetting so Vercel cold starts and duplicate webhooks
-    cannot create duplicate channel posts.
+    If Telegram cannot fetch/send the release image, the same announcement is
+    delivered as a text-only post so a release is never silently lost.
     """
     manifest = load_release_manifest()
     if not manifest:
@@ -93,23 +93,49 @@ async def maybe_publish_current_release(bot, force=False):
         if not force and state.get("last_release_id") == release_id:
             return {"ok": True, "published": False, "reason": "already_published", "release_id": release_id}
 
-        photo_message = await bot.send_photo(
-            chat_id=channel,
-            photo=_build_photo_url(manifest),
-            caption=_build_caption(manifest),
-            parse_mode="HTML",
-        )
-        details_message = await bot.send_message(
-            chat_id=channel,
-            text=_build_details(manifest),
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-        )
+        caption = _build_caption(manifest)
+        details = _build_details(manifest)
+        photo_message_id = None
+        details_message_id = None
+        fallback_text = False
+        photo_error = ""
+
+        try:
+            photo_message = await bot.send_photo(
+                chat_id=channel,
+                photo=_build_photo_url(manifest),
+                caption=caption,
+                parse_mode="HTML",
+            )
+            photo_message_id = photo_message.message_id
+        except Exception as exc:
+            fallback_text = True
+            photo_error = f"{type(exc).__name__}: {exc}"[:180]
+            LOGGER.warning("Release image failed; using text fallback: %s", photo_error)
+
+        if fallback_text:
+            fallback_message = await bot.send_message(
+                chat_id=channel,
+                text=(caption + "\n\n" + details)[:4000],
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+            details_message_id = fallback_message.message_id
+        else:
+            details_message = await bot.send_message(
+                chat_id=channel,
+                text=details,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+            details_message_id = details_message.message_id
 
         new_state = {
             "last_release_id": release_id,
-            "photo_message_id": photo_message.message_id,
-            "details_message_id": details_message.message_id,
+            "photo_message_id": photo_message_id,
+            "details_message_id": details_message_id,
+            "fallback_text": fallback_text,
+            "photo_error": photo_error,
             "channel": channel,
             "commit_sha": os.getenv("VERCEL_GIT_COMMIT_SHA", ""),
         }
@@ -119,8 +145,8 @@ async def maybe_publish_current_release(bot, force=False):
         else:
             row.value = new_state
         session.commit()
-        LOGGER.info("Published Sector release %s to %s", release_id, channel)
-        return {"ok": True, "published": True, "release_id": release_id, "channel": channel}
+        LOGGER.info("Published Sector release %s to %s (fallback=%s)", release_id, channel, fallback_text)
+        return {"ok": True, "published": True, "release_id": release_id, "channel": channel, "fallback_text": fallback_text}
     except Exception as exc:
         session.rollback()
         LOGGER.warning("Sector release publish failed: %s", exc)
