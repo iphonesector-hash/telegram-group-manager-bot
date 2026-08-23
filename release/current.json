@@ -1,11 +1,15 @@
 {
-  "release_id": "sector-koochooloo-2026-08-23-v1",
-  "version": "1.0",
-  "title": "سکتور کوچولو بزرگ‌تر و زنده‌تر شد",
+  "release_id": "sector-koochooloo-2026-08-23-v1-1",
+  "version": "1.1",
+  "title": "سکتور کوچولو پایدارتر و کامل‌تر شد",
   "channel": "@sectorlandS",
-  "image": "/assets/sector/brand-hero.webp",
-  "summary": "ظاهر جدید، پاداش‌های تصویری، پروفایل حرفه‌ای، Streak و تجربه بهتر روی آیفون و تلگرام اضافه شد.",
+  "image": "/assets/sector/brand-hero.svg",
+  "summary": "تصاویر Mini App پایدار شدند، عضویت اجباری به خود Mini App وصل شد و انتشار آموزش نسخه‌ها برای کانال رسمی آماده است.",
   "features": [
+    "جایگزینی Assetهای خراب WebP با SVGهای سالم و سبک",
+    "بررسی عضویت اجباری @sectorland قبل از ورود به Mini App",
+    "صفحه چه خبر؟ هماهنگ با Release Manifest",
+    "انتشار خودکار آموزش نسخه‌ها در @sectorlandS با fallback متنی",
     "ظاهر گرافیکی اختصاصی Sector و سکتور کوچولو در Mini App",
     "نمایش Mood و واکنش‌های تصویری برای سکتور کوچولو",
     "Streak و milestone های ۳، ۷، ۱۴ و ۳۰ روزه",
@@ -15,10 +19,12 @@
     "بهبود Safe Area، لمس، Motion و سازگاری بهتر با آیفون"
   ],
   "usage": [
-    "ربات @iSectorlandbot را باز کن و عضو @sectorland باش.",
-    "از دکمه sector پایین صفحه وارد Mini App شو.",
+    "ابتدا عضو @sectorland شو.",
+    "ربات @iSectorlandbot را باز کن و از دکمه sector وارد Mini App شو.",
+    "اگر صفحه عضویت دیدی، بعد از Join دوباره گزینه بررسی عضویت را بزن.",
     "در بخش سکتور کوچولو هر روز سر بزن تا Streak و جایزه‌هایت بیشتر شوند.",
-    "ماموریت‌ها، Daily Reward و مسابقه‌ها را انجام بده تا سکه و XP واقعی بگیری.",
-    "از Profile رتبه، Level و Badge های جدیدت را ببین."
+    "ماموریت‌ها، Daily Reward و مسابقه‌ها را انجام بده تا سکه و XP بگیری.",
+    "از Profile رتبه، Level و Badge های جدیدت را ببین.",
+    "برای آموزش هر آپدیت، @sectorlandS را دنبال کن."
   ]
 }
