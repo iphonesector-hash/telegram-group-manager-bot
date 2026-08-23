@@ -27,6 +27,7 @@ from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
 from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers
+from bot.modules.stickers import get_handlers as get_sticker_handlers
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
@@ -86,6 +87,7 @@ def build_application() -> Application:
         if isinstance(h, CommandHandler) or (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=2)
     for h in get_extra_handlers(): app.add_handler(h, group=2)
     for h in get_game_handlers(): app.add_handler(h, group=2)
+    for h in get_sticker_handlers(): app.add_handler(h, group=2)
     for h in get_ai_handlers(): app.add_handler(h, group=3)
     for h in get_welcome_handlers():
         if not isinstance(h, CommandHandler) and not (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=4)
