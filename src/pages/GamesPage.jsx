@@ -30,6 +30,8 @@ export default function GamesPage() {
   var [answering, setAnswering] = useState(false)
   var [result, setResult] = useState(null)
   var [gameFilter, setGameFilter] = useState('همه')
+  var [leagueGame,setLeagueGame] = useState('racer')
+  var [gameLeaders,setGameLeaders] = useState([])
   var [lastGame, setLastGame] = useState(function(){
     try { return window.localStorage.getItem('sectorland_last_game') || '' } catch (_) { return '' }
   })
@@ -100,11 +102,17 @@ export default function GamesPage() {
     })
   }
 
+  useEffect(function(){
+    if(tab!=='league')return
+    apiCall('getGameLeaderboard',leagueGame).then(function(r){setGameLeaders(Array.isArray(r&&r.data)?r.data:[])})
+  },[tab,leagueGame,apiCall])
+
   var tabs = [
     { key: 'games', label: '🎮 بازی‌ها' },
     { key: 'daily', label: '🎁 جایزه روزانه' },
     { key: 'wheel', label: '🎡 گردونه شانس' },
     { key: 'leaderboard', label: '🏆 برترین‌ها' },
+    { key: 'league', label: '🏁 لیگ هفتگی' },
   ]
 
   return (
@@ -159,6 +167,7 @@ export default function GamesPage() {
       {!loading && tab === 'wheel' && <WheelOfFortune />}
 
       {!loading && tab === 'leaderboard' && <div><div className="glass" style={{padding:'12px 16px',marginBottom:12}}><div style={{fontSize:12,color:'var(--muted)'}}>رتبه من</div><div style={{fontWeight:800,fontSize:20}}>#{Number(dbUser.rank||0).toLocaleString('fa-IR')}</div></div>{leaderboard.map(function(u,i){var badge=i===0?'🥇':i===1?'🥈':i===2?'🥉':u.rank;return <div key={i} className="glass" style={{padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:12}}><div style={{width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800}}>{badge}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:'var(--muted)'}}>سطح {u.level}</div></div><div style={{fontWeight:800,color:'var(--gold)',fontSize:14}}>{Number(u.coins||0).toLocaleString()} 🪙</div></div>})}</div>}
+      {!loading && tab === 'league' && <div><div className="glass" style={{padding:16,marginBottom:12}}><div style={{fontWeight:900}}>🏁 لیگ هفتگی SectorLand</div><div style={{fontSize:11,color:'var(--muted)',marginTop:5}}>فقط رکوردهای دارای توکن تأییدشده در جدول قرار می‌گیرند.</div><select value={leagueGame} onChange={function(e){setLeagueGame(e.target.value)}} style={{width:'100%',marginTop:12,padding:11,borderRadius:10,background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)'}}>{ARCADE_GAMES.map(function(g){return <option key={g.id} value={g.id}>{g.name}</option>})}</select></div>{gameLeaders.length===0&&<div className="glass" style={{padding:18,textAlign:'center',color:'var(--muted)'}}>هنوز رکورد تأییدشده‌ای برای این هفته ثبت نشده؛ اولین نفر باش!</div>}{gameLeaders.map(function(u){return <div key={u.rank} className="glass" style={{padding:'12px 14px',marginBottom:8,display:'flex',gap:12,alignItems:'center'}}><b>{u.rank===1?'🥇':u.rank===2?'🥈':u.rank===3?'🥉':'#'+u.rank}</b><span style={{flex:1,fontWeight:700}}>{u.name}</span><span style={{color:'var(--gold)',fontWeight:900}}>{Number(u.score).toLocaleString('fa-IR')}</span></div>})}</div>}
     </div>
   )
 }

@@ -661,7 +661,9 @@ async def create_game_session(user_id:int,game_key:str,request:dict=None,init_da
 
 @app.post("/api/games/score/{user_id}")
 async def submit_game_score(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
-    token=str(request.get("token") or "");score=int(request.get("score") or 0);duration=int(request.get("duration_seconds") or 0)
+    token=str(request.get("token") or "")
+    try: score=int(request.get("score") or 0);duration=int(request.get("duration_seconds") or 0)
+    except (TypeError,ValueError): raise HTTPException(status_code=400,detail="Invalid score payload")
     if not token or len(token)>200: raise HTTPException(status_code=400,detail="Invalid game session")
     session=get_session()
     try:
