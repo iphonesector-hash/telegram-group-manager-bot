@@ -11,6 +11,7 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 from bot.database.session import init_db
 from bot.handlers.start import start_handler
 from bot.handlers.errors import error_handler
+from bot.modules.required_membership import get_handlers as get_required_membership_handlers
 from bot.modules.panel import get_panel_handlers
 from bot.modules.locks import get_handlers as get_lock_handlers
 from bot.modules.welcome import get_welcome_handlers
@@ -31,11 +32,7 @@ MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app
 
 
 async def setup_telegram_ui(app: Application):
-    """Register the Mini App as the default private-chat menu button.
-
-    This makes the Telegram-native WebApp launcher available without requiring
-    each user to run /start first. Per-chat /start setup remains as a fallback.
-    """
+    """Register the Mini App as the default private-chat menu button."""
     try:
         await app.bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
@@ -55,6 +52,10 @@ def build_application() -> Application:
     init_db()
     app = Application.builder().token(BOT_TOKEN).post_init(setup_telegram_ui).build()
 
+    # Group -10 is a private-chat access gate. It runs before every normal bot
+    # feature and stops propagation when the Telegram user is not in @sectorland.
+    for h in get_required_membership_handlers(): app.add_handler(h, group=-10)
+
     for h in get_registration_handlers(): app.add_handler(h, group=0)
     for h in get_warning_handlers():
         if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
@@ -63,8 +64,6 @@ def build_application() -> Application:
 
     app.add_handler(start_handler, group=2)
     for h in get_sector_pet_handlers():
-        # The pending free-text receiver must observe messages before the menu
-        # group, but only stop propagation while an interaction is active.
         app.add_handler(h, group=-1 if getattr(h.callback, "__name__", "") == "pending_text" else 2)
     for h in get_panel_handlers(): app.add_handler(h, group=2)
     for h in get_economy_handlers(): app.add_handler(h, group=2)
