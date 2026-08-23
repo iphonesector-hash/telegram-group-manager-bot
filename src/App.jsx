@@ -127,23 +127,34 @@ export default function App() {
   }, [page, tg, goBack])
 
   useEffect(function() {
+    var active = true
+    var safetyTimer = window.setTimeout(function() {
+      if (active) {
+        setBootLoading(false)
+        showToast('اتصال کند است؛ دوباره تلاش کنید', 'error')
+      }
+    }, 8000)
     if (!tgUser || !initData) {
-      if (!launchChecked) return
+      if (!launchChecked) return function() { active = false; window.clearTimeout(safetyTimer) }
       setBootLoading(false)
-      return
+      window.clearTimeout(safetyTimer)
+      return function() { active = false }
     }
     api.getUser(tgUser.id, initData).then(function(result) {
+      if (!active) return
       if (result && result.data && result.data.id) {
         setDbUser(normalizeUser(result.data))
       } else {
         showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
       }
       setBootLoading(false)
+      window.clearTimeout(safetyTimer)
     })
     api.getUserPhoto(tgUser.id, initData).then(function(photoResult) {
       var photoUrl = photoResult && photoResult.data && photoResult.data.photo_url
       if (photoUrl && telegram.setPhotoUrl) telegram.setPhotoUrl(photoUrl)
     })
+    return function() { active = false; window.clearTimeout(safetyTimer) }
   }, [tgUser, initData, launchChecked, showToast])
 
   var apiCall = useCallback(function(method) {

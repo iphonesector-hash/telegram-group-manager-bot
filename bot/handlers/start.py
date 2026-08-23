@@ -23,6 +23,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"Mini App menu button error: {e}")
 
         keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🤖 سکتور کوچولوی من", callback_data="sector_pet")],
             [InlineKeyboardButton("🚀 باز کردن SectorLand Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
         ])
     else:
@@ -31,6 +32,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # A raw https:// Mini App URL from a group can open without initData and
         # then every authenticated API call correctly fails with 401/403.
         keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🤖 سکتور کوچولو", url="https://t.me/iSectorlandbot?start=sector")],
             [InlineKeyboardButton("🚀 باز کردن Mini App در چت خصوصی", url=BOT_DEEP_LINK)]
         ])
 

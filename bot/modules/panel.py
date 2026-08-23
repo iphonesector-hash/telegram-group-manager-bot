@@ -66,7 +66,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
         await context.bot.send_message(update.effective_chat.id, msg, reply_markup=get_main_menu())
     elif text == "🤖 سکتور کوچولو":
         if private:
-            markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 مراقبت از سکتور",web_app=WebAppInfo(url=MINI_APP_URL))]])
+            markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 مراقبت در چت",callback_data="sector_pet")],[InlineKeyboardButton("🚀 نسخه کامل مینی‌اپ",web_app=WebAppInfo(url=MINI_APP_URL))]])
         else:
             markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 باز کردن در چت خصوصی",url="https://t.me/iSectorlandbot?start=miniapp")]])
         await context.bot.send_message(update.effective_chat.id,"🤖 سکتور کوچولو همراه دیجیتال توئه؛ با سکه، مأموریت، بازی و تمرین کمکش کن رشد کنه و به سکتور همه‌چیزدان تبدیل بشه!",reply_markup=markup)

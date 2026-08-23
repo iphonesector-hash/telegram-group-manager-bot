@@ -56,4 +56,5 @@ export const api = {
   claimMission: function(userId, missionId, initData) { return request('/api/missions/' + userId + '/' + encodeURIComponent(missionId) + '/claim', { method:'POST' }, initData) },
   getSectorPet: function(userId, initData) { return request('/api/sector-pet/' + userId, {}, initData) },
   sectorPetAction: function(userId, action, initData) { return request('/api/sector-pet/' + userId + '/' + encodeURIComponent(action), { method:'POST' }, initData) },
+  renameSectorPet: function(userId, name, initData) { return request('/api/sector-pet/' + userId + '/rename/name', { method:'POST', body:JSON.stringify({name:name}) }, initData) },
 }

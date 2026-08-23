@@ -39,6 +39,9 @@ export function useTelegram() {
     var cancelled = false
     var attempts = 0
     var timer
+    var deadline = window.setTimeout(function() {
+      if (!cancelled) setTelegram(function(current) { return { ...current, launchChecked: true } })
+    }, 1800)
 
     function syncTelegram() {
       if (cancelled) return
@@ -51,13 +54,13 @@ export function useTelegram() {
         } catch (_) {}
       }
 
+      attempts += 1
       var next = readLaunchData(tg)
-      next.launchChecked = Boolean(next.initData && next.tgUser) || attempts >= 29
+      next.launchChecked = Boolean(next.initData && next.tgUser) || attempts >= 18
       setTelegram(next)
 
       // Allow the native Telegram bridge time to hydrate on slower iOS opens.
-      attempts += 1
-      if ((!next.initData || !next.tgUser) && attempts < 30) {
+      if ((!next.initData || !next.tgUser) && attempts < 18) {
         timer = window.setTimeout(syncTelegram, 100)
       }
     }
@@ -66,6 +69,7 @@ export function useTelegram() {
     return function() {
       cancelled = true
       window.clearTimeout(timer)
+      window.clearTimeout(deadline)
     }
   }, [])
 

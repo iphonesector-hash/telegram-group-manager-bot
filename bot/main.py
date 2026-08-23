@@ -24,6 +24,7 @@ from bot.modules.entertainment import get_handlers as get_entertainment_handlers
 from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
+from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
@@ -61,6 +62,7 @@ def build_application() -> Application:
         if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
 
     app.add_handler(start_handler, group=2)
+    for h in get_sector_pet_handlers(): app.add_handler(h, group=2)
     for h in get_panel_handlers(): app.add_handler(h, group=2)
     for h in get_economy_handlers(): app.add_handler(h, group=2)
     for h in get_profile_handlers():

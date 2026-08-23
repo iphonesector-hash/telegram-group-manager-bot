@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint, JSON
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint, JSON
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
 
@@ -159,6 +159,11 @@ class SectorPet(Base):
     happiness = Column(Integer, nullable=False, default=80)
     knowledge = Column(Integer, nullable=False, default=0)
     health = Column(Integer, nullable=False, default=100)
+    streak_days = Column(Integer, nullable=False, default=0)
+    best_streak = Column(Integer, nullable=False, default=0)
+    total_care_days = Column(Integer, nullable=False, default=0)
+    last_visit_date = Column(Date, nullable=True)
+    evolution_tokens = Column(Integer, nullable=False, default=0)
     last_interaction = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)

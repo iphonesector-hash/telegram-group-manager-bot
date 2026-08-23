@@ -19,6 +19,7 @@ from bot.database.session import get_session
 from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral, GameSession, GameScore, SectorPet, SectorPetAction
 from api.quiz_bank import QUIZ_BANK
 from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn, needs_web_search
+from bot.services import sector_pet as sector_service
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -364,34 +365,35 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="
 async def get_sector_pet(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
     require_user(init_data,user_id);session=get_session()
     try:
-        now=datetime.datetime.utcnow();pet=session.query(SectorPet).filter(SectorPet.user_id==user_id).first()
-        if not pet:pet=SectorPet(user_id=user_id,last_interaction=now,created_at=now,updated_at=now);session.add(pet);session.flush()
-        refresh_pet(pet,now);data=serialize_pet(pet);session.commit();return {"pet":data,"actions":[{"id":key,**value} for key,value in PET_ACTIONS.items()]}
+        now=datetime.datetime.utcnow();pet=sector_service.get_or_create_pet(session,user_id,now)
+        sector_service.refresh_pet(pet,now);sector_service.touch_daily_visit(pet,now)
+        data=sector_service.serialize_pet(pet);daily=sector_service.daily_progress(session,user_id,now)
+        session.commit();return {"pet":data,"daily":daily,"actions":[{"id":key,**value} for key,value in sector_service.PET_ACTIONS.items()]}
     finally:session.close()
 
 
 @app.post("/api/sector-pet/{user_id}/{action}")
 async def sector_pet_action(user_id:int,action:str,init_data:Optional[str]=Header(None,alias="init-data")):
-    require_user(init_data,user_id);definition=PET_ACTIONS.get(action)
-    if not definition:raise HTTPException(status_code=404,detail="Action not found")
+    require_user(init_data,user_id)
     session=get_session()
     try:
-        now=datetime.datetime.utcnow();user=session.query(User).filter(User.id==user_id).with_for_update().first()
-        if not user:raise HTTPException(status_code=404,detail="User not found")
-        recent=session.query(SectorPetAction).filter(SectorPetAction.user_id==user_id,SectorPetAction.created_at>=now-datetime.timedelta(minutes=1)).count()
-        if recent>=8:raise HTTPException(status_code=429,detail="سکتور کمی استراحت می‌خواهد؛ یک دقیقه بعد برگرد.")
-        pet=session.query(SectorPet).filter(SectorPet.user_id==user_id).with_for_update().first()
-        if not pet:pet=SectorPet(user_id=user_id,last_interaction=now,created_at=now,updated_at=now);session.add(pet);session.flush()
-        refresh_pet(pet,now);cost=int(definition["cost"])
-        if user.id!=OWNER_ID and int(user.coins or 0)<cost:return {"status":"error","message":"برای این کار سکه کافی نداری."}
-        if user.id!=OWNER_ID:user.coins=int(user.coins or 0)-cost
-        for field in ("energy","happiness","knowledge","health"):
-            setattr(pet,field,max(0,min(100,int(getattr(pet,field) or 0)+int(definition[field]))))
-        pet.xp=int(pet.xp or 0)+int(definition["xp"]);pet.last_interaction=now;pet.updated_at=now
-        session.add(SectorPetAction(user_id=user_id,action=action,coin_cost=0 if user.id==OWNER_ID else cost,xp_gained=definition["xp"],created_at=now));session.commit()
-        return {"status":"success","message":f"{definition['title']} انجام شد؛ سکتور +{definition['xp']} XP گرفت!","coins":int(user.coins or 0),"pet":serialize_pet(pet)}
+        result=sector_service.perform_action(session,user_id,action)
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
     except:
         session.rollback();raise
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/rename/name")
+async def sector_pet_rename(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);name=str(request.get("name") or "").strip()
+    if not name or len(name)>20:raise HTTPException(status_code=400,detail="نام باید بین ۱ تا ۲۰ نویسه باشد.")
+    session=get_session()
+    try:
+        pet=sector_service.get_or_create_pet(session,user_id,lock=True);pet.name=name;session.commit()
+        return {"status":"success","pet":sector_service.serialize_pet(pet),"message":f"نام سکتور به {name} تغییر کرد."}
     finally:session.close()
 
 
