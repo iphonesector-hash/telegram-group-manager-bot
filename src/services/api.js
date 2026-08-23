@@ -23,6 +23,7 @@ async function request(endpoint, options, initData) {
 }
 
 export const api = {
+  getMembership: function(userId, initData) { return request('/api/membership/' + userId, {}, initData) },
   getUser: function(userId, initData) { return request('/api/user/' + userId, {}, initData) },
   getUserPhoto: function(userId, initData) { return request('/api/user-photo/' + userId, {}, initData) },
   dailyClaim: function(userId, initData) { return request('/api/daily-claim/' + userId, { method: 'POST' }, initData) },
