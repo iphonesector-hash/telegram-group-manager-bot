@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:sector": "node scripts/verify-sector.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
