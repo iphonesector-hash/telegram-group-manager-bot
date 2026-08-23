@@ -3,6 +3,7 @@ import { useAppContext } from '../App'
 
 const FIELDS = [
   ['vpn_price_1m','VPN یک‌ماهه','🪙'],['vpn_price_3m','VPN سه‌ماهه','🪙'],['vpn_price_6m','VPN شش‌ماهه','🪙'],
+  ['vip_price_1m','VIP یک‌ماهه','🪙'],
   ['daily_reward','جایزه روزانه','🪙'],['vip_daily_reward','جایزه روزانه VIP','🪙'],
   ['wheel_cooldown_hours','فاصله گردونه','ساعت'],['referral_reward','جایزه دعوت','🪙'],
 ]

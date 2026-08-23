@@ -7,14 +7,16 @@ function decorateProduct(item, index) {
   var name = (item && item.name) || 'محصول SectorLand'
   var price = Number((item && item.price) || 0)
   var isVpn = /vpn/i.test(name)
+  var isVip = /vip/i.test(name)
   return {
     id: id,
     name: name,
     price: price,
-    category: isVpn ? 'vpn' : 'extras',
+    category: isVpn ? 'vpn' : isVip ? 'vip' : 'extras',
     duration: isVpn ? (id === 5 ? '۶ ماه' : id === 2 ? '۳ ماه' : '۱ ماه') : '—',
     features: isVpn
       ? [item.volume || 'حجم اختصاصی', Number(item.devices || 1).toLocaleString('fa-IR') + ' دستگاه', item.region || 'سرور پرسرعت', item.warranty || 'پشتیبانی']
+      : isVip ? (item.benefits || ['مزایای VIP'])
       : ['خرید با سکه حساب ربات', 'ثبت فوری در تاریخچه'],
     badge: index === 0 ? 'پیشنهاد' : '',
   }
@@ -50,6 +52,7 @@ export default function ShopPage() {
   var cats = [
     { key: 'all', label: 'همه 🗂️' },
     { key: 'vpn', label: 'VPN 🔐' },
+    { key: 'vip', label: 'VIP 👑' },
     { key: 'extras', label: 'سایر 🎁' },
   ]
 

@@ -45,6 +45,7 @@ SHOP_ITEMS = {
     3: {"name": "پک استیکر اختصاصی", "price": 8000},
     4: {"name": "لقب سفارشی در گروه", "price": 25000},
     5: {"name": "VPN شش ماهه", "price": 75000, "kind":"vpn", "days":180, "volume":"۳۰۰ گیگابایت", "devices":5, "region":"اروپا", "warranty":"پشتیبانی VIP"},
+    6: {"name": "عضویت VIP یک ماهه", "price": 30000, "kind":"vip", "days":30, "benefits":["گردونه هر ۱۲ ساعت","شانس بیشتر جوایز ویژه","هدیه روزانه بیشتر"]},
 }
 
 WHEEL_PRIZES = [
@@ -65,6 +66,7 @@ SETTING_DEFAULTS = {
     "vpn_price_1m": 15000,
     "vpn_price_3m": 40000,
     "vpn_price_6m": 75000,
+    "vip_price_1m": 30000,
     "daily_reward": 50,
     "vip_daily_reward": 75,
     "wheel_cooldown_hours": 24,
@@ -73,6 +75,7 @@ SETTING_DEFAULTS = {
     "coupon_codes": {"SECTOR10":10,"VIP15":15},
     "config_inventory": [],
     "proxy_inventory": [],
+    "wheel_weights": {"0":24,"1":20,"2":14,"3":8,"4":4,"5":2,"6":3,"7":16},
 }
 ADMIN_SETTING_KEYS = set(SETTING_DEFAULTS)
 WEATHER_LABELS = {0:"صاف",1:"عمدتاً صاف",2:"نیمه‌ابری",3:"ابری",45:"مه‌آلود",48:"مه یخ‌زن",51:"نم‌نم باران",53:"باران ریز",55:"باران شدید",61:"باران",63:"باران متوسط",65:"باران شدید",71:"برف",73:"برف متوسط",75:"برف شدید",80:"رگبار",81:"رگبار متوسط",82:"رگبار شدید",95:"رعدوبرق"}
@@ -98,6 +101,7 @@ def effective_shop_items(session) -> dict:
     items[1]["price"] = int(settings["vpn_price_1m"])
     items[2]["price"] = int(settings["vpn_price_3m"])
     items[5]["price"] = int(settings["vpn_price_6m"])
+    items[6]["price"] = int(settings["vip_price_1m"])
     return items
 
 
@@ -354,12 +358,25 @@ async def spin_wheel(user_id: int, init_data: Optional[str] = Header(None, alias
             Purchase.item_id.like("wheel_%"),
         ).order_by(Purchase.created_at.desc()).first()
         last_time = last.created_at.replace(tzinfo=None) if last and last.created_at and last.created_at.tzinfo else (last.created_at if last else None)
-        cooldown_hours = max(1, min(168, int(load_settings(session)["wheel_cooldown_hours"])))
+        settings=load_settings(session)
+        vip_until = user.vip_until.replace(tzinfo=None) if user.vip_until and user.vip_until.tzinfo else user.vip_until
+        is_vip=bool(vip_until and vip_until>now)
+        cooldown_hours = max(1, min(168, int(settings["wheel_cooldown_hours"])))
+        if is_vip: cooldown_hours=max(1,cooldown_hours//2)
         if last_time and now - last_time < datetime.timedelta(hours=cooldown_hours):
             remaining = datetime.timedelta(hours=cooldown_hours) - (now - last_time)
             return {"status":"error","message":"گردونه امروز را چرخاندی.","remaining_seconds":int(remaining.total_seconds())}
 
-        prize_index = secrets.randbelow(len(WHEEL_PRIZES))
+        configured_weights=settings.get("wheel_weights") or {}
+        weights=[max(0,int(configured_weights.get(str(i),1))) for i in range(len(WHEEL_PRIZES))]
+        if is_vip:
+            weights=[round(weight*1.6) if WHEEL_PRIZES[i]["kind"] in ("config","proxy") or int(WHEEL_PRIZES[i].get("coins",0))>=200 else weight for i,weight in enumerate(weights)]
+        total=sum(weights)
+        if total<=0: weights=[1]*len(WHEEL_PRIZES);total=len(WHEEL_PRIZES)
+        pick=secrets.randbelow(total);prize_index=0
+        for i,weight in enumerate(weights):
+            if pick<weight: prize_index=i;break
+            pick-=weight
         prize = WHEEL_PRIZES[prize_index]
         coins = int(prize.get("coins", 0))
         message = "جایزه به حسابت اضافه شد."
@@ -400,6 +417,16 @@ async def spin_wheel(user_id: int, init_data: Optional[str] = Header(None, alias
         return {"status":"success","index":prize_index,"prize":prize,"coins":int(user.coins or 0),"message":message}
     finally:
         session.close()
+
+
+@app.get("/api/wheel/history/{user_id}")
+async def wheel_history(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        rows=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.item_id.like("wheel_%")).order_by(Purchase.created_at.desc()).limit(10).all()
+        labels={"wheel_coins":"جایزه سکه","wheel_config":"کانفیگ رایگان","wheel_proxy":"پروکسی تلگرام"}
+        return [{"id":p.id,"label":labels.get(str(p.item_id),"جایزه گردونه"),"coins":int(p.amount or 0),"created_at":p.created_at.isoformat() if p.created_at else None} for p in rows]
+    finally:session.close()
 
 
 @app.get("/api/bank/{user_id}")
@@ -587,7 +614,8 @@ async def admin_update_settings(request: dict, init_data:Optional[str]=Header(No
                 value=[str(item).strip()[:2000] for item in value if str(item).strip()]
             elif isinstance(default,dict):
                 if not isinstance(value,dict) or len(value)>100: raise HTTPException(status_code=400,detail=f"{key} must be an object")
-                value={str(k).upper()[:32]:max(0,min(80,int(v))) for k,v in value.items() if str(k).strip() and isinstance(v,(int,float)) and not isinstance(v,bool)}
+                if key=="wheel_weights": value={str(k)[:3]:max(0,min(1000,int(v))) for k,v in value.items() if str(k).isdigit() and isinstance(v,(int,float)) and not isinstance(v,bool)}
+                else: value={str(k).upper()[:32]:max(0,min(80,int(v))) for k,v in value.items() if str(k).strip() and isinstance(v,(int,float)) and not isinstance(v,bool)}
             else:
                 if isinstance(value,bool) or not isinstance(value,(int,float)): raise HTTPException(status_code=400,detail=f"{key} must be numeric")
                 value=int(value)
@@ -650,6 +678,11 @@ async def buy_item(user_id:int,item_id:int,coupon_code:str="",init_data:Optional
         metadata={key:item[key] for key in ("kind","days","volume","devices","region","warranty") if key in item}
         metadata.update({"original_price":original_price,"discount_percent":discount,"coupon":coupon or None})
         order=Order(user_id=user.id,item_key=str(item_id),item_name=item["name"],price=final_price,status="active" if item.get("kind")=="vpn" else "registered",created_at=now,expires_at=expires_at,metadata_json=metadata)
+        if item.get("kind")=="vip":
+            current_vip=user.vip_until.replace(tzinfo=None) if user.vip_until and user.vip_until.tzinfo else user.vip_until
+            vip_base=current_vip if current_vip and current_vip>now else now
+            user.vip_until=vip_base+datetime.timedelta(days=int(item["days"]))
+            order.status="active"
         session.add(order)
         session.add(Purchase(user_id=user.id,item_id=str(item_id),amount=final_price,status="coin_purchase"))
         session.commit()

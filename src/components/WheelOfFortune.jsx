@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { WHEEL_PRIZES, WHEEL_COLORS } from '../utils/mock'
 import { useAppContext } from '../App'
 
@@ -7,10 +7,14 @@ export default function WheelOfFortune() {
   var [rotation, setRotation] = useState(0)
   var [spinning, setSpinning] = useState(false)
   var [lastPrize, setLastPrize] = useState(null)
+  var [history,setHistory] = useState([])
   var slice = 360 / WHEEL_PRIZES.length
   var gradient = WHEEL_COLORS.map(function(color, i) {
     return color + ' ' + (i * slice) + 'deg ' + ((i + 1) * slice) + 'deg'
   }).join(',')
+
+  function loadHistory(){if(ctx.tgUser)ctx.apiCall('getWheelHistory',ctx.tgUser.id).then(function(r){setHistory(Array.isArray(r&&r.data)?r.data:[])})}
+  useEffect(loadHistory,[ctx.tgUser,ctx.apiCall])
 
   function spin() {
     if (spinning || !ctx.tgUser) return
@@ -31,6 +35,7 @@ export default function WheelOfFortune() {
         setSpinning(false)
         if (data.coins != null) ctx.setDbUser(function(u) { return { ...u, coins:Number(data.coins) } })
         ctx.showToast('🎉 برندهٔ ' + data.prize.label + ' شدی!', 'success')
+        loadHistory()
       }, 4200)
     })
   }
@@ -46,9 +51,10 @@ export default function WheelOfFortune() {
         </div>
       </div>
       <div style={{fontWeight:800,fontSize:18,marginTop:22}}>گردونهٔ شانس روزانه</div>
-      <div style={{fontSize:12,color:'var(--muted)',lineHeight:1.8,margin:'6px 0 16px'}}>هر ۲۴ ساعت یک‌بار؛ جایزه شامل سکه، کانفیگ رایگان یا پروکسی تلگرام است.</div>
+      <div style={{fontSize:12,color:'var(--muted)',lineHeight:1.8,margin:'6px 0 16px'}}>هر ۲۴ ساعت یک‌بار؛ کاربران VIP هر ۱۲ ساعت و با شانس بیشتر جوایز ویژه.</div>
       {lastPrize && <div className="badge badge-gold" style={{marginBottom:12,fontSize:13}}>🎉 {lastPrize.label}</div>}
       <button className="btn btn-gold" onClick={spin} disabled={spinning} style={{width:'100%',padding:13}}>{spinning?'⏳ در حال چرخش...':'🎡 بچرخون'}</button>
+      {history.length>0&&<div style={{marginTop:18,textAlign:'right'}}><div style={{fontSize:11,fontWeight:800,marginBottom:8}}>🕘 آخرین بردهای من</div>{history.slice(0,5).map(function(item){return <div key={item.id} style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--muted)',padding:'7px 0',borderTop:'1px solid var(--border)'}}><span>{item.coins?item.coins+' سکه':item.label}</span><span>{item.created_at?new Date(item.created_at).toLocaleDateString('fa-IR'):'—'}</span></div>})}</div>}
     </div>
   )
 }
