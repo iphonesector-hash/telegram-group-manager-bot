@@ -16,7 +16,7 @@ from urllib.parse import unquote
 from sqlalchemy import func
 
 from bot.database.session import get_session
-from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral, GameSession, GameScore, SectorPet, SectorPetAction
+from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral, GameSession, GameScore, SectorPet, SectorPetAction, SectorClan, SectorClanMember
 from api.quiz_bank import QUIZ_BANK
 from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn, needs_web_search
 from bot.services import sector_pet as sector_service
@@ -368,7 +368,9 @@ async def get_sector_pet(user_id:int,init_data:Optional[str]=Header(None,alias="
         now=datetime.datetime.utcnow();pet=sector_service.get_or_create_pet(session,user_id,now)
         sector_service.refresh_pet(pet,now);sector_service.touch_daily_visit(pet,now)
         data=sector_service.serialize_pet(pet);daily=sector_service.daily_progress(session,user_id,now)
-        session.commit();return {"pet":data,"daily":daily,"actions":[{"id":key,**value} for key,value in sector_service.PET_ACTIONS.items()]}
+        memories=sector_service.list_memories(session,user_id);achievements=sector_service.pet_achievements(session,pet)
+        membership=session.query(SectorClanMember).filter(SectorClanMember.user_id==user_id).first();clan=session.query(SectorClan).filter(SectorClan.id==membership.clan_id).first() if membership else None
+        session.commit();return {"pet":data,"daily":daily,"actions":[{"id":key,**value} for key,value in sector_service.PET_ACTIONS.items()],"memories":memories,"achievements":achievements,"clan":{"id":clan.id,"name":clan.name,"xp":int(clan.xp or 0),"contribution":int(membership.contribution or 0)} if clan else None,"evolution_paths":sector_service.EVOLUTION_PATHS,"cosmetics":sector_service.COSMETICS,"jobs":sector_service.JOBS,"story":sector_service.STORY_CHAPTERS.get(data["story_chapter"])}
     finally:session.close()
 
 
@@ -416,6 +418,10 @@ async def sector_pet_talk(user_id:int,request:dict,init_data:Optional[str]=Heade
     response=await get_ai_response(prompt,message,history=history)
     if not response:raise HTTPException(status_code=503,detail="سکتور کوچولو فعلاً خواب‌آلود است؛ کمی بعد دوباره صدایش کن.")
     save_ai_turn(user_id,-user_id,message,response)
+    memory_session=get_session()
+    try:
+        sector_service.remember(memory_session,user_id,"chat",f"گفت‌وگو: {message[:55]}",response[:220],2);memory_session.commit()
+    finally:memory_session.close()
     return {"status":"success","response":response[:2000],"pet":data}
 
 
@@ -442,6 +448,134 @@ async def sector_pet_minigame(user_id:int,game_key:str,request:dict,init_data:Op
         return result
     except:
         session.rollback();raise
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/evolution/{path_key}")
+async def sector_pet_evolution(user_id:int,path_key:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        result=sector_service.choose_evolution(session,user_id,path_key)
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/cosmetic/{item_key}")
+async def sector_pet_cosmetic(user_id:int,item_key:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        result=sector_service.buy_cosmetic(session,user_id,item_key)
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/story/advance")
+async def sector_pet_story(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        now=datetime.datetime.utcnow();start=now.replace(hour=0,minute=0,second=0,microsecond=0)
+        used=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.item_id=="sector_story",Purchase.created_at>=start).count()
+        if used>=3:return {"status":"error","message":"سه حرکت داستانی امروز انجام شده؛ فردا ادامه بده."}
+        result=sector_service.story_action(session,user_id);session.add(Purchase(user_id=user_id,item_id="sector_story",amount=0,status="story",telegram_payment_charge_id=f"story:{user_id}:{now.timestamp()}"));session.commit();return result
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/job/{job_key}")
+async def sector_pet_job(user_id:int,job_key:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        result=sector_service.job_action(session,user_id,None if job_key=="claim" else job_key)
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/social/{action}")
+async def sector_pet_social(user_id:int,action:str,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);target_text=str(request.get("target") or "").strip().lstrip("@")
+    session=get_session()
+    try:
+        target=session.query(User).filter(User.username.ilike(target_text)).first() if target_text else None
+        if not target:return {"status":"error","message":"نام کاربری مقصد پیدا نشد؛ باید قبلاً /start زده باشد."}
+        result=sector_service.social_action(session,user_id,target.id,action)
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/notifications/{enabled}")
+async def sector_pet_notifications(user_id:int,enabled:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        pet=sector_service.get_or_create_pet(session,user_id,lock=True);pet.notifications_enabled=bool(enabled);session.commit();return {"status":"success","message":"اعلان‌های سکتور فعال شد." if enabled else "اعلان‌های سکتور خاموش شد.","pet":sector_service.serialize_pet(pet)}
+    finally:session.close()
+
+
+@app.get("/api/sector-leaderboard")
+async def sector_leaderboard(init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data);session=get_session()
+    try:
+        rows=session.query(SectorPet,User).join(User,User.id==SectorPet.user_id).order_by(SectorPet.xp.desc()).limit(30).all()
+        return [{"rank":i+1,"name":pet.name,"owner":user.first_name,"level":sector_service.level_from_xp(pet.xp),"xp":int(pet.xp or 0),"path":pet.evolution_path} for i,(pet,user) in enumerate(rows)]
+    finally:session.close()
+
+
+@app.post("/api/sector-clan/{user_id}/{action}")
+async def sector_clan(user_id:int,action:str,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);name=str(request.get("name") or "").strip()[:32];session=get_session()
+    try:
+        if session.query(SectorClanMember.id).filter(SectorClanMember.user_id==user_id).first():return {"status":"error","message":"قبلاً عضو یک تیم هستی."}
+        if action=="create":
+            if not name:return {"status":"error","message":"نام تیم را وارد کن."}
+            if session.query(SectorClan.id).filter(SectorClan.name.ilike(name)).first():return {"status":"error","message":"این نام قبلاً استفاده شده."}
+            clan=SectorClan(name=name,owner_id=user_id);session.add(clan);session.flush()
+        elif action=="join":
+            clan=session.query(SectorClan).filter(SectorClan.name.ilike(name)).first()
+            if not clan:return {"status":"error","message":"تیم پیدا نشد."}
+        else:return {"status":"error","message":"عملیات تیم نامعتبر است."}
+        session.add(SectorClanMember(clan_id=clan.id,user_id=user_id));session.commit();return {"status":"success","message":f"به تیم {clan.name} پیوستی.","clan":{"id":clan.id,"name":clan.name,"xp":int(clan.xp or 0)}}
+    finally:session.close()
+
+
+@app.get("/api/sector-admin/{user_id}")
+async def sector_admin(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id)
+    if user_id!=OWNER_ID:raise HTTPException(status_code=403,detail="فقط فرمانده به این بخش دسترسی دارد.")
+    session=get_session()
+    try:
+        row=session.query(AppSetting).filter(AppSetting.key=="sector_live_event").first()
+        return {"pets":session.query(SectorPet).count(),"active_today":session.query(SectorPet).filter(SectorPet.last_visit_date==datetime.datetime.utcnow().date()).count(),"event":row.value if row else {"title":"ماجراجویی ستاره‌ای","reward":100,"active":True}}
+    finally:session.close()
+
+
+@app.post("/api/sector-admin/{user_id}")
+async def update_sector_admin(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id)
+    if user_id!=OWNER_ID:raise HTTPException(status_code=403,detail="فقط فرمانده به این بخش دسترسی دارد.")
+    event={"title":str(request.get("title") or "رویداد سکتور")[:80],"reward":max(0,min(10000,int(request.get("reward") or 0))),"active":bool(request.get("active",True))}
+    session=get_session()
+    try:
+        row=session.query(AppSetting).filter(AppSetting.key=="sector_live_event").first()
+        if row:row.value=event
+        else:session.add(AppSetting(key="sector_live_event",value=event))
+        session.commit();return {"status":"success","message":"رویداد سکتور به‌روزرسانی شد.","event":event}
+    finally:session.close()
+
+
+@app.post("/api/sector-admin/{user_id}/gift")
+async def sector_admin_gift(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id)
+    if user_id!=OWNER_ID:raise HTTPException(status_code=403,detail="فقط فرمانده به این بخش دسترسی دارد.")
+    amount=max(1,min(1000,int(request.get("amount") or 0)));session=get_session()
+    try:
+        updated=session.query(User).filter(User.id.in_(session.query(SectorPet.user_id))).update({User.coins:User.coins+amount},synchronize_session=False)
+        session.add(Purchase(user_id=user_id,item_id="sector_commander_gift",amount=amount,status=f"gifted:{updated}",telegram_payment_charge_id=f"sector-gift:{datetime.datetime.utcnow().timestamp()}"));session.commit();return {"status":"success","message":f"برای {updated} سکتور، {amount} سکه فرستاده شد."}
     finally:session.close()
 
 

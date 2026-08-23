@@ -2,7 +2,7 @@ import datetime
 import math
 import random
 
-from bot.database.models import SectorPet, SectorPetAction, SectorPetGame, User
+from bot.database.models import SectorPet, SectorPetAction, SectorPetGame, SectorPetMemory, SectorPetSocial, User
 from bot.utils.helpers import OWNER_ID
 
 
@@ -22,6 +22,34 @@ ROOM_ITEMS = {
     "game_console": {"title": "کنسول بازی", "icon": "🕹️", "cost": 900, "level": 5},
     "space_window": {"title": "پنجره فضایی", "icon": "🪐", "cost": 1800, "level": 10},
     "ai_core": {"title": "هسته هوشمند", "icon": "🔮", "cost": 4000, "level": 20},
+}
+
+EVOLUTION_PATHS={
+    "genius":{"title":"نابغه","icon":"🧠","level":10,"perk":"یادگیری و دانش بیشتر"},
+    "warrior":{"title":"جنگجو","icon":"⚔️","level":10,"perk":"قدرت بیشتر در رقابت"},
+    "merchant":{"title":"تاجر","icon":"💰","level":10,"perk":"درآمد و پاداش اقتصادی"},
+    "shadow":{"title":"سایه","icon":"🕵️","level":10,"perk":"مهارت عملیات مخفی"},
+    "companion":{"title":"همراه","icon":"💙","level":10,"perk":"رابطه و شادی بیشتر"},
+    "gamer":{"title":"گیمر","icon":"🎮","level":10,"perk":"پاداش بازی بیشتر"},
+}
+COSMETICS={
+    "blue_shell":{"title":"بدنه آبی","icon":"🔵","cost":700,"slot":"body"},
+    "gold_shell":{"title":"بدنه طلایی","icon":"🟡","cost":2500,"slot":"body"},
+    "captain_hat":{"title":"کلاه فرمانده","icon":"🧢","cost":1200,"slot":"head"},
+    "neon_wings":{"title":"بال نئونی","icon":"🪽","cost":3500,"slot":"back"},
+    "plasma_tool":{"title":"ابزار پلاسما","icon":"⚔️","cost":2800,"slot":"hand"},
+}
+JOBS={
+    "coder":{"title":"برنامه‌نویس","icon":"💻","hours":4,"reward":140,"xp":25},
+    "scientist":{"title":"دانشمند","icon":"🔬","hours":6,"reward":210,"xp":35},
+    "astronaut":{"title":"فضانورد","icon":"🚀","hours":8,"reward":320,"xp":45},
+    "repairer":{"title":"تعمیرکار","icon":"🔧","hours":3,"reward":100,"xp":18},
+}
+STORY_CHAPTERS={
+    1:{"title":"سیگنال گمشده","target":5,"text":"یک پیام ضعیف از رباتی گمشده در مدار دریافت شده."},
+    2:{"title":"تعمیر سفینه","target":8,"text":"برای رسیدن به منبع پیام باید سفینه را تعمیر کنیم."},
+    3:{"title":"ویروس تاریکی","target":12,"text":"یک ویروس ناشناس به هسته شهر ربات‌ها حمله کرده است."},
+    4:{"title":"آزمایشگاه ستاره‌ای","target":15,"text":"وقت ساخت پایگاه دائمی سکتور فرا رسیده است."},
 }
 
 
@@ -62,6 +90,7 @@ def get_or_create_pet(session, user_id: int, now=None, lock=False):
         pet = SectorPet(user_id=user_id, last_interaction=now, created_at=now, updated_at=now)
         session.add(pet)
         session.flush()
+        remember(session,user_id,"first_day","اولین دیدار","روزی که سکتور کوچولو برای اولین بار بیدار شد.",5)
     return pet
 
 
@@ -138,6 +167,12 @@ def serialize_pet(pet: SectorPet):
         "streak_days": int(pet.streak_days or 0), "best_streak": int(pet.best_streak or 0),
         "total_care_days": care_days, "evolution_tokens": int(pet.evolution_tokens or 0),
         "stage": stage_for(level, care_days),
+        "evolution_path": pet.evolution_path,
+        "evolution_path_info": EVOLUTION_PATHS.get(pet.evolution_path),
+        "appearance": pet.appearance or {},
+        "story_chapter": int(pet.story_chapter or 1), "story_progress": int(pet.story_progress or 0),
+        "job": pet.job, "job_started_at": pet.job_started_at.isoformat() if pet.job_started_at else None,
+        "notifications_enabled": bool(pet.notifications_enabled),
     }
 
 
@@ -168,6 +203,8 @@ def perform_action(session, user_id: int, action: str, now=None):
         setattr(pet, field, max(0, min(100, int(current if current is not None else 80) + delta)))
     pet.sleeping = action == "sleep"
     pet.xp = int(pet.xp or 0) + gained_xp
+    personality_points={"play":"بازیگوش","learn":"دانشمند","train":"ماجراجو","repair":"مهربان","feed":"مهربان","sleep":"آرام"}
+    if action in personality_points:pet.personality=personality_points[action]
     pet.last_interaction = now
     pet.updated_at = now
     session.add(SectorPetAction(user_id=user_id, action=action, coin_cost=0 if user_id == OWNER_ID else cost, xp_gained=gained_xp, created_at=now))
@@ -184,6 +221,91 @@ def perform_action(session, user_id: int, action: str, now=None):
     }
     voice = random.choice(reactions.get(action, ["خیلی بهتر شدم!"]))
     return {"status": "success", "message": f"{pet.name}: {voice}  +{gained_xp} XP", "coins": int(user.coins or 0), "pet": serialize_pet(pet), "daily": daily_progress(session, user_id, now)}
+
+
+def remember(session,user_id:int,kind:str,title:str,detail:str="",importance:int=1):
+    row=SectorPetMemory(user_id=user_id,kind=kind,title=title[:120],detail=detail[:500],importance=max(1,min(5,importance)))
+    session.add(row);return row
+
+
+def list_memories(session,user_id:int,limit=30):
+    rows=session.query(SectorPetMemory).filter(SectorPetMemory.user_id==user_id).order_by(SectorPetMemory.importance.desc(),SectorPetMemory.created_at.desc()).limit(limit).all()
+    return [{"id":r.id,"kind":r.kind,"title":r.title,"detail":r.detail,"importance":r.importance,"created_at":r.created_at.isoformat()} for r in rows]
+
+
+def pet_achievements(session,pet:SectorPet):
+    games=session.query(SectorPetGame).filter(SectorPetGame.user_id==pet.user_id).count();memories=session.query(SectorPetMemory).filter(SectorPetMemory.user_id==pet.user_id).count();social=session.query(SectorPetSocial).filter(SectorPetSocial.actor_id==pet.user_id).count()
+    checks=[("first_week","🌱","یک هفته همراهی",int(pet.total_care_days or 0)>=7),("month","🔥","۳۰ روز مراقبت",int(pet.total_care_days or 0)>=30),("gamer","🎮","۲۰ بازی",games>=20),("social","🤝","۱۰ تعامل",social>=10),("memory","📔","۱۰ خاطره",memories>=10),("evolved","🧬","انتخاب مسیر",bool(pet.evolution_path))]
+    return [{"id":key,"icon":icon,"title":title} for key,icon,title,ok in checks if ok]
+
+
+def choose_evolution(session,user_id:int,path_key:str):
+    path=EVOLUTION_PATHS.get(path_key);pet=get_or_create_pet(session,user_id,lock=True)
+    if not path:return {"status":"error","message":"این مسیر وجود ندارد."}
+    if level_from_xp(pet.xp)<path["level"]:return {"status":"error","message":f"انتخاب مسیر از سطح {path['level']} آزاد می‌شود."}
+    if pet.evolution_path:return {"status":"error","message":"مسیر تکامل قبلاً انتخاب شده و دائمی است."}
+    pet.evolution_path=path_key;pet.xp=int(pet.xp or 0)+100;remember(session,user_id,"evolution",f"انتخاب مسیر {path['title']}",path["perk"],5)
+    return {"status":"success","message":f"مسیر {path['icon']} {path['title']} انتخاب شد!","pet":serialize_pet(pet)}
+
+
+def buy_cosmetic(session,user_id:int,item_key:str):
+    item=COSMETICS.get(item_key);user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=get_or_create_pet(session,user_id,lock=True)
+    if not item:return {"status":"error","message":"این ظاهر وجود ندارد."}
+    inventory=dict(pet.inventory or {});key=f"cosmetic:{item_key}"
+    if key not in inventory:
+        if user_id!=OWNER_ID and int(user.coins or 0)<item["cost"]:return {"status":"error","message":"سکه کافی نداری."}
+        if user_id!=OWNER_ID:user.coins=int(user.coins or 0)-item["cost"]
+        inventory[key]=True;pet.inventory=inventory
+    appearance=dict(pet.appearance or {});appearance[item["slot"]]=item_key;pet.appearance=appearance
+    return {"status":"success","message":f"{item['title']} تجهیز شد.","coins":int(user.coins or 0),"pet":serialize_pet(pet)}
+
+
+def story_action(session,user_id:int):
+    now=datetime.datetime.utcnow();start=now.replace(hour=0,minute=0,second=0,microsecond=0)
+    used=session.query(SectorPetAction).filter(SectorPetAction.user_id==user_id,SectorPetAction.action=="story",SectorPetAction.created_at>=start).count()
+    if used>=3:return {"status":"error","message":"سه حرکت داستانی امروز انجام شده؛ فردا ادامه بده.","pet":serialize_pet(get_or_create_pet(session,user_id)),"story":None}
+    pet=get_or_create_pet(session,user_id,lock=True);chapter=max(1,min(4,int(pet.story_chapter or 1)));story=STORY_CHAPTERS[chapter]
+    pet.story_progress=int(pet.story_progress or 0)+1;pet.energy=max(0,int(pet.energy or 0)-5);pet.xp=int(pet.xp or 0)+20
+    completed=pet.story_progress>=story["target"]
+    if completed:
+        remember(session,user_id,"story",f"پایان فصل: {story['title']}",story["text"],4);pet.story_chapter=1 if chapter>=4 else chapter+1;pet.story_progress=0;pet.evolution_tokens=int(pet.evolution_tokens or 0)+1
+    session.add(SectorPetAction(user_id=user_id,action="story",coin_cost=0,xp_gained=20,created_at=now))
+    return {"status":"success","message":"فصل کامل شد و یک توکن تکامل گرفتی!" if completed else "یک قدم در داستان پیش رفتی.","pet":serialize_pet(pet),"story":STORY_CHAPTERS.get(int(pet.story_chapter or 1))}
+
+
+def job_action(session,user_id:int,job_key=None,now=None):
+    now=now or datetime.datetime.utcnow();user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=get_or_create_pet(session,user_id,lock=True)
+    if not pet.job:
+        job=JOBS.get(job_key)
+        if not job:return {"status":"error","message":"یک شغل معتبر انتخاب کن."}
+        pet.job=job_key;pet.job_started_at=now;return {"status":"success","message":f"{job['icon']} کار {job['title']} شروع شد.","pet":serialize_pet(pet)}
+    job=JOBS[pet.job];started=pet.job_started_at.replace(tzinfo=None) if pet.job_started_at and pet.job_started_at.tzinfo else pet.job_started_at
+    if not started or now-started<datetime.timedelta(hours=job["hours"]):
+        left=int((datetime.timedelta(hours=job["hours"])-(now-(started or now))).total_seconds())
+        return {"status":"error","message":f"هنوز {max(1,left//60)} دقیقه تا پایان کار مانده."}
+    reward=job["reward"];user.coins=int(user.coins or 0)+reward;pet.xp=int(pet.xp or 0)+job["xp"];pet.job=None;pet.job_started_at=None
+    return {"status":"success","message":f"ماموریت شغلی تمام شد؛ {reward} سکه گرفتی.","coins":int(user.coins or 0),"pet":serialize_pet(pet)}
+
+
+def social_action(session,actor_id:int,target_id:int,action:str):
+    if actor_id==target_id:return {"status":"error","message":"این کار را نمی‌توانی با خودت انجام بدهی."}
+    if action not in ("visit","gift","battle"):return {"status":"error","message":"تعامل نامعتبر است."}
+    target=session.query(User).filter(User.id==target_id).first();actor=session.query(User).filter(User.id==actor_id).with_for_update().first()
+    if not target:return {"status":"error","message":"کاربر مقصد پیدا نشد."}
+    day=datetime.datetime.utcnow().strftime("%Y%m%d")
+    if session.query(SectorPetSocial.id).filter_by(actor_id=actor_id,target_id=target_id,action=action,day_key=day).first():return {"status":"error","message":"این تعامل امروز قبلاً انجام شده."}
+    ap=get_or_create_pet(session,actor_id,lock=True);tp=get_or_create_pet(session,target_id,lock=True);reward=20
+    if action=="gift":
+        if actor_id!=OWNER_ID and int(actor.coins or 0)<50:return {"status":"error","message":"برای هدیه ۵۰ سکه لازم داری."}
+        if actor_id!=OWNER_ID:actor.coins=int(actor.coins or 0)-50
+        target.coins=int(target.coins or 0)+50;tp.happiness=min(100,int(tp.happiness or 0)+10)
+    elif action=="battle":
+        attack=int(ap.level or 1)+int(ap.knowledge or 0)//10+random.randint(1,12);defense=int(tp.level or 1)+int(tp.health or 0)//10+random.randint(1,12);won=attack>=defense
+        reward=45 if won else 10;ap.xp=int(ap.xp or 0)+reward;ap.happiness=min(100,int(ap.happiness or 0)+(7 if won else 2))
+    else:ap.happiness=min(100,int(ap.happiness or 0)+5);ap.xp=int(ap.xp or 0)+reward
+    session.add(SectorPetSocial(actor_id=actor_id,target_id=target_id,action=action,day_key=day,payload={"reward":reward}))
+    message="هدیه فرستاده شد!" if action=="gift" else (("نبرد را بردی!" if won else "این نبرد را باختی؛ اما XP گرفتی.") if action=="battle" else f"به اتاق {tp.name} سر زدی!")
+    return {"status":"success","message":message,"coins":int(actor.coins or 0),"pet":serialize_pet(ap)}
 
 
 def buy_room_item(session,user_id:int,item_key:str):

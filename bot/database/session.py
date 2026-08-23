@@ -86,6 +86,17 @@ def init_db():
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS inventory JSON NOT NULL DEFAULT '{}'::json",
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS equipped_item TEXT",
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS sleeping BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS evolution_path TEXT",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS appearance JSON NOT NULL DEFAULT '{}'::json",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS story_chapter INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS story_progress INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS job TEXT",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS job_started_at TIMESTAMPTZ",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE",
+            "ALTER TABLE isectorbot_sector_pet_memories ENABLE ROW LEVEL SECURITY",
+            "ALTER TABLE isectorbot_sector_pet_social ENABLE ROW LEVEL SECURITY",
+            "ALTER TABLE isectorbot_sector_clans ENABLE ROW LEVEL SECURITY",
+            "ALTER TABLE isectorbot_sector_clan_members ENABLE ROW LEVEL SECURITY",
         )
         with engine.begin() as connection:
             for statement in statements:

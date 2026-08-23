@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint, JSON
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint, Index, JSON
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
 
@@ -166,6 +166,13 @@ class SectorPet(Base):
     inventory = Column(JSON, nullable=False, default=dict)
     equipped_item = Column(Text, nullable=True)
     sleeping = Column(Boolean, nullable=False, default=False)
+    evolution_path = Column(Text, nullable=True)
+    appearance = Column(JSON, nullable=False, default=dict)
+    story_chapter = Column(Integer, nullable=False, default=1)
+    story_progress = Column(Integer, nullable=False, default=0)
+    job = Column(Text, nullable=True)
+    job_started_at = Column(DateTime(timezone=True), nullable=True)
+    notifications_enabled = Column(Boolean, nullable=False, default=True)
     streak_days = Column(Integer, nullable=False, default=0)
     best_streak = Column(Integer, nullable=False, default=0)
     total_care_days = Column(Integer, nullable=False, default=0)
@@ -196,6 +203,53 @@ class SectorPetGame(Base):
     score = Column(Integer, nullable=False, default=0)
     reward = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorPetMemory(Base):
+    __tablename__ = "isectorbot_sector_pet_memories"
+    __table_args__ = (Index("ix_sector_memory_user_created", "user_id", "created_at"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(Text, nullable=False, default="moment")
+    title = Column(Text, nullable=False)
+    detail = Column(Text, nullable=False, default="")
+    importance = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorPetSocial(Base):
+    __tablename__ = "isectorbot_sector_pet_social"
+    __table_args__ = (UniqueConstraint("actor_id", "target_id", "action", "day_key", name="uq_sector_social_daily"),Index("ix_sector_social_target_created", "target_id", "created_at"))
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    actor_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    target_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    action = Column(Text, nullable=False)
+    day_key = Column(Text, nullable=False)
+    payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorClan(Base):
+    __tablename__ = "isectorbot_sector_clans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=False, unique=True)
+    owner_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    xp = Column(BigInteger, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorClanMember(Base):
+    __tablename__ = "isectorbot_sector_clan_members"
+    __table_args__ = (UniqueConstraint("user_id", name="uq_sector_clan_user"),Index("ix_sector_clan_members_clan", "clan_id"))
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    clan_id = Column(Integer, ForeignKey("isectorbot_sector_clans.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    contribution = Column(BigInteger, nullable=False, default=0)
+    joined_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
 
 
 class AIMessage(Base):

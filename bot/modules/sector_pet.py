@@ -43,6 +43,7 @@ def pet_keyboard(user_id=None):
         [InlineKeyboardButton("تمرین", callback_data="sector_action:train",style="primary",icon_custom_emoji_id=icon(2)), InlineKeyboardButton("یادگیری", callback_data="sector_action:learn",style="success",icon_custom_emoji_id=icon(3))],
         [InlineKeyboardButton("تعمیر", callback_data="sector_action:repair",style="danger",icon_custom_emoji_id=icon(4)), InlineKeyboardButton("استراحت", callback_data="sector_action:sleep",style="primary",icon_custom_emoji_id=icon(5))],
         [InlineKeyboardButton("ماموریت و چالش",callback_data="sector_quests",style="success",icon_custom_emoji_id=icon(6)),InlineKeyboardButton("مهارت‌ها",callback_data="sector_skills",style="primary",icon_custom_emoji_id=icon(7))],
+        [InlineKeyboardButton("داستان فصلی",callback_data="sector_story",style="success",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("شغل و درآمد",callback_data="sector_jobs",style="primary",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon(10))],
         [InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL))],
@@ -160,6 +161,25 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer()
             await show_panel(query, f"{animated_emoji(10, '🤝')} <b>تعامل‌های سکتور</b>\n\nهمه امکانات را از دکمه‌های زیر اجرا کن.", social_keyboard())
             return
+        if query.data=="sector_story":
+            await query.answer();result=service.story_action(session,query.from_user.id);session.commit()
+            pet=result["pet"];chapter=service.STORY_CHAPTERS.get(pet["story_chapter"])
+            await show_panel(query,f"📖 <b>فصل {pet['story_chapter']}: {chapter['title']}</b>\n\n{chapter['text']}\n\nپیشرفت: {pet['story_progress']}/{chapter['target']}\n\n{result['message']}",back_keyboard([[InlineKeyboardButton("ادامه داستان",callback_data="sector_story",style="success")]]));return
+        if query.data=="sector_jobs":
+            await query.answer();pet,_=load_pet(query.from_user.id)
+            if pet.get("job"):rows=[[InlineKeyboardButton("دریافت درآمد",callback_data="sector_job:claim",style="success")]]
+            else:rows=[[InlineKeyboardButton(f"{j['icon']} {j['title']}",callback_data=f"sector_job:{key}",style="primary")] for key,j in service.JOBS.items()]
+            await show_panel(query,"💼 <b>شغل سکتور</b>\n\nیک کار زمان‌دار انتخاب کن؛ پس از پایان برای دریافت سکه برگرد.",back_keyboard(rows));return
+        if query.data.startswith("sector_job:"):
+            await query.answer();key=query.data.split(":",1)[1];result=service.job_action(session,query.from_user.id,None if key=="claim" else key)
+            if result["status"]=="success":session.commit()
+            else:session.rollback()
+            await query.message.reply_text(result["message"],reply_markup=pet_keyboard(query.from_user.id));return
+        if query.data.startswith("sector_path:"):
+            await query.answer();result=service.choose_evolution(session,query.from_user.id,query.data.split(":",1)[1])
+            if result["status"]=="success":session.commit()
+            else:session.rollback()
+            await query.message.reply_text(result["message"],reply_markup=pet_keyboard(query.from_user.id));return
         if query.data in ("sector_quests","sector_skills","sector_evolution","sector_art","sector_claim_daily"):
             await query.answer();pet,daily=load_pet(query.from_user.id)
             if query.data=="sector_art":
@@ -172,7 +192,10 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if pet['level']>=60:unlocked+=['فرم همه‌چیزدان','توانایی‌های ویژه']
                 await show_panel(query, f"{animated_emoji(7, '🧠')} <b>مهارت‌های سکتور</b>\n\n"+"\n".join("✅ "+x for x in unlocked)+"\n\nمهارت بعدی با بالا رفتن سطح و روزهای مراقبت آزاد می‌شود.", back_keyboard());return
             if query.data=="sector_evolution":
-                await show_panel(query, f"{animated_emoji(8, '🧬')} <b>مسیر تکامل چندماهه</b>\n\n🤖 کوچولو — شروع\n🔹 کنجکاو — سطح ۱۰ + ۱۴ روز\n⚙️ حرفه‌ای — سطح ۳۰ + ۶۰ روز\n👑 همه‌چیزدان — سطح ۶۰ + ۱۵۰ روز\n\nدر آینده شاخه‌های شخصیتی و فرم‌های کمیاب نیز به این مسیر اضافه می‌شوند.", back_keyboard());return
+                chosen=pet.get("evolution_path_info")
+                rows=[] if chosen else [[InlineKeyboardButton(f"{p['icon']} {p['title']}",callback_data=f"sector_path:{key}",style="primary")] for key,p in service.EVOLUTION_PATHS.items()]
+                extra=f"\n\nمسیر انتخابی: {chosen['icon']} {chosen['title']}" if chosen else "\n\nاز سطح ۱۰ یکی از مسیرهای دائمی زیر را انتخاب کن."
+                await show_panel(query, f"{animated_emoji(8, '🧬')} <b>مسیر تکامل چندماهه</b>\n\n🤖 کوچولو — شروع\n🔹 کنجکاو — سطح ۱۰ + ۱۴ روز\n⚙️ حرفه‌ای — سطح ۳۰ + ۶۰ روز\n👑 همه‌چیزدان — سطح ۶۰ + ۱۵۰ روز"+extra, back_keyboard(rows));return
             session=get_session()
             try:
                 key=f"sector_daily:{query.from_user.id}:{datetime.datetime.utcnow().strftime('%Y%m%d')}";claimed=session.query(Purchase.id).filter(Purchase.telegram_payment_charge_id==key).first() is not None
@@ -397,4 +420,4 @@ async def execute_robbery(update,attacker_id,target_id,target_name):
 
 
 def get_handlers():
-    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(5147526780)&filters.Entity("custom_emoji"),capture_sector_emoji),MessageHandler(filters.StatusUpdate.USERS_SHARED,selected_user),MessageHandler(filters.TEXT&~filters.COMMAND,pending_text),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social|ui:|quests|skills|evolution|art|claim_daily)")]
+    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(5147526780)&filters.Entity("custom_emoji"),capture_sector_emoji),MessageHandler(filters.StatusUpdate.USERS_SHARED,selected_user),MessageHandler(filters.TEXT&~filters.COMMAND,pending_text),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social|ui:|quests|skills|evolution|art|claim_daily|story|jobs|job:|path:)")]
