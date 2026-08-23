@@ -1,7 +1,10 @@
+import io
 import json
 import logging
 import os
 from pathlib import Path
+
+from PIL import Image, ImageDraw
 
 from bot.database.models import AppSetting
 from bot.database.session import get_session
@@ -10,7 +13,6 @@ LOGGER = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = BASE_DIR / "release" / "current.json"
 DEFAULT_CHANNEL = os.getenv("SECTOR_RELEASE_CHANNEL", "@sectorlandS")
-DEFAULT_MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").rstrip("/")
 SETTING_KEY = "sector_release_publisher"
 
 
@@ -35,13 +37,43 @@ def _get_state(session):
     return dict(row.value or {}), row
 
 
-def _build_photo_url(manifest):
-    image = str(manifest.get("image") or "/assets/sector/brand-hero.svg")
-    if image.startswith("https://") or image.startswith("http://"):
-        return image
-    if not image.startswith("/"):
-        image = "/" + image
-    return DEFAULT_MINI_APP_URL + image
+def _build_release_card(manifest):
+    """Create a Telegram-safe PNG card without depending on CDN/static assets."""
+    width, height = 1200, 675
+    image = Image.new("RGB", (width, height), (8, 11, 31))
+    draw = ImageDraw.Draw(image, "RGBA")
+
+    # background glows
+    draw.ellipse((-180, -240, 650, 590), fill=(92, 75, 255, 70))
+    draw.ellipse((620, 120, 1430, 930), fill=(0, 214, 195, 42))
+    draw.rounded_rectangle((54, 54, 1146, 621), radius=46, fill=(16, 21, 55, 235), outline=(120, 100, 255, 160), width=4)
+
+    # mascot shell
+    cx, cy = 880, 320
+    draw.rounded_rectangle((720, 145, 1040, 475), radius=104, fill=(34, 40, 88, 255), outline=(124, 104, 255, 255), width=12)
+    draw.rounded_rectangle((750, 182, 1010, 392), radius=72, fill=(8, 23, 48, 255), outline=(66, 220, 242, 255), width=8)
+    draw.rounded_rectangle((790, 248, 842, 286), radius=16, fill=(103, 240, 255, 255))
+    draw.rounded_rectangle((918, 248, 970, 286), radius=16, fill=(103, 240, 255, 255))
+    draw.arc((835, 272, 925, 350), start=10, end=170, fill=(103, 240, 255, 255), width=10)
+    draw.ellipse((842, 405, 918, 481), fill=(12, 27, 58, 255), outline=(103, 240, 255, 255), width=8)
+    draw.polygon([(880, 420), (899, 443), (880, 468), (861, 443)], fill=(255, 199, 65, 255))
+
+    # branding and release metadata. Keep text ASCII-safe for the default font.
+    version = str(manifest.get("version") or "")[:20]
+    release_id = str(manifest.get("release_id") or "")[-18:]
+    draw.text((110, 120), "SECTOR", fill=(255, 255, 255, 255))
+    draw.text((110, 175), "KOOCHOOLOO UPDATE", fill=(142, 226, 255, 255))
+    draw.text((110, 245), f"VERSION {version}", fill=(255, 205, 76, 255))
+    draw.text((110, 315), "PLAY  •  EARN  •  GROW", fill=(201, 198, 226, 255))
+    draw.text((110, 390), "NEW FEATURES + GUIDES", fill=(201, 198, 226, 255))
+    draw.text((110, 445), "@sectorlandS", fill=(142, 226, 255, 255))
+    draw.text((110, 515), release_id, fill=(121, 128, 166, 255))
+
+    output = io.BytesIO()
+    output.name = "sector-release.png"
+    image.save(output, format="PNG", optimize=True)
+    output.seek(0)
+    return output
 
 
 def _build_caption(manifest):
@@ -78,8 +110,8 @@ def _build_details(manifest):
 async def maybe_publish_current_release(bot, force=False):
     """Publish release/current.json to @sectorlandS once per release_id.
 
-    If Telegram cannot fetch/send the release image, the same announcement is
-    delivered as a text-only post so a release is never silently lost.
+    A generated PNG is uploaded directly to Telegram. If image generation or
+    upload fails, the announcement still ships as text so no release is lost.
     """
     manifest = load_release_manifest()
     if not manifest:
@@ -103,7 +135,7 @@ async def maybe_publish_current_release(bot, force=False):
         try:
             photo_message = await bot.send_photo(
                 chat_id=channel,
-                photo=_build_photo_url(manifest),
+                photo=_build_release_card(manifest),
                 caption=caption,
                 parse_mode="HTML",
             )
