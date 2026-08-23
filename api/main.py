@@ -16,7 +16,7 @@ from urllib.parse import unquote
 from sqlalchemy import func
 
 from bot.database.session import get_session
-from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral
+from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral, GameSession, GameScore
 from api.quiz_bank import QUIZ_BANK
 from bot.modules.ai import get_ai_response, get_sector_prompt
 
@@ -85,6 +85,13 @@ MISSION_DEFS = {
     "daily_wheel":{"title":"چرخاندن گردونه","target":1,"coins":25,"xp":10,"period":"daily","kind":"wheel"},
     "weekly_quiz_15":{"title":"۱۵ پاسخ مسابقه","target":15,"coins":250,"xp":100,"period":"weekly","kind":"quiz"},
     "weekly_tools_5":{"title":"پنج بار استفاده از دستیار","target":5,"coins":100,"xp":40,"period":"weekly","kind":"tools"},
+}
+GAME_LIMITS={
+    "racer":{"max_score":2_000_000,"min_seconds":8},"galaxy":{"max_score":5_000_000,"min_seconds":8},
+    "snake3d":{"max_score":1_000_000,"min_seconds":5},"2048":{"max_score":1_000_000,"min_seconds":10},
+    "tetris":{"max_score":2_000_000,"min_seconds":10},"memory":{"max_score":100_000,"min_seconds":4},
+    "mines":{"max_score":100_000,"min_seconds":4},"airforce":{"max_score":5_000_000,"min_seconds":8},
+    "blockblast":{"max_score":2_000_000,"min_seconds":8},
 }
 
 
@@ -634,6 +641,60 @@ async def admin_update_settings(request: dict, init_data:Optional[str]=Header(No
 @app.get("/api/games")
 async def get_games(init_data:Optional[str]=Header(None,alias="init-data")):
     require_user(init_data); return [{"id":"intel","name":"تست هوش","active":True},{"id":"logic","name":"معمای منطقی","active":True},{"id":"flag","name":"حدس پرچم","active":True}]
+
+
+@app.post("/api/games/session/{user_id}/{game_key}")
+async def create_game_session(user_id:int,game_key:str,request:dict=None,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id)
+    if game_key not in GAME_LIMITS: raise HTTPException(status_code=404,detail="Game not supported")
+    session=get_session()
+    try:
+        now=datetime.datetime.utcnow()
+        recent=session.query(GameSession).filter(GameSession.user_id==user_id,GameSession.created_at>=now-datetime.timedelta(hours=1)).count()
+        if recent>=30: raise HTTPException(status_code=429,detail="تعداد اجرای بازی بیش از حد مجاز است.")
+        token=secrets.token_urlsafe(32);token_hash=hashlib.sha256(token.encode()).hexdigest()
+        row=GameSession(token_hash=token_hash,user_id=user_id,game_key=game_key,started_at=now,expires_at=now+datetime.timedelta(hours=2),client_nonce=str((request or {}).get("nonce") or "")[:100] or None)
+        session.add(row);session.commit()
+        return {"token":token,"expires_in":7200,"game_key":game_key}
+    finally:session.close()
+
+
+@app.post("/api/games/score/{user_id}")
+async def submit_game_score(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);token=str(request.get("token") or "");score=int(request.get("score") or 0);duration=int(request.get("duration_seconds") or 0)
+    if not token or len(token)>200: raise HTTPException(status_code=400,detail="Invalid game session")
+    session=get_session()
+    try:
+        now=datetime.datetime.utcnow();token_hash=hashlib.sha256(token.encode()).hexdigest()
+        game_session=session.query(GameSession).filter(GameSession.token_hash==token_hash).with_for_update().first()
+        if not game_session or game_session.user_id!=user_id or game_session.used_at or game_session.expires_at.replace(tzinfo=None)<now: raise HTTPException(status_code=400,detail="Game session expired or used")
+        limits=GAME_LIMITS.get(game_session.game_key)
+        elapsed=max(0,int((now-game_session.started_at.replace(tzinfo=None)).total_seconds()))
+        if not limits or score<0 or score>limits["max_score"] or duration<limits["min_seconds"] or duration>elapsed+15: raise HTTPException(status_code=400,detail="Score verification failed")
+        game_session.used_at=now
+        row=GameScore(user_id=user_id,game_key=game_session.game_key,score=score,duration_seconds=duration,session_id=game_session.id,verified=True,created_at=now)
+        session.add(row);session.commit()
+        return {"status":"success","score":score,"verified":True}
+    except:
+        session.rollback();raise
+    finally:session.close()
+
+
+@app.get("/api/games/leaderboard/{game_key}")
+async def game_leaderboard(game_key:str,period:str="weekly",init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data)
+    if game_key not in GAME_LIMITS: raise HTTPException(status_code=404,detail="Game not supported")
+    session=get_session()
+    try:
+        query=session.query(GameScore,User).join(User,User.id==GameScore.user_id).filter(GameScore.game_key==game_key,GameScore.verified.is_(True))
+        if period=="weekly":
+            now=datetime.datetime.utcnow();start=(now-datetime.timedelta(days=now.weekday())).replace(hour=0,minute=0,second=0,microsecond=0);query=query.filter(GameScore.created_at>=start)
+        rows=query.order_by(GameScore.score.desc(),GameScore.created_at.asc()).limit(20).all()
+        best={}
+        for score_row,user in rows:
+            if user.id not in best: best[user.id]={"name":user.first_name or "کاربر","score":int(score_row.score),"created_at":score_row.created_at.isoformat()}
+        return [{"rank":i+1,**item} for i,item in enumerate(list(best.values())[:10])]
+    finally:session.close()
 
 
 @app.get("/api/groups/{user_id}")

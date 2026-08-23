@@ -91,10 +91,13 @@ export default function GamesPage() {
     setLastGame(game.id)
     try { window.localStorage.setItem('sectorland_last_game', game.id) } catch (_) {}
     try { ctx.tg && ctx.tg.HapticFeedback && ctx.tg.HapticFeedback.impactOccurred('medium') } catch (_) {}
-    try {
-      if (ctx.tg && ctx.tg.openLink) ctx.tg.openLink(game.url)
-      else window.location.assign(game.url)
-    } catch (_) { window.location.assign(game.url) }
+    apiCall('createGameSession',tgUser.id,game.id).then(function(result){
+      var token=result&&result.data&&result.data.token
+      var separator=game.url.indexOf('?')>=0?'&':'?'
+      var launchUrl=game.url+(token?separator+'sl_token='+encodeURIComponent(token)+'&sl_user='+tgUser.id+'&sl_game='+encodeURIComponent(game.id):'')
+      try { if (ctx.tg && ctx.tg.openLink) ctx.tg.openLink(launchUrl); else window.location.assign(launchUrl) }
+      catch (_) { window.location.assign(launchUrl) }
+    })
   }
 
   var tabs = [

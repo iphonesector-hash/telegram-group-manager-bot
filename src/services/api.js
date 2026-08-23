@@ -35,6 +35,9 @@ export const api = {
   renewOrder: function(userId, orderId, initData) { return request('/api/orders/' + userId + '/' + orderId + '/renew', { method:'POST' }, initData) },
   getTransactions: function(userId, initData) { return request('/api/transactions/' + userId, {}, initData) },
   getGames: function(initData) { return request('/api/games', {}, initData) },
+  createGameSession: function(userId, gameKey, initData) { return request('/api/games/session/' + userId + '/' + encodeURIComponent(gameKey), { method:'POST', body:'{}' }, initData) },
+  submitGameScore: function(userId, payload, initData) { return request('/api/games/score/' + userId, { method:'POST', body:JSON.stringify(payload) }, initData) },
+  getGameLeaderboard: function(gameKey, initData) { return request('/api/games/leaderboard/' + encodeURIComponent(gameKey), {}, initData) },
   getGroups: function(userId, initData) { return request('/api/groups/' + userId, {}, initData) },
   getBank: function(userId, initData) { return request('/api/bank/' + userId, {}, initData) },
   bankAction: function(userId, action, amount, initData) {

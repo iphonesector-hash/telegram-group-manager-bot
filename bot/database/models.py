@@ -119,3 +119,30 @@ class Referral(Base):
     referred_id = Column(BigInteger, nullable=False, unique=True)
     reward = Column(BigInteger, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
+
+
+class GameSession(Base):
+    __tablename__ = "isectorbot_game_sessions"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    token_hash = Column(Text, nullable=False, unique=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    game_key = Column(Text, nullable=False)
+    started_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    client_nonce = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class GameScore(Base):
+    __tablename__ = "isectorbot_game_scores"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    game_key = Column(Text, nullable=False)
+    score = Column(BigInteger, nullable=False)
+    duration_seconds = Column(BigInteger, nullable=False)
+    session_id = Column(BigInteger, ForeignKey("isectorbot_game_sessions.id", ondelete="CASCADE"), nullable=False, unique=True)
+    verified = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
