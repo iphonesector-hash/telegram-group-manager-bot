@@ -62,7 +62,10 @@ def build_application() -> Application:
         if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
 
     app.add_handler(start_handler, group=2)
-    for h in get_sector_pet_handlers(): app.add_handler(h, group=2)
+    for h in get_sector_pet_handlers():
+        # The pending free-text receiver must observe messages before the menu
+        # group, but only stop propagation while an interaction is active.
+        app.add_handler(h, group=-1 if getattr(h.callback, "__name__", "") == "pending_text" else 2)
     for h in get_panel_handlers(): app.add_handler(h, group=2)
     for h in get_economy_handlers(): app.add_handler(h, group=2)
     for h in get_profile_handlers():
