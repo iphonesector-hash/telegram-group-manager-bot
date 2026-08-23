@@ -1,11 +1,19 @@
 import os
 import hmac
+import logging
 import psycopg2
 from fastapi import Request, HTTPException, Header
 from telegram import Update, Bot, WebAppInfo, MenuButtonWebApp
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from typing import Optional
+
+# python-telegram-bot uses httpx internally.  INFO logs include the complete
+# Bot API request URL, whose path contains the bot token.  Keep operational
+# logs useful without leaking credentials into Vercel logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram.request").setLevel(logging.WARNING)
 
 from api.main import app, require_user, serialize_purchase
 from bot.main import build_application
