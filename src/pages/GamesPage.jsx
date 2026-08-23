@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppContext } from '../App'
 import WheelOfFortune from '../components/WheelOfFortune'
+import SectorCelebration from '../components/ui/SectorCelebration'
 
 const ARCADE_GAMES = [
   {id:'racer',name:'Neon Racer',icon:'🏎️',desc:'مسابقه سریع در بزرگراه نئونی',type:'اکشن',featured:true,url:'https://sectorland-neon-arcade.vercel.app/games/neon-racer/'},
@@ -32,6 +33,7 @@ export default function GamesPage() {
   var [gameFilter, setGameFilter] = useState('همه')
   var [leagueGame,setLeagueGame] = useState('racer')
   var [gameLeaders,setGameLeaders] = useState([])
+  var [celebration,setCelebration] = useState(null)
   var [lastGame, setLastGame] = useState(function(){
     try { return window.localStorage.getItem('sectorland_last_game') || '' } catch (_) { return '' }
   })
@@ -54,6 +56,7 @@ export default function GamesPage() {
       if (data && data.status === 'success') {
         setDbUser(function(u) { return { ...u, coins: Number(data.coins || u.coins || 0) } })
         showToast('🎁 +' + data.reward + ' سکه دریافت کردی!', 'success')
+        setCelebration({title:'جایزه روزانه گرفتی! 🎁',text:'+'+Number(data.reward||0).toLocaleString('fa-IR')+' سکه مستقیم روی حساب واقعی SectorLand ثبت شد.'})
       } else showToast((data && data.message) || 'فعلاً جایزه روزانه در دسترس نیست.', 'error')
       setClaiming(false)
     })
@@ -71,6 +74,7 @@ export default function GamesPage() {
   function answer(choice) {
     if (!quiz || !tgUser || answering || result) return
     setAnswering(true)
+    var oldLevel=Number(dbUser.level||1)
     apiCall('answerQuiz', tgUser.id, quiz.id, choice).then(function(r) {
       var data = r && r.data
       if (!data) {
@@ -83,6 +87,8 @@ export default function GamesPage() {
         if (data.correct && data.user) {
           setDbUser(function(u) { return { ...u, coins: data.user.coins, xp: data.user.xp, level: data.user.level } })
           showToast('✅ درست! +' + data.reward.coins + ' سکه و +' + data.reward.xp + ' XP', 'success')
+          var newLevel=Number(data.user.level||oldLevel)
+          setCelebration({title:newLevel>oldLevel?'LEVEL UP! 🚀':'بردی! 🏆',text:'+'+Number(data.reward.coins||0).toLocaleString('fa-IR')+' سکه و +'+Number(data.reward.xp||0).toLocaleString('fa-IR')+' XP ثبت شد'+(newLevel>oldLevel?' • سطح جدید: '+newLevel:'')+'.'})
         } else showToast('❌ جواب درست نبود.', 'error')
       }
       setAnswering(false)
@@ -117,7 +123,13 @@ export default function GamesPage() {
 
   return (
     <div className="page fade-up">
-      <div className="sec-title">🎮 بازی و جوایز</div>
+      <SectorCelebration open={!!celebration} title={celebration&&celebration.title} text={celebration&&celebration.text} onClose={function(){setCelebration(null)}} />
+
+      <div className="glass" style={{padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(96,85,255,.3)'}}>
+        <img src="/assets/sector/brand-hero.webp" alt="SectorLand Arcade" style={{display:'block',width:'100%',aspectRatio:'1.8',objectFit:'cover'}} />
+        <div style={{padding:'10px 14px',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center'}}><div><b style={{fontSize:13}}>🎮 SectorLand Arcade</b><div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>بازی کن • رکورد بزن • XP و سکه بگیر</div></div><span className="badge badge-gold">Lv.{Number(dbUser.level||1)}</span></div>
+      </div>
+
       <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap' }}>
         {tabs.map(function(t){return <button key={t.key} onClick={function(){setTab(t.key)}} className="btn btn-sm" style={{background:tab===t.key?'linear-gradient(135deg,var(--accent),var(--accent2))':'var(--card)',color:tab===t.key?'#fff':'var(--muted)',border:tab===t.key?'none':'1px solid var(--border)',fontSize:11}}>{t.label}</button>})}
       </div>
@@ -162,11 +174,11 @@ export default function GamesPage() {
         </div>
       )}
 
-      {!loading && tab === 'daily' && <div style={{textAlign:'center',paddingTop:18}}><div className="glass" style={{padding:'28px 18px',maxWidth:360,margin:'0 auto'}}><div style={{fontSize:54,marginBottom:10}}>🎁</div><div style={{fontWeight:800,fontSize:18,marginBottom:8}}>جایزه روزانه SectorLand</div><div style={{color:'var(--muted)',fontSize:13,lineHeight:1.8,marginBottom:20}}>این جایزه مستقیم روی حساب واقعی ربات ثبت می‌شود.</div><button className="btn btn-gold" onClick={claimDaily} disabled={claiming} style={{padding:'13px 28px',borderRadius:14}}>{claiming?'⏳ در حال ثبت...':'🎁 دریافت جایزه'}</button><div style={{marginTop:16,fontSize:12,color:'var(--muted)'}}>موجودی فعلی: <span style={{color:'var(--gold)',fontWeight:700}}>{Number(dbUser.coins||0).toLocaleString()} 🪙</span></div></div></div>}
+      {!loading && tab === 'daily' && <div style={{textAlign:'center',paddingTop:8}}><div className="glass" style={{padding:0,maxWidth:360,margin:'0 auto',overflow:'hidden'}}><img src="/assets/sector/mascot-emotions.webp" alt="جایزه روزانه Sector" style={{display:'block',width:'100%'}}/><div style={{padding:'18px'}}><div style={{fontWeight:800,fontSize:18,marginBottom:8}}>جایزه روزانه SectorLand</div><div style={{color:'var(--muted)',fontSize:13,lineHeight:1.8,marginBottom:20}}>این جایزه مستقیم روی حساب واقعی ربات ثبت می‌شود.</div><button className="btn btn-gold" onClick={claimDaily} disabled={claiming} style={{padding:'13px 28px',borderRadius:14}}>{claiming?'⏳ در حال ثبت...':'🎁 دریافت جایزه'}</button><div style={{marginTop:16,fontSize:12,color:'var(--muted)'}}>موجودی فعلی: <span style={{color:'var(--gold)',fontWeight:700}}>{Number(dbUser.coins||0).toLocaleString()} 🪙</span></div></div></div></div>}
 
       {!loading && tab === 'wheel' && <WheelOfFortune />}
 
-      {!loading && tab === 'leaderboard' && <div><div className="glass" style={{padding:'12px 16px',marginBottom:12}}><div style={{fontSize:12,color:'var(--muted)'}}>رتبه من</div><div style={{fontWeight:800,fontSize:20}}>#{Number(dbUser.rank||0).toLocaleString('fa-IR')}</div></div>{leaderboard.map(function(u,i){var badge=i===0?'🥇':i===1?'🥈':i===2?'🥉':u.rank;return <div key={i} className="glass" style={{padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:12}}><div style={{width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800}}>{badge}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:'var(--muted)'}}>سطح {u.level}</div></div><div style={{fontWeight:800,color:'var(--gold)',fontSize:14}}>{Number(u.coins||0).toLocaleString()} 🪙</div></div>})}</div>}
+      {!loading && tab === 'leaderboard' && <div><div className="glass" style={{padding:0,overflow:'hidden',marginBottom:12}}><img src="/assets/sector/rank-badges.webp" alt="نشان‌های رتبه Sector" style={{display:'block',width:'100%'}}/><div style={{padding:'10px 14px',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'var(--muted)'}}>رتبه من</span><b>#{Number(dbUser.rank||0).toLocaleString('fa-IR')}</b></div></div>{leaderboard.map(function(u,i){var badge=i===0?'🥇':i===1?'🥈':i===2?'🥉':u.rank;return <div key={i} className="glass" style={{padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:12}}><div style={{width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800}}>{badge}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:'var(--muted)'}}>سطح {u.level}</div></div><div style={{fontWeight:800,color:'var(--gold)',fontSize:14}}>{Number(u.coins||0).toLocaleString()} 🪙</div></div>})}</div>}
       {!loading && tab === 'league' && <div><div className="glass" style={{padding:16,marginBottom:12}}><div style={{fontWeight:900}}>🏁 لیگ هفتگی SectorLand</div><div style={{fontSize:11,color:'var(--muted)',marginTop:5}}>فقط رکوردهای دارای توکن تأییدشده در جدول قرار می‌گیرند.</div><select value={leagueGame} onChange={function(e){setLeagueGame(e.target.value)}} style={{width:'100%',marginTop:12,padding:11,borderRadius:10,background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)'}}>{ARCADE_GAMES.map(function(g){return <option key={g.id} value={g.id}>{g.name}</option>})}</select></div>{gameLeaders.length===0&&<div className="glass" style={{padding:18,textAlign:'center',color:'var(--muted)'}}>هنوز رکورد تأییدشده‌ای برای این هفته ثبت نشده؛ اولین نفر باش!</div>}{gameLeaders.map(function(u){return <div key={u.rank} className="glass" style={{padding:'12px 14px',marginBottom:8,display:'flex',gap:12,alignItems:'center'}}><b>{u.rank===1?'🥇':u.rank===2?'🥈':u.rank===3?'🥉':'#'+u.rank}</b><span style={{flex:1,fontWeight:700}}>{u.name}</span><span style={{color:'var(--gold)',fontWeight:900}}>{Number(u.score).toLocaleString('fa-IR')}</span></div>})}</div>}
     </div>
   )
