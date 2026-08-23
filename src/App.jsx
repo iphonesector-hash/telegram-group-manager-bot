@@ -101,6 +101,7 @@ export default function App() {
   var [bootLoading, setBootLoading] = useState(true)
   var [membershipAllowed, setMembershipAllowed] = useState(null)
   var [membershipError, setMembershipError] = useState('')
+  var [membershipChecking, setMembershipChecking] = useState(false)
 
   var navigate = useCallback(function(to) {
     if (to === page) return
@@ -129,6 +130,45 @@ export default function App() {
     }
   }, [page, tg, goBack])
 
+  var loadUserAfterMembership = useCallback(function() {
+    if (!tgUser || !initData) return Promise.resolve(false)
+    return api.getUser(tgUser.id, initData).then(function(result) {
+      if (result && result.data && result.data.id) {
+        setDbUser(normalizeUser(result.data))
+        return true
+      }
+      showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
+      return false
+    })
+  }, [tgUser, initData, showToast])
+
+  var checkMembership = useCallback(function(options) {
+    if (!tgUser || !initData) return Promise.resolve(false)
+    var opts = options || {}
+    if (opts.interactive) setMembershipChecking(true)
+    setMembershipError('')
+    return api.getMembership(tgUser.id, initData).then(function(membershipResult) {
+      if (!membershipResult || !membershipResult.data) {
+        setMembershipAllowed(false)
+        setMembershipError((membershipResult && membershipResult.error) || 'بررسی عضویت موقتاً در دسترس نیست.')
+        return false
+      }
+      if (!membershipResult.data.member) {
+        setMembershipAllowed(false)
+        setMembershipError('برای استفاده از Mini App باید عضو @sectorland باشی.')
+        return false
+      }
+      setMembershipAllowed(true)
+      return loadUserAfterMembership()
+    }).catch(function() {
+      setMembershipAllowed(false)
+      setMembershipError('بررسی عضویت موقتاً در دسترس نیست.')
+      return false
+    }).finally(function() {
+      if (opts.interactive) setMembershipChecking(false)
+    })
+  }, [tgUser, initData, loadUserAfterMembership])
+
   useEffect(function() {
     var active = true
     var safetyTimer = window.setTimeout(function() {
@@ -144,34 +184,10 @@ export default function App() {
       return function() { active = false }
     }
 
-    api.getMembership(tgUser.id, initData).then(function(membershipResult) {
-      if (!active) return null
-      if (!membershipResult || !membershipResult.data) {
-        setMembershipAllowed(false)
-        setMembershipError((membershipResult && membershipResult.error) || 'بررسی عضویت موقتاً در دسترس نیست.')
-        setBootLoading(false)
-        window.clearTimeout(safetyTimer)
-        return null
-      }
-      if (!membershipResult.data.member) {
-        setMembershipAllowed(false)
-        setMembershipError('برای استفاده از Mini App باید عضو @sectorland باشی.')
-        setBootLoading(false)
-        window.clearTimeout(safetyTimer)
-        return null
-      }
-
-      setMembershipAllowed(true)
-      return api.getUser(tgUser.id, initData).then(function(result) {
-        if (!active) return
-        if (result && result.data && result.data.id) {
-          setDbUser(normalizeUser(result.data))
-        } else {
-          showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
-        }
-        setBootLoading(false)
-        window.clearTimeout(safetyTimer)
-      })
+    checkMembership().finally(function() {
+      if (!active) return
+      setBootLoading(false)
+      window.clearTimeout(safetyTimer)
     })
 
     api.getUserPhoto(tgUser.id, initData).then(function(photoResult) {
@@ -180,7 +196,7 @@ export default function App() {
       if (photoUrl && telegram.setPhotoUrl) telegram.setPhotoUrl(photoUrl)
     })
     return function() { active = false; window.clearTimeout(safetyTimer) }
-  }, [tgUser, initData, launchChecked, showToast])
+  }, [tgUser, initData, launchChecked, checkMembership])
 
   var apiCall = useCallback(function(method) {
     var args = Array.prototype.slice.call(arguments, 1)
@@ -235,11 +251,11 @@ export default function App() {
     return (
       <div style={{height:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:22,background:'radial-gradient(circle at 50% 15%,rgba(79,123,255,.18),transparent 40%),var(--bg)',textAlign:'center'}}>
         <div className="glass" style={{width:'100%',maxWidth:380,padding:'24px 20px'}}>
-          <img src="/assets/sector/brand-hero.webp" alt="SectorLand" style={{width:'100%',borderRadius:16,marginBottom:16}} />
+          <img src="/assets/sector/brand-hero.svg" alt="SectorLand" style={{width:'100%',borderRadius:16,marginBottom:16}} />
           <div style={{fontSize:22,fontWeight:900,marginBottom:8}}>🔒 عضویت در SectorLand الزامی است</div>
           <div style={{fontSize:13,color:'var(--muted)',lineHeight:1.9,marginBottom:18}}>{membershipError || 'ابتدا عضو کانال اصلی SectorLand شو و بعد دوباره بررسی کن.'}</div>
           <a className="btn btn-primary" href="https://t.me/sectorland" style={{textDecoration:'none',marginBottom:10}}>📣 عضویت در @sectorland</a>
-          <button className="btn btn-gold" onClick={function(){window.location.reload()}} style={{width:'100%'}}>✅ عضو شدم — بررسی کن</button>
+          <button className="btn btn-gold" disabled={membershipChecking} onClick={function(){checkMembership({interactive:true})}} style={{width:'100%',opacity:membershipChecking?0.65:1}}>{membershipChecking?'⏳ در حال بررسی…':'✅ عضو شدم — بررسی کن'}</button>
         </div>
       </div>
     )
