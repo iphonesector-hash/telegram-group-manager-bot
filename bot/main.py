@@ -8,6 +8,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
+from bot.services import sector_economy  # noqa: F401
 from bot.database.session import init_db
 from bot.handlers.start import start_handler
 from bot.handlers.errors import error_handler
@@ -27,6 +28,7 @@ from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
 from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers
+from bot.modules.sector_social import get_handlers as get_sector_social_handlers
 from bot.modules.stickers import get_handlers as get_sticker_handlers
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -34,14 +36,8 @@ MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app
 
 
 async def setup_telegram_ui(app: Application):
-    """Register the Mini App as the default private-chat menu button."""
     try:
-        await app.bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(
-                text="sector",
-                web_app=WebAppInfo(url=MINI_APP_URL),
-            )
-        )
+        await app.bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="sector", web_app=WebAppInfo(url=MINI_APP_URL)))
         print("✅ Default SectorLand Mini App menu button registered.")
     except Exception as exc:
         print(f"⚠️ Could not register default Mini App menu button: {exc}")
@@ -54,18 +50,12 @@ def build_application() -> Application:
     init_db()
     app = Application.builder().token(BOT_TOKEN).post_init(setup_telegram_ui).build()
 
-    # Group -20 checks the release manifest before normal user handling. It is
-    # database-idempotent, so Vercel cold starts cannot duplicate channel posts.
     for h in get_release_announcement_handlers(): app.add_handler(h, group=-20)
-
-    # Group -10 is a private-chat access gate. It runs before every normal bot
-    # feature and stops propagation when the Telegram user is not in @sectorland.
     for h in get_required_membership_handlers(): app.add_handler(h, group=-10)
-
-    # Owner-only maintenance commands should run before broad text/menu handlers.
     for h in get_sticker_handlers(): app.add_handler(h, group=-5)
 
     for h in get_registration_handlers(): app.add_handler(h, group=0)
+    for h in get_sector_social_handlers(): app.add_handler(h, group=1)
     for h in get_warning_handlers():
         if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
     for h in get_antispam_handlers():
