@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { useTelegram } from './hooks/useTelegram'
 import { useToast } from './hooks/useToast'
 import { api } from './services/api'
-import { NAV_ITEMS } from './utils/mock'
 
 import BottomNav from './components/ui/BottomNav'
 import Toast from './components/ui/Toast'
@@ -41,7 +40,6 @@ var PAGES = {
   sectorpet: SectorPetPage,
 }
 
-var NAV_KEYS = NAV_ITEMS.map(function(n) { return n.key })
 var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو' }
 
 var EMPTY_USER = {
@@ -214,8 +212,6 @@ export default function App() {
   }
 
   var PageComponent = PAGES[page] || PAGES.home
-  var showNav = NAV_KEYS.indexOf(page) !== -1
-
   return (
     <AppContext.Provider value={ctx}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -223,7 +219,7 @@ export default function App() {
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} key={page}>
           <PageComponent />
         </div>
-        {showNav && <BottomNav page={page} onNavigate={navigate} />}
+        <BottomNav page={page} onNavigate={navigate} isAdmin={dbUser.is_admin} />
         <Toast toast={toast} />
       </div>
     </AppContext.Provider>

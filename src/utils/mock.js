@@ -109,7 +109,8 @@ export const WHEEL_COLORS = [
 
 export const NAV_ITEMS = [
   { key: 'home',    icon: '🏠', label: 'خانه' },
-  { key: 'shop',    icon: '🛒', label: 'فروشگاه' },
+  { key: 'sectorpet', icon: '🤖', label: 'سکتور' },
+  { key: 'features', icon: '🌐', label: 'سایر' },
   { key: 'wallet',  icon: '💰', label: 'کیف پول' },
   { key: 'games',   icon: '🎮', label: 'بازی‌ها' },
   { key: 'profile', icon: '👤', label: 'پروفایل' },
