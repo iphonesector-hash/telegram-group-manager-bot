@@ -36,7 +36,7 @@ def _get_state(session):
 
 
 def _build_photo_url(manifest):
-    image = str(manifest.get("image") or "/assets/sector/brand-hero.webp")
+    image = str(manifest.get("image") or "/assets/sector/brand-hero.svg")
     if image.startswith("https://") or image.startswith("http://"):
         return image
     if not image.startswith("/"):
