@@ -8,6 +8,9 @@ import time
 import datetime
 import secrets
 import random
+import ast
+import operator
+import httpx
 from typing import Optional
 from urllib.parse import unquote
 from sqlalchemy import func
@@ -15,6 +18,7 @@ from sqlalchemy import func
 from bot.database.session import get_session
 from bot.database.models import User, Group, Purchase, AppSetting
 from api.quiz_bank import QUIZ_BANK
+from bot.modules.ai import get_ai_response, get_sector_prompt
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -68,6 +72,7 @@ SETTING_DEFAULTS = {
     "weekly_tournament_enabled": False,
 }
 ADMIN_SETTING_KEYS = set(SETTING_DEFAULTS)
+WEATHER_LABELS = {0:"صاف",1:"عمدتاً صاف",2:"نیمه‌ابری",3:"ابری",45:"مه‌آلود",48:"مه یخ‌زن",51:"نم‌نم باران",53:"باران ریز",55:"باران شدید",61:"باران",63:"باران متوسط",65:"باران شدید",71:"برف",73:"برف متوسط",75:"برف شدید",80:"رگبار",81:"رگبار متوسط",82:"رگبار شدید",95:"رعدوبرق"}
 
 
 def load_settings(session) -> dict:
@@ -100,6 +105,72 @@ def require_admin(init_data: Optional[str]) -> tuple[dict, object]:
         session.close()
         raise HTTPException(status_code=403, detail="Admin access required")
     return telegram_user, session
+
+
+def safe_calculate(expression: str) -> float:
+    if not expression or len(expression) > 100:
+        raise ValueError("invalid expression")
+    operations = {ast.Add:operator.add,ast.Sub:operator.sub,ast.Mult:operator.mul,ast.Div:operator.truediv,ast.Mod:operator.mod,ast.Pow:operator.pow,ast.USub:operator.neg,ast.UAdd:operator.pos}
+    def evaluate(node):
+        if isinstance(node,ast.Expression): return evaluate(node.body)
+        if isinstance(node,ast.Constant) and isinstance(node.value,(int,float)) and not isinstance(node.value,bool): return node.value
+        if isinstance(node,ast.BinOp) and type(node.op) in operations:
+            left,right=evaluate(node.left),evaluate(node.right)
+            if isinstance(node.op,ast.Pow) and abs(right)>8: raise ValueError("power too large")
+            value=operations[type(node.op)](left,right)
+            if abs(value)>1e15: raise ValueError("result too large")
+            return value
+        if isinstance(node,ast.UnaryOp) and type(node.op) in operations: return operations[type(node.op)](evaluate(node.operand))
+        raise ValueError("unsupported expression")
+    return evaluate(ast.parse(expression,mode="eval"))
+
+
+@app.post("/api/tools/assistant/{user_id}")
+async def miniapp_assistant(user_id:int, request:dict, init_data:Optional[str]=Header(None,alias="init-data")):
+    telegram_user=require_user(init_data,user_id)
+    message=str(request.get("message") or "").strip()
+    mode=str(request.get("mode") or "chat")
+    if not message or len(message)>1500: raise HTTPException(status_code=400,detail="پیام نامعتبر است.")
+    session=get_session()
+    try:
+        since=datetime.datetime.utcnow()-datetime.timedelta(hours=1)
+        used=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.item_id=="miniapp_ai",Purchase.created_at>=since).count()
+        if used>=30: raise HTTPException(status_code=429,detail="سقف استفاده ساعتی دستیار پر شده است.")
+        history=request.get("history") if isinstance(request.get("history"),list) else []
+        history=[{"role":str(x.get("role")),"content":str(x.get("content"))[:1200]} for x in history[-6:] if isinstance(x,dict) and x.get("role") in ("user","assistant")]
+        prompt=get_sector_prompt(type("MiniUser",(),{"id":user_id,"first_name":telegram_user.get("first_name") or "کاربر"})())
+        if mode=="translate": prompt="متن را اگر فارسی است به انگلیسی و اگر غیرفارسی است به فارسی ترجمه کن. فقط ترجمه را برگردان."
+        response=await get_ai_response(prompt,message,history=history)
+        if not response: raise HTTPException(status_code=503,detail="دستیار موقتاً در دسترس نیست.")
+        session.add(Purchase(user_id=user_id,item_id="miniapp_ai",amount=0,status="activity"));session.commit()
+        return {"response":response[:4000],"remaining":max(0,29-used)}
+    finally: session.close()
+
+
+@app.get("/api/tools/weather")
+async def miniapp_weather(city:str, init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data)
+    city=city.strip()[:80]
+    if len(city)<2: raise HTTPException(status_code=400,detail="نام شهر را وارد کن.")
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            geo=await client.get("https://geocoding-api.open-meteo.com/v1/search",params={"name":city,"count":1,"language":"fa","format":"json"})
+            geo.raise_for_status(); places=geo.json().get("results") or []
+            if not places: raise HTTPException(status_code=404,detail="شهر پیدا نشد.")
+            place=places[0]
+            weather=await client.get("https://api.open-meteo.com/v1/forecast",params={"latitude":place["latitude"],"longitude":place["longitude"],"current":"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m","timezone":"auto"})
+            weather.raise_for_status(); current=weather.json().get("current") or {}
+            return {"city":place.get("name") or city,"country":place.get("country") or "","temperature":current.get("temperature_2m"),"feels_like":current.get("apparent_temperature"),"humidity":current.get("relative_humidity_2m"),"wind":current.get("wind_speed_10m"),"condition":WEATHER_LABELS.get(int(current.get("weather_code",-1)),"نامشخص")}
+    except HTTPException: raise
+    except Exception: raise HTTPException(status_code=502,detail="سرویس هواشناسی پاسخ نداد.")
+
+
+@app.post("/api/tools/calculate")
+async def miniapp_calculate(request:dict, init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data)
+    try: result=safe_calculate(str(request.get("expression") or ""))
+    except Exception: raise HTTPException(status_code=400,detail="عبارت ریاضی معتبر نیست.")
+    return {"result":round(float(result),10)}
 
 
 def validate_telegram_init_data(init_data: Optional[str]) -> dict:

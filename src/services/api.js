@@ -44,4 +44,7 @@ export const api = {
   },
   getAdminOverview: function(initData) { return request('/api/admin/overview', {}, initData) },
   updateAdminSettings: function(settings, initData) { return request('/api/admin/settings', { method:'POST', body:JSON.stringify({ settings:settings }) }, initData) },
+  assistant: function(userId, message, mode, history, initData) { return request('/api/tools/assistant/' + userId, { method:'POST', body:JSON.stringify({ message:message, mode:mode, history:history || [] }) }, initData) },
+  weather: function(city, initData) { return request('/api/tools/weather?city=' + encodeURIComponent(city), {}, initData) },
+  calculate: function(expression, initData) { return request('/api/tools/calculate', { method:'POST', body:JSON.stringify({ expression:expression }) }, initData) },
 }

@@ -1,11 +1,11 @@
 import { useAppContext } from '../App'
 
 var FEATURES = [
-  {icon:'🤖',title:'دستیار هوشمند',desc:'پرسش و پاسخ فارسی با Sector AI',action:'chat'},
+  {icon:'🤖',title:'دستیار هوشمند',desc:'پرسش و پاسخ فارسی با Sector AI',action:'tools'},
   {icon:'🛡️',title:'مدیریت گروه',desc:'اخطار، بن، میوت و مدیریت اعضا',action:'group'},
   {icon:'🔒',title:'قفل‌های گروه',desc:'لینک، رسانه، فوروارد، منشن و ضداسپم',action:'group'},
   {icon:'👋',title:'خوش‌آمد و قوانین',desc:'تنظیم پیام ورود و قوانین هر گروه',action:'group'},
-  {icon:'🌤️',title:'آب‌وهوا و ابزارها',desc:'هواشناسی، ترجمه، ماشین‌حساب و تبدیل واحد',action:'chat'},
+  {icon:'🌤️',title:'آب‌وهوا و ابزارها',desc:'هواشناسی، ترجمه، ماشین‌حساب و تبدیل واحد',action:'tools'},
   {icon:'🎭',title:'سرگرمی و مسابقه',desc:'چیستان، حدس پرچم، جوایز و بازی‌ها',action:'games'},
   {icon:'🏦',title:'بانک SectorLand',desc:'واریز، برداشت، وام و تراکنش‌ها',action:'wallet'},
   {icon:'🎫',title:'پشتیبانی و جوایز',desc:'دریافت جایزه‌های کانفیگ و پروکسی',action:'support'},
@@ -21,8 +21,8 @@ export default function FeaturesPage() {
     if (item.action === 'wallet') return ctx.navigate('wallet')
     if (item.action === 'support') return ctx.navigate('support')
     if (item.action === 'games') return ctx.navigate('games')
+    if (item.action === 'tools') return ctx.navigate('tools')
     if (item.action === 'group') return openTelegram('https://t.me/iSectorlandbot?startgroup=true')
-    if (item.action === 'chat') return openTelegram('https://t.me/iSectorlandbot')
   }
   return (
     <div className="page fade-up">
