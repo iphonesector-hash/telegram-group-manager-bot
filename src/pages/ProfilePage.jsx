@@ -52,7 +52,7 @@ export default function ProfilePage() {
   return (
     <div className="page fade-up">
       <div className="glass" style={{padding:0,overflow:'hidden',marginBottom:12,border:'1px solid rgba(112,88,255,.3)'}}>
-        <img src="/assets/sector/brand-hero.svg" alt="Sector profile" style={{display:'block',width:'100%',maxHeight:160,objectFit:'cover'}} />
+        <img src="/assets/sector/koochooloo-hero-v2.webp" alt="Sector profile" style={{display:'block',width:'100%',maxHeight:160,objectFit:'cover',objectPosition:'center 43%'}} />
       </div>
 
       <div className="glass" style={{padding:24,textAlign:'center',marginBottom:16,background:'radial-gradient(circle at 50% 0%,rgba(99,77,255,.2),transparent 48%),linear-gradient(135deg,rgba(79,123,255,.14),rgba(162,89,255,.09))'}}>
@@ -75,7 +75,7 @@ export default function ProfilePage() {
 
       <div className="glass" style={{padding:'11px 11px 9px',marginBottom:14,overflow:'hidden'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><b style={{fontSize:12}}>🏆 مسیر رتبه تو</b><span style={{fontSize:10,color:'var(--gold)'}}>{rank}</span></div>
-        <img src="/assets/sector/rank-badges.svg" alt="Sector rank badges" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
+        <img src="/assets/sector/rank-badges.webp" alt="Sector rank badges" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:16}}>
@@ -96,7 +96,7 @@ export default function ProfilePage() {
       <div className="glass" style={{padding:'10px 16px',marginBottom:12}}><div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{fontSize:12,color:'var(--muted)'}}>✅ پاسخ درست</span><b>{Number(dbUser.correct_answers||0).toLocaleString('fa-IR')}</b></div><div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{fontSize:12,color:'var(--muted)'}}>💬 پیام‌های ثبت‌شده</span><b>{Number(dbUser.message_count||0).toLocaleString('fa-IR')}</b></div></div>
 
       <button onClick={function(){navigate('sectorpet')}} className="glass" style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:0,overflow:'hidden',marginBottom:12,color:'inherit',border:'1px solid rgba(80,215,255,.22)',cursor:'pointer',textAlign:'right'}}>
-        <img src="/assets/sector/mascot-emotions.svg" alt="Sector Koochooloo" loading="lazy" style={{width:118,height:82,objectFit:'cover',objectPosition:'left center'}} />
+        <img src="/assets/sector/koochooloo-moods-v2.webp" alt="Sector Koochooloo" loading="lazy" style={{width:118,height:82,objectFit:'cover',objectPosition:'left center'}} />
         <div style={{flex:1,padding:'10px 0'}}><b style={{fontSize:13}}>🤖 سکتور کوچولوی من</b><div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>مراقبت، بازی، رشد و خاطره‌های مشترک</div></div><span style={{paddingLeft:12,fontSize:20}}>‹</span>
       </button>
 

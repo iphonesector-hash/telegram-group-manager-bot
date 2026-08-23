@@ -126,7 +126,7 @@ export default function GamesPage() {
       <SectorCelebration open={!!celebration} title={celebration&&celebration.title} text={celebration&&celebration.text} onClose={function(){setCelebration(null)}} />
 
       <div className="glass" style={{padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(96,85,255,.3)'}}>
-        <img src="/assets/sector/brand-hero.webp" alt="SectorLand Arcade" style={{display:'block',width:'100%',aspectRatio:'1.8',objectFit:'cover'}} />
+        <img src="/assets/sector/koochooloo-hero-v2.webp" alt="SectorLand Arcade" style={{display:'block',width:'100%',aspectRatio:'1.8',objectFit:'cover',objectPosition:'center 43%'}} />
         <div style={{padding:'10px 14px',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center'}}><div><b style={{fontSize:13}}>🎮 SectorLand Arcade</b><div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>بازی کن • رکورد بزن • XP و سکه بگیر</div></div><span className="badge badge-gold">Lv.{Number(dbUser.level||1)}</span></div>
       </div>
 

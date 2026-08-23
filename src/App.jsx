@@ -251,7 +251,7 @@ export default function App() {
     return (
       <div style={{height:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:22,background:'radial-gradient(circle at 50% 15%,rgba(79,123,255,.18),transparent 40%),var(--bg)',textAlign:'center'}}>
         <div className="glass" style={{width:'100%',maxWidth:380,padding:'24px 20px'}}>
-          <img src="/assets/sector/brand-hero.svg" alt="SectorLand" style={{width:'100%',borderRadius:16,marginBottom:16}} />
+          <img src="/assets/sector/koochooloo-hero-v2.webp" alt="SectorLand" style={{width:'100%',borderRadius:16,marginBottom:16}} />
           <div style={{fontSize:22,fontWeight:900,marginBottom:8}}>🔒 عضویت در SectorLand الزامی است</div>
           <div style={{fontSize:13,color:'var(--muted)',lineHeight:1.9,marginBottom:18}}>{membershipError || 'ابتدا عضو کانال اصلی SectorLand شو و بعد دوباره بررسی کن.'}</div>
           <a className="btn btn-primary" href="https://t.me/sectorland" style={{textDecoration:'none',marginBottom:10}}>📣 عضویت در @sectorland</a>

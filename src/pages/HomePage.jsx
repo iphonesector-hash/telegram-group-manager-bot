@@ -96,7 +96,7 @@ export default function HomePage() {
   return (
     <div className="page fade-up">
       <button onClick={function(){navigate('sectorpet')}} className="glass" style={{display:'block',width:'100%',padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(125,92,255,.35)',cursor:'pointer',textAlign:'inherit',color:'inherit',background:'#090c27'}}>
-        <img src="/assets/sector/brand-hero.svg" alt="Sector - Play Earn Grow" style={{display:'block',width:'100%',aspectRatio:'1.32',objectFit:'cover'}} />
+        <img src="/assets/sector/koochooloo-hero-v2.webp" alt="Sector Koochooloo" fetchPriority="high" style={{display:'block',width:'100%',aspectRatio:'1.32',objectFit:'cover',objectPosition:'center 42%'}} />
         <div style={{padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
           <div><b style={{fontSize:13}}>💙 سکتور کوچولو، همراه همیشگی تو</b><div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>بازی کن • رشد کن • جایزه بگیر</div></div>
           <span style={{fontSize:18}}>‹</span>
@@ -120,12 +120,12 @@ export default function HomePage() {
       </div>
 
       <div className="glass" style={{padding:0,overflow:'hidden',marginBottom:10}}>
-        <img src="/assets/sector/mascot-emotions.svg" alt="حالت‌های سکتور کوچولو" loading="lazy" style={{display:'block',width:'100%'}} />
+        <img src="/assets/sector/koochooloo-moods-v2.webp" alt="حالت‌های سکتور کوچولو" loading="lazy" style={{display:'block',width:'100%',aspectRatio:'3/1',objectFit:'cover'}} />
       </div>
 
       <div className="glass" style={{padding:'12px 12px 9px',marginBottom:8,overflow:'hidden'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><b style={{fontSize:12}}>🏆 مسیر رتبه‌های Sector</b><span style={{fontSize:10,color:'var(--gold)'}}>{rankName(level)}</span></div>
-        <img src="/assets/sector/rank-badges.svg" alt="نشان‌های رتبه Sector" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
+        <img src="/assets/sector/rank-badges.webp" alt="نشان‌های رتبه Sector" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
       </div>
 
       <div className="glass" style={{padding:'12px 16px',marginBottom:8,display:'flex',alignItems:'center',gap:10,borderColor:'rgba(34,216,122,.2)'}}><span style={{fontSize:22}}>🔄</span><span style={{fontSize:13}}>این صفحه مستقیماً با حساب ربات SectorLand همگام است.</span></div>

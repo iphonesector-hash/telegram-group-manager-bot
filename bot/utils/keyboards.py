@@ -5,7 +5,7 @@ def get_main_menu():
         [KeyboardButton("🛡 مدیریت"), KeyboardButton("👤 حساب کاربری")],
         [KeyboardButton("🏦 بانک و اقتصاد"), KeyboardButton("🎮 سرگرمی")],
         [KeyboardButton("🛠 کاربردی"), KeyboardButton("🤖 دستیار هوشمند")],
-        [KeyboardButton("سکتور کوچولو", style="primary")],
+        [KeyboardButton("🤖 سکتور کوچولو")],
         [KeyboardButton("⚙️ تنظیمات"), KeyboardButton("🤝 پشتیبانی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

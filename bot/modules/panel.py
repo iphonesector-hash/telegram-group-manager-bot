@@ -124,10 +124,7 @@ async def _render_group_panel(update, context, text, markup):
 
 
 async def panel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type == "private":
-        await update.effective_message.reply_text("SectorLand Control Panel", reply_markup=get_main_menu())
-    else:
-        await _render_group_panel(update, context, "SectorLand Control Panel\nاین پنل بی‌صدا با Edit به‌روزرسانی می‌شود.", _main_inline())
+    await update.effective_message.reply_text("🏠 منوی اصلی SectorBot", reply_markup=get_main_menu())
     raise ApplicationHandlerStop()
 
 
@@ -230,24 +227,75 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
     if not update.effective_message or not update.effective_message.text:
         return
     text = update.effective_message.text.strip()
-    if update.effective_chat.type == "private":
-        from bot.utils.keyboards import get_economy_menu, get_entertainment_menu, get_settings_menu, get_user_menu, get_utility_menu
-        mapping={"🎮 سرگرمی":("سرگرمی",get_entertainment_menu()),"🛠 کاربردی":("ابزارهای کاربردی",get_utility_menu()),"👤 حساب کاربری":("حساب کاربری",get_user_menu()),"🏦 بانک و اقتصاد":("بانک و اقتصاد",get_economy_menu()),"⚙️ تنظیمات":("تنظیمات",get_settings_menu())}
-        if text in mapping:
-            title,markup=mapping[text]; await update.effective_message.reply_text(title,reply_markup=markup); raise ApplicationHandlerStop()
-        if text in ("سکتور کوچولو","🤖 سکتور کوچولو"):
-            await update.effective_message.reply_text("Sector Companion",reply_markup=InlineKeyboardMarkup([[B("باز کردن Sector",style="success",web_app=WebAppInfo(url=MINI_APP_URL))]])); raise ApplicationHandlerStop()
-        return
-    replied=update.effective_message.reply_to_message
-    if text in ("سکتور کوچولو","🤖 سکتور کوچولو") and replied and replied.from_user and not replied.from_user.is_bot:
-        opened=await show_sector_reply_actions(update,context,replied.from_user); await _delete_press(update)
-        if opened: raise ApplicationHandlerStop()
-    nav_map={"👤 حساب کاربری":"profile","🏦 بانک و اقتصاد":"economy","🎮 سرگرمی":"fun","🛠 کاربردی":"tools","سکتور کوچولو":"sector","🤖 سکتور کوچولو":"sector","🛡 مدیریت":"admin","⚙️ تنظیمات":"settings","🤖 دستیار هوشمند":"assistant","🤝 پشتیبانی":"support","🔙 بازگشت به منوی اصلی":"main"}
-    if text not in nav_map:return
-    if nav_map[text]=="admin" and not await is_admin(update,context): await _delete_press(update); raise ApplicationHandlerStop()
-    await _delete_press(update); panel_text,markup=_nav(nav_map[text]); await _render_group_panel(update,context,panel_text,markup); raise ApplicationHandlerStop()
+    from bot.utils.keyboards import (
+        get_admin_menu, get_economy_menu, get_entertainment_menu,
+        get_group_settings_menu, get_locks_menu, get_member_mgmt_menu,
+        get_rules_settings_menu, get_settings_menu, get_user_menu,
+        get_utility_menu, get_welcome_settings_menu,
+    )
+
+    replied = update.effective_message.reply_to_message
+    if text in ("سکتور کوچولو", "🤖 سکتور کوچولو") and replied and replied.from_user and not replied.from_user.is_bot:
+        if await show_sector_reply_actions(update, context, replied.from_user):
+            raise ApplicationHandlerStop()
+
+    simple = {
+        "🎮 سرگرمی": ("🎮 سرگرمی و بازی", get_entertainment_menu()),
+        "🛠 کاربردی": ("🛠 ابزارهای کاربردی", get_utility_menu()),
+        "👤 حساب کاربری": ("👤 حساب کاربری", get_user_menu()),
+        "🏦 بانک و اقتصاد": ("🏦 بانک و اقتصاد", get_economy_menu()),
+        "⚙️ تنظیمات": ("⚙️ تنظیمات", get_settings_menu()),
+        "🤖 دستیار هوشمند": ("🤖 همین‌جا هر سؤالی داری بپرس.", get_main_menu()),
+        "🤝 پشتیبانی": ("🤝 پشتیبانی: @sector_ad", get_main_menu()),
+        "🔙 بازگشت به سرگرمی": ("🎮 سرگرمی و بازی", get_entertainment_menu()),
+        "🔙 بازگشت به منوی اصلی": ("🏠 منوی اصلی SectorBot", get_main_menu()),
+    }
+    if text in simple:
+        title, markup = simple[text]
+        await update.effective_message.reply_text(title, reply_markup=markup)
+        raise ApplicationHandlerStop()
+
+    if text in ("سکتور کوچولو", "🤖 سکتور کوچولو"):
+        markup = InlineKeyboardMarkup([[
+            InlineKeyboardButton("مراقبت در چت", callback_data="sector_pet"),
+            InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL)),
+        ]])
+        await update.effective_message.reply_text(
+            "🤖 سکتور کوچولو همراه دیجیتال توئه؛ با سکه، مأموریت، بازی و تمرین کمکش کن رشد کنه!",
+            reply_markup=markup,
+        )
+        raise ApplicationHandlerStop()
+
+    admin_only = {
+        "🛡 مدیریت": ("🛡 منوی مدیریت", get_admin_menu()),
+        "🔒 قفل‌های گروه": ("🔐 مدیریت قفل‌ها", get_locks_menu()),
+        "🔒 قفل‌ها": ("🔐 مدیریت قفل‌ها", get_locks_menu()),
+        "👤 مدیریت اعضا": ("👤 مدیریت اعضا", get_member_mgmt_menu()),
+        "⚙️ تنظیمات گروه": ("⚙️ تنظیمات گروه", get_group_settings_menu()),
+        "👋 خوشامدگویی": ("👋 تنظیمات خوشامدگویی", get_welcome_settings_menu()),
+        "📜 قوانین": ("📜 تنظیمات قوانین", get_rules_settings_menu()),
+        "🔙 بازگشت به مدیریت": ("🛡 منوی مدیریت", get_admin_menu()),
+    }
+    if text in admin_only:
+        if update.effective_chat.type == "private":
+            await update.effective_message.reply_text(
+                "🛡 ابزارهای مدیریت فقط داخل گروه قابل استفاده‌اند.",
+                reply_markup=get_main_menu(),
+            )
+        elif await is_admin(update, context):
+            title, markup = admin_only[text]
+            await update.effective_message.reply_text(title, reply_markup=markup)
+        raise ApplicationHandlerStop()
 
 
 def get_panel_handlers():
-    nav_regex="^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🤖 سکتور کوچولو|سکتور کوچولو|🤝 پشتیبانی|🔙 بازگشت به منوی اصلی)$"
-    return [CommandHandler("panel",panel_cmd),CallbackQueryHandler(group_panel_callback,pattern=r"^gp:"),MessageHandler(filters.TEXT & filters.Regex(nav_regex),menu_navigation_handler)]
+    nav_regex = (
+        "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|"
+        "🤖 دستیار هوشمند|🤖 سکتور کوچولو|سکتور کوچولو|🤝 پشتیبانی|🔒 قفل‌های گروه|"
+        "🔒 قفل‌ها|👤 مدیریت اعضا|⚙️ تنظیمات گروه|👋 خوشامدگویی|📜 قوانین|"
+        "🔙 بازگشت به مدیریت|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"
+    )
+    return [
+        CommandHandler("panel", panel_cmd),
+        MessageHandler(filters.TEXT & filters.Regex(nav_regex), menu_navigation_handler),
+    ]
