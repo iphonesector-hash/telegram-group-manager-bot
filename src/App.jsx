@@ -21,6 +21,7 @@ import AdminPage from './pages/AdminPage'
 import ToolsPage from './pages/ToolsPage'
 import MissionsPage from './pages/MissionsPage'
 import SectorPetPage from './pages/SectorPetPage'
+import WhatsNewPage from './pages/WhatsNewPage'
 
 var AppContext = createContext(null)
 export function useAppContext() { return useContext(AppContext) }
@@ -39,9 +40,10 @@ var PAGES = {
   tools: ToolsPage,
   missions: MissionsPage,
   sectorpet: SectorPetPage,
+  whatsnew: WhatsNewPage,
 }
 
-var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو' }
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو', whatsnew:'چه خبر؟' }
 
 var EMPTY_USER = {
   id: 0,
@@ -175,6 +177,7 @@ export default function App() {
   }, [tgUser, initData])
 
   var ctx = {
+    tg: tg,
     tgUser: tgUser,
     initData: initData,
     dbUser: dbUser,
@@ -191,7 +194,7 @@ export default function App() {
 
   if (!tgUser) {
     return (
-      <div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,background:'var(--bg)',textAlign:'center'}}>
+      <div style={{height:'100dvh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,background:'var(--bg)',textAlign:'center'}}>
         <div style={{ fontSize: 56 }}>🔒</div>
         <div style={{ fontWeight: 800, fontSize: 20 }}>فقط داخل تلگرام</div>
         <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.7 }}>
@@ -207,7 +210,7 @@ export default function App() {
   var PageComponent = PAGES[page] || PAGES.home
   return (
     <AppContext.Provider value={ctx}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         {page !== 'home' && <PageHeader title={PAGE_TITLES[page]} onBack={goBack} />}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} key={page}>
           <PageComponent />
