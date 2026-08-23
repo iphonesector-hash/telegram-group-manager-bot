@@ -24,9 +24,10 @@ async def is_required_member(bot, user_id: int) -> bool:
             return bool(getattr(member, "is_member", False))
         return False
     except Exception as exc:
-        # Fail open on Telegram/API outages so an external error never locks all users out.
+        # Membership is a hard requirement. If Telegram cannot verify it, do not
+        # grant access accidentally; users can retry when the API responds.
         print(f"⚠️ Required-membership check failed: {exc}")
-        return True
+        return False
 
 
 async def membership_gate(update: Update, context):
@@ -56,7 +57,7 @@ async def verify_membership(update: Update, context):
     if await is_required_member(context.bot, query.from_user.id):
         await query.edit_message_text("✅ عضویت تأیید شد. حالا می‌تونی از همه امکانات SectorLand استفاده کنی.\n\n/start")
         return
-    await query.answer("هنوز عضویتت در @sectorland تأیید نشده.", show_alert=True)
+    await query.answer("هنوز عضویتت در @sectorland تأیید نشده یا بررسی عضویت موقتاً در دسترس نیست.", show_alert=True)
 
 
 def get_handlers():
