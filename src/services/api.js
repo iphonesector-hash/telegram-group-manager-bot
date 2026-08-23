@@ -58,4 +58,6 @@ export const api = {
   sectorPetAction: function(userId, action, initData) { return request('/api/sector-pet/' + userId + '/' + encodeURIComponent(action), { method:'POST' }, initData) },
   renameSectorPet: function(userId, name, initData) { return request('/api/sector-pet/' + userId + '/rename/name', { method:'POST', body:JSON.stringify({name:name}) }, initData) },
   talkSectorPet: function(userId, message, initData) { return request('/api/sector-pet/' + userId + '/talk/message', { method:'POST', body:JSON.stringify({message:message}) }, initData) },
+  buySectorRoomItem: function(userId, itemKey, initData) { return request('/api/sector-pet/' + userId + '/room/' + encodeURIComponent(itemKey), { method:'POST', body:'{}' }, initData) },
+  finishSectorGame: function(userId, gameKey, score, initData) { return request('/api/sector-pet/' + userId + '/minigame/' + encodeURIComponent(gameKey), { method:'POST', body:JSON.stringify({score:score}) }, initData) },
 }

@@ -8,7 +8,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, Mes
 
 from bot.database.session import get_session
 from bot.database.models import AppSetting, Purchase, User
-from bot.modules.ai import get_ai_response, get_sector_prompt
+from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn
 from bot.services import sector_pet as service
 
 
@@ -37,9 +37,10 @@ def animated_emoji(index, fallback):
 def pet_keyboard(user_id=None):
     icons=sector_emoji_ids();icon=lambda n:icons[n%len(icons)] if icons else None
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("شارژ", callback_data="sector_action:charge",style="success",icon_custom_emoji_id=icon(0)), InlineKeyboardButton("بازی", callback_data="sector_action:play",style="primary",icon_custom_emoji_id=icon(1))],
+        [InlineKeyboardButton("شارژ", callback_data="sector_action:charge",style="success",icon_custom_emoji_id=icon(0)), InlineKeyboardButton("غذا", callback_data="sector_action:feed",style="success",icon_custom_emoji_id=icon(1))],
+        [InlineKeyboardButton("بازی", callback_data="sector_action:play",style="primary",icon_custom_emoji_id=icon(2)),InlineKeyboardButton("نظافت",callback_data="sector_action:clean",style="primary",icon_custom_emoji_id=icon(3))],
         [InlineKeyboardButton("تمرین", callback_data="sector_action:train",style="primary",icon_custom_emoji_id=icon(2)), InlineKeyboardButton("یادگیری", callback_data="sector_action:learn",style="success",icon_custom_emoji_id=icon(3))],
-        [InlineKeyboardButton("تعمیر", callback_data="sector_action:repair",style="danger",icon_custom_emoji_id=icon(4)), InlineKeyboardButton("تازه‌سازی", callback_data="sector_pet",style="primary",icon_custom_emoji_id=icon(5))],
+        [InlineKeyboardButton("تعمیر", callback_data="sector_action:repair",style="danger",icon_custom_emoji_id=icon(4)), InlineKeyboardButton("استراحت", callback_data="sector_action:sleep",style="primary",icon_custom_emoji_id=icon(5))],
         [InlineKeyboardButton("ماموریت و چالش",callback_data="sector_quests",style="success",icon_custom_emoji_id=icon(6)),InlineKeyboardButton("مهارت‌ها",callback_data="sector_skills",style="primary",icon_custom_emoji_id=icon(7))],
         [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon(10))],
@@ -56,12 +57,16 @@ def pet_text(pet, daily):
     gate = (pet.get("stage") or {}).get("next_gate")
     gate_text = "به آخرین فرم رسیده‌ای" if not gate else f"فرم بعدی: سطح {gate['level']} + {gate['care_days']} روز مراقبت"
     robot, energy, joy, brain, heart = [animated_emoji(i, x) for i, x in enumerate(("🤖", "⚡", "💙", "🧠", "❤️"))]
+    mood=pet.get("mood") or {"emoji":"🤖","title":"آرام","line":"خوشحالم که برگشتی."}
     return (
         f"{robot} <b>{html.escape(pet['name'])}</b> — {pet['stage']['title']} — سطح {pet['level']}\n\n"
         f"{energy} انرژی   {progress_bar(pet['energy'])} {pet['energy']}٪\n"
         f"{joy} شادی    {progress_bar(pet['happiness'])} {pet['happiness']}٪\n"
         f"{brain} دانش    {progress_bar(pet['knowledge'])} {pet['knowledge']}٪\n"
         f"{heart} سلامت  {progress_bar(pet['health'])} {pet['health']}٪\n\n"
+        f"🍪 سیری    {progress_bar(pet['hunger'])} {pet['hunger']}٪\n"
+        f"🫧 نظافت   {progress_bar(pet['cleanliness'])} {pet['cleanliness']}٪\n\n"
+        f"{mood['emoji']} <b>{mood['title']}</b> — {mood['line']}\n\n"
         f"🔥 زنجیره حضور: <b>{pet['streak_days']} روز</b>\n"
         f"📅 روزهای مراقبت: <b>{pet['total_care_days']}</b>\n"
         f"🎯 مأموریت امروز: <b>{min(daily['actions'], daily['target'])}/{daily['target']}</b> فعالیت\n"
@@ -108,8 +113,9 @@ async def show_panel(query, text, reply_markup):
 
 
 def quest_text(pet,daily,claimed=False):
+    goals="\n".join(f"{'✅' if goal['complete'] else '🔄'} {goal['title']}: {goal['progress']}/{goal['target']}" for goal in daily.get('goals',[]))
     return (f"{animated_emoji(6, '🎯')} <b>ماموریت‌های {html.escape(pet['name'])}</b>\n\n"
-            f"{'✅' if daily['complete'] else '🔄'} مراقبت روزانه: {min(daily['actions'],3)}/3\n"
+            f"{goals}\n"
             f"🔥 حفظ زنجیره حضور: {pet['streak_days']} روز\n"
             f"🧠 دانش‌آموز سکتور: دانش {pet['knowledge']}/100\n"
             f"💙 حال خوب: شادی {pet['happiness']}/100\n\n"
@@ -226,14 +232,16 @@ async def sector_talk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("💬 نمونه: /sectortalk امروز حالت چطوره؟")
         raise ApplicationHandlerStop()
     pet, _ = load_pet(update.effective_user.id)
-    mood = "سرحال و بازیگوش" if pet['happiness'] >= 70 else ("کمی دلگیر و نیازمند توجه" if pet['happiness'] < 35 else "آرام و صمیمی")
+    mood = (pet.get('mood') or {}).get('title','آرام و صمیمی')
     prompt = (
         f"تو خودِ ربات همراه شخصی این کاربر هستی؛ نامت «{pet['name']}» است و هرگز خودت را Sector AI، دستیار عمومی یا مدل هوش مصنوعی معرفی نکن. "
         f"سطح تو {pet['level']}، انرژی {pet['energy']}، شادی {pet['happiness']}، دانش {pet['knowledge']} و حالت فعلی‌ات {mood} است. "
         "با شخصیت یک ربات کوچولوی بامزه، گرم، کمی شیطون و دارای احساس جواب بده. وضعیتت باید روی لحن و حرفت اثر بگذارد. "
         "پاسخ فارسی، طبیعی، کوتاه و مخصوص رابطه خودت با صاحب تو باشد؛ از لحن رسمی ربات مدیریت گروه استفاده نکن."
     )
-    answer = await get_ai_response(prompt, message[:700])
+    history=load_ai_history(-update.effective_user.id,16)
+    answer = await get_ai_response(prompt, message[:700],history=history)
+    if answer:save_ai_turn(update.effective_user.id,-update.effective_user.id,message[:700],answer)
     await update.effective_message.reply_text(f"🤖 {pet['name']}:\n{answer or 'الان یکم خواب‌آلودم؛ دوباره صدایم کن!'}")
     raise ApplicationHandlerStop()
 

@@ -419,6 +419,32 @@ async def sector_pet_talk(user_id:int,request:dict,init_data:Optional[str]=Heade
     return {"status":"success","response":response[:2000],"pet":data}
 
 
+@app.post("/api/sector-pet/{user_id}/room/{item_key}")
+async def sector_pet_room_item(user_id:int,item_key:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        result=sector_service.buy_room_item(session,user_id,item_key)
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
+    except:
+        session.rollback();raise
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/minigame/{game_key}")
+async def sector_pet_minigame(user_id:int,game_key:str,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        result=sector_service.finish_minigame(session,user_id,game_key,int(request.get("score") or 0))
+        if result["status"]=="success":session.commit()
+        else:session.rollback()
+        return result
+    except:
+        session.rollback();raise
+    finally:session.close()
+
+
 @app.post("/api/daily-claim/{user_id}")
 async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data, user_id)

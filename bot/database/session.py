@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import sessionmaker
 from bot.database.models import Base
@@ -75,6 +75,21 @@ def _require_database():
 def init_db():
     _require_database()
     Base.metadata.create_all(engine)
+    # create_all does not add columns to an existing table. Keep this migration
+    # additive and idempotent so old Sector companions remain intact.
+    if engine.url.get_backend_name() == "postgresql":
+        statements = (
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS hunger INTEGER NOT NULL DEFAULT 80",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS cleanliness INTEGER NOT NULL DEFAULT 80",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS personality TEXT NOT NULL DEFAULT 'کنجکاو'",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS room_level INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS inventory JSON NOT NULL DEFAULT '{}'::json",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS equipped_item TEXT",
+            "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS sleeping BOOLEAN NOT NULL DEFAULT FALSE",
+        )
+        with engine.begin() as connection:
+            for statement in statements:
+                connection.execute(text(statement))
     print(f"✅ iSectorLand database ready ({engine.url.get_backend_name()}).")
 
 

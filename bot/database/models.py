@@ -159,6 +159,13 @@ class SectorPet(Base):
     happiness = Column(Integer, nullable=False, default=80)
     knowledge = Column(Integer, nullable=False, default=0)
     health = Column(Integer, nullable=False, default=100)
+    hunger = Column(Integer, nullable=False, default=80)
+    cleanliness = Column(Integer, nullable=False, default=80)
+    personality = Column(Text, nullable=False, default="کنجکاو")
+    room_level = Column(Integer, nullable=False, default=1)
+    inventory = Column(JSON, nullable=False, default=dict)
+    equipped_item = Column(Text, nullable=True)
+    sleeping = Column(Boolean, nullable=False, default=False)
     streak_days = Column(Integer, nullable=False, default=0)
     best_streak = Column(Integer, nullable=False, default=0)
     total_care_days = Column(Integer, nullable=False, default=0)
@@ -177,6 +184,17 @@ class SectorPetAction(Base):
     action = Column(Text, nullable=False)
     coin_cost = Column(BigInteger, nullable=False, default=0)
     xp_gained = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorPetGame(Base):
+    __tablename__ = "isectorbot_sector_pet_games"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    game_key = Column(Text, nullable=False)
+    score = Column(Integer, nullable=False, default=0)
+    reward = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
 
 
