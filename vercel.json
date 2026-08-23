@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/assets/sector/brand-hero.webp", "destination": "/assets/sector/brand-hero.svg" },
+    { "source": "/assets/sector/mascot-emotions.webp", "destination": "/assets/sector/mascot-emotions.svg" },
+    { "source": "/assets/sector/rank-badges.webp", "destination": "/assets/sector/rank-badges.svg" },
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
