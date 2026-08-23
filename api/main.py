@@ -18,7 +18,17 @@ app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-MAX_INIT_DATA_AGE = int(os.getenv("TELEGRAM_INIT_DATA_MAX_AGE", "3600"))
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    try:
+        return int(raw) if raw else default
+    except ValueError:
+        return default
+
+
+MAX_INIT_DATA_AGE = _env_int("TELEGRAM_INIT_DATA_MAX_AGE", 3600)
 
 SHOP_ITEMS = {
     1: {"name": "VPN یک ماهه", "price": 1000},
