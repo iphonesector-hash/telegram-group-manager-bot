@@ -61,18 +61,6 @@ async def miniapp_status():
         return {"expected_url": MINI_APP_URL, "default": info(default_button), "owner": info(owner_button)}
 
 
-@app.post("/api/miniapp-repair")
-async def miniapp_repair():
-    """Idempotently repair the default and commander-specific launchers."""
-    token = os.getenv("BOT_TOKEN", "").strip()
-    if not token:
-        raise HTTPException(status_code=503, detail="bot token not configured")
-    async with Bot(token=token) as bot:
-        await _register_default_menu(bot)
-        owner_button = await bot.get_chat_menu_button(chat_id=5147526780)
-        return {"ok": True, "text": owner_button.text, "url": owner_button.web_app.url}
-
-
 @app.post("/api/miniapp-diagnostic")
 async def miniapp_diagnostic(request: Request):
     data = await request.json()
