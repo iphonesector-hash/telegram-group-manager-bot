@@ -196,6 +196,7 @@ class SectorPetAction(Base):
 
 class SectorPetGame(Base):
     __tablename__ = "isectorbot_sector_pet_games"
+    __table_args__ = (Index("ix_sector_pet_games_user_created", "user_id", "created_at"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
@@ -233,6 +234,7 @@ class SectorPetSocial(Base):
 
 class SectorClan(Base):
     __tablename__ = "isectorbot_sector_clans"
+    __table_args__ = (Index("ix_sector_clans_owner", "owner_id"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, unique=True)
