@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useAppContext } from '../App'
+import WheelOfFortune from '../components/WheelOfFortune'
+
+var ARCADE_GAMES = [
+  {id:'snake3d',name:'Snake 3D',icon:'🐍',desc:'مار سه‌بعدی سکتور با مراحل مختلف',url:'https://love-hub-snake-3-d.vercel.app'},
+  {id:'2048',name:'2048',icon:'🔢',desc:'ترکیب اعداد و رکوردشکنی',url:'https://lovehub-games-i-sector.vercel.app/games/2048/'},
+  {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',url:'https://lovehub-games-i-sector.vercel.app/games/tetris-touch/'},
+  {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',url:'https://lovehub-games-i-sector.vercel.app/games/memory/src/'},
+  {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',url:'https://lovehub-games-i-sector.vercel.app/games/minesweeper/'},
+]
 
 export default function GamesPage() {
   var ctx = useAppContext()
@@ -72,9 +81,17 @@ export default function GamesPage() {
     })
   }
 
+  function openArcade(game) {
+    try {
+      if (ctx.tg && ctx.tg.openLink) ctx.tg.openLink(game.url)
+      else window.location.assign(game.url)
+    } catch (_) { window.location.assign(game.url) }
+  }
+
   var tabs = [
     { key: 'games', label: '🎮 بازی‌ها' },
     { key: 'daily', label: '🎁 جایزه روزانه' },
+    { key: 'wheel', label: '🎡 گردونه شانس' },
     { key: 'leaderboard', label: '🏆 برترین‌ها' },
   ]
 
@@ -89,6 +106,11 @@ export default function GamesPage() {
 
       {!loading && tab === 'games' && (
         <div>
+          <div style={{fontWeight:800,fontSize:14,margin:'2px 0 10px'}}>🕹 بازی‌های کامل</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+            {ARCADE_GAMES.map(function(game){return <button key={game.id} onClick={function(){openArcade(game)}} className="glass" style={{padding:14,border:'1px solid var(--border)',color:'inherit',textAlign:'right',cursor:'pointer',minHeight:132}}><div style={{fontSize:30}}>{game.icon}</div><div style={{fontWeight:800,fontSize:14,marginTop:7}}>{game.name}</div><div style={{fontSize:10,color:'var(--muted)',lineHeight:1.6,marginTop:3}}>{game.desc}</div><div className="badge badge-blue" style={{marginTop:8}}>بازی کن</div></button>})}
+          </div>
+          <div style={{fontWeight:800,fontSize:14,margin:'2px 0 10px'}}>🧩 مسابقه‌های سکه‌ای ربات</div>
           {games.map(function(g){
             return <button key={g.id} onClick={function(){startQuiz(g.id)}} className="glass" style={{width:'100%',padding:'15px 16px',marginBottom:10,display:'flex',alignItems:'center',gap:12,border:'1px solid var(--border)',color:'inherit',textAlign:'right',cursor:'pointer'}}>
               <div style={{width:42,height:42,borderRadius:13,background:'rgba(79,123,255,.12)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:21}}>{g.id==='intel'?'🧠':g.id==='logic'?'🧩':'🚩'}</div>
@@ -114,6 +136,8 @@ export default function GamesPage() {
       )}
 
       {!loading && tab === 'daily' && <div style={{textAlign:'center',paddingTop:18}}><div className="glass" style={{padding:'28px 18px',maxWidth:360,margin:'0 auto'}}><div style={{fontSize:54,marginBottom:10}}>🎁</div><div style={{fontWeight:800,fontSize:18,marginBottom:8}}>جایزه روزانه SectorLand</div><div style={{color:'var(--muted)',fontSize:13,lineHeight:1.8,marginBottom:20}}>این جایزه مستقیم روی حساب واقعی ربات ثبت می‌شود.</div><button className="btn btn-gold" onClick={claimDaily} disabled={claiming} style={{padding:'13px 28px',borderRadius:14}}>{claiming?'⏳ در حال ثبت...':'🎁 دریافت جایزه'}</button><div style={{marginTop:16,fontSize:12,color:'var(--muted)'}}>موجودی فعلی: <span style={{color:'var(--gold)',fontWeight:700}}>{Number(dbUser.coins||0).toLocaleString()} 🪙</span></div></div></div>}
+
+      {!loading && tab === 'wheel' && <WheelOfFortune />}
 
       {!loading && tab === 'leaderboard' && <div><div className="glass" style={{padding:'12px 16px',marginBottom:12}}><div style={{fontSize:12,color:'var(--muted)'}}>رتبه من</div><div style={{fontWeight:800,fontSize:20}}>#{Number(dbUser.rank||0).toLocaleString('fa-IR')}</div></div>{leaderboard.map(function(u,i){var badge=i===0?'🥇':i===1?'🥈':i===2?'🥉':u.rank;return <div key={i} className="glass" style={{padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:12}}><div style={{width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800}}>{badge}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:11,color:'var(--muted)'}}>سطح {u.level}</div></div><div style={{fontWeight:800,color:'var(--gold)',fontSize:14}}>{Number(u.coins||0).toLocaleString()} 🪙</div></div>})}</div>}
     </div>

@@ -58,8 +58,10 @@ export default function HomePage() {
   var quickActions = [
     { icon: '🎁', label: 'هدیه روزانه', sub: 'هر روز سکه بگیر', fn: handleClaim, loading: claiming },
     { icon: '🛒', label: 'فروشگاه', sub: 'خرید با سکه واقعی', fn: function() { navigate('shop') } },
-    { icon: '🎮', label: 'بازی و مسابقه', sub: 'سکه و XP بگیر', fn: function() { navigate('games') } },
+    { icon: '🎡', label: 'گردونه و بازی', sub: 'جایزه و بازی‌های جدید', fn: function() { navigate('games') } },
     { icon: '💰', label: 'بانک', sub: 'واریز، برداشت و وام', fn: function() { navigate('wallet') } },
+    { icon: '🌐', label: 'همه امکانات', sub: 'مدیریت، ابزار و سرگرمی', fn: function() { navigate('features') } },
+    { icon: '👤', label: 'پروفایل من', sub: 'حساب و سوابق واقعی', fn: function() { navigate('profile') } },
   ]
 
   return (

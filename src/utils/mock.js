@@ -92,14 +92,14 @@ export const MOCK_FAQ = [
 ]
 
 export const WHEEL_PRIZES = [
-  { label: '🎁 ۵۰ سکه',   coins: 50 },
-  { label: '💎 ۲۰۰ سکه',  coins: 200 },
-  { label: '⭐ ۱۰۰ سکه',  coins: 100 },
-  { label: '🎰 ۵۰۰ سکه',  coins: 500 },
-  { label: '🪙 ۲۵ سکه',   coins: 25 },
-  { label: '🏆 ۱۰۰۰ سکه', coins: 1000 },
-  { label: '🎯 ۷۵ سکه',   coins: 75 },
-  { label: '💫 ۱۵۰ سکه',  coins: 150 },
+  { label: '۲۵ سکه', short:'۲۵ 🪙' },
+  { label: '۵۰ سکه', short:'۵۰ 🪙' },
+  { label: '۱۰۰ سکه', short:'۱۰۰ 🪙' },
+  { label: '۲۰۰ سکه', short:'۲۰۰ 🪙' },
+  { label: '۳۰۰ سکه', short:'۳۰۰ 🪙' },
+  { label: 'کانفیگ رایگان', short:'کانفیگ' },
+  { label: 'پروکسی تلگرام', short:'پروکسی' },
+  { label: '۷۵ سکه', short:'۷۵ 🪙' },
 ]
 
 export const WHEEL_COLORS = [

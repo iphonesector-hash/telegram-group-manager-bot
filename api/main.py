@@ -6,6 +6,7 @@ import json
 import os
 import time
 import datetime
+import secrets
 import random
 from typing import Optional
 from urllib.parse import unquote
@@ -31,11 +32,23 @@ def _env_int(name: str, default: int) -> int:
 MAX_INIT_DATA_AGE = _env_int("TELEGRAM_INIT_DATA_MAX_AGE", 3600)
 
 SHOP_ITEMS = {
-    1: {"name": "VPN یک ماهه", "price": 1000},
-    2: {"name": "VPN سه ماهه", "price": 2500},
-    3: {"name": "پک استیکر اختصاصی", "price": 500},
-    4: {"name": "لقب سفارشی در گروه", "price": 2000},
+    1: {"name": "VPN یک ماهه", "price": 15000},
+    2: {"name": "VPN سه ماهه", "price": 40000},
+    3: {"name": "پک استیکر اختصاصی", "price": 8000},
+    4: {"name": "لقب سفارشی در گروه", "price": 25000},
+    5: {"name": "VPN شش ماهه", "price": 75000},
 }
+
+WHEEL_PRIZES = [
+    {"kind":"coins","label":"۲۵ سکه","coins":25},
+    {"kind":"coins","label":"۵۰ سکه","coins":50},
+    {"kind":"coins","label":"۱۰۰ سکه","coins":100},
+    {"kind":"coins","label":"۲۰۰ سکه","coins":200},
+    {"kind":"coins","label":"۳۰۰ سکه","coins":300},
+    {"kind":"config","label":"کانفیگ رایگان","coins":0},
+    {"kind":"proxy","label":"پروکسی تلگرام","coins":0},
+    {"kind":"coins","label":"۷۵ سکه","coins":75},
+]
 
 QUIZ_BANK = [
     {"id":"intel-1","kind":"intel","question":"اگر ۵ دستگاه در ۵ دقیقه، ۵ قطعه بسازند، ۱۰۰ دستگاه در ۵ دقیقه چند قطعه می‌سازند؟","options":["۵","۲۰","۱۰۰","۵۰۰"],"answer":2,"explanation":"هر دستگاه در ۵ دقیقه یک قطعه می‌سازد؛ پس ۱۰۰ دستگاه، ۱۰۰ قطعه.","coins":5,"xp":10},
@@ -136,6 +149,44 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alia
         session.commit()
         return {"status":"success","reward":reward,"coins":user.coins}
     finally: session.close()
+
+
+@app.post("/api/wheel/spin/{user_id}")
+async def spin_wheel(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data, user_id)
+    session = get_session()
+    try:
+        user = session.query(User).filter(User.id == user_id).with_for_update().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        now = datetime.datetime.utcnow()
+        last = session.query(Purchase).filter(
+            Purchase.user_id == user_id,
+            Purchase.item_id.like("wheel_%"),
+        ).order_by(Purchase.created_at.desc()).first()
+        last_time = last.created_at.replace(tzinfo=None) if last and last.created_at and last.created_at.tzinfo else (last.created_at if last else None)
+        if last_time and now - last_time < datetime.timedelta(hours=24):
+            remaining = datetime.timedelta(hours=24) - (now - last_time)
+            return {"status":"error","message":"گردونه امروز را چرخاندی.","remaining_seconds":int(remaining.total_seconds())}
+
+        prize_index = secrets.randbelow(len(WHEEL_PRIZES))
+        prize = WHEEL_PRIZES[prize_index]
+        coins = int(prize.get("coins", 0))
+        if coins:
+            user.coins = int(user.coins or 0) + coins
+        session.add(Purchase(
+            user_id=user.id,
+            item_id="wheel_" + prize["kind"],
+            amount=coins,
+            status="reward",
+        ))
+        session.commit()
+        message = "جایزه به حسابت اضافه شد."
+        if prize["kind"] in ("config", "proxy"):
+            message = "جایزه ثبت شد؛ برای تحویل از بخش پشتیبانی پیام بده."
+        return {"status":"success","index":prize_index,"prize":prize,"coins":int(user.coins or 0),"message":message}
+    finally:
+        session.close()
 
 
 @app.get("/api/bank/{user_id}")

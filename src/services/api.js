@@ -24,7 +24,9 @@ async function request(endpoint, options, initData) {
 
 export const api = {
   getUser: function(userId, initData) { return request('/api/user/' + userId, {}, initData) },
+  getUserPhoto: function(userId, initData) { return request('/api/user-photo/' + userId, {}, initData) },
   dailyClaim: function(userId, initData) { return request('/api/daily-claim/' + userId, { method: 'POST' }, initData) },
+  spinWheel: function(userId, initData) { return request('/api/wheel/spin/' + userId, { method: 'POST' }, initData) },
   getShop: function(initData) { return request('/api/shop', {}, initData) },
   buyItem: function(userId, itemId, initData) { return request('/api/shop/buy/' + userId + '?item_id=' + itemId, { method: 'POST' }, initData) },
   getLeaderboard: function(initData) { return request('/api/leaderboard', {}, initData) },

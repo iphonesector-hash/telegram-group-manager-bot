@@ -1,6 +1,7 @@
 import os
 import hmac
 import logging
+import base64
 import psycopg2
 from fastapi import Request, HTTPException, Header
 from telegram import Update, Bot, WebAppInfo, MenuButtonWebApp
@@ -44,6 +45,28 @@ async def health():
         "webhook_secret_configured": bool(os.getenv("TELEGRAM_WEBHOOK_SECRET")),
         "mini_app_url": MINI_APP_URL,
     }
+
+
+@app.get("/api/user-photo/{user_id}")
+async def user_photo(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data, user_id)
+    token = os.getenv("BOT_TOKEN", "").strip()
+    if not token:
+        return {"photo_url": None}
+    try:
+        async with Bot(token=token) as bot:
+            photos = await bot.get_user_profile_photos(user_id=user_id, limit=1)
+            if not photos.photos:
+                return {"photo_url": None}
+            telegram_file = await bot.get_file(photos.photos[0][-1].file_id)
+            payload = bytes(await telegram_file.download_as_bytearray())
+            if len(payload) > 1_500_000:
+                return {"photo_url": None}
+            encoded = base64.b64encode(payload).decode("ascii")
+            return {"photo_url": "data:image/jpeg;base64," + encoded}
+    except Exception:
+        logging.getLogger(__name__).warning("Unable to load Telegram profile photo for user %s", user_id)
+        return {"photo_url": None}
 
 
 @app.get("/api/orders/{user_id}")

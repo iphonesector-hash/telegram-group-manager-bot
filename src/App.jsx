@@ -6,6 +6,7 @@ import { NAV_ITEMS } from './utils/mock'
 
 import BottomNav from './components/ui/BottomNav'
 import Toast from './components/ui/Toast'
+import PageHeader from './components/ui/PageHeader'
 
 import HomePage    from './pages/HomePage'
 import ShopPage    from './pages/ShopPage'
@@ -15,6 +16,7 @@ import OrdersPage  from './pages/OrdersPage'
 import ReferralPage from './pages/ReferralPage'
 import ProfilePage from './pages/ProfilePage'
 import SupportPage from './pages/SupportPage'
+import FeaturesPage from './pages/FeaturesPage'
 
 var AppContext = createContext(null)
 export function useAppContext() { return useContext(AppContext) }
@@ -28,9 +30,11 @@ var PAGES = {
   referral: ReferralPage,
   profile: ProfilePage,
   support: SupportPage,
+  features: FeaturesPage,
 }
 
 var NAV_KEYS = NAV_ITEMS.map(function(n) { return n.key })
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'امکانات ربات' }
 
 var EMPTY_USER = {
   id: 0,
@@ -78,29 +82,36 @@ export default function App() {
   var showToast = toastState.showToast
 
   var [page, setPage] = useState('home')
-  var [prevPage, setPrevPage] = useState('home')
+  var [history, setHistory] = useState([])
   var [dbUser, setDbUser] = useState(EMPTY_USER)
   var [bootLoading, setBootLoading] = useState(true)
 
   var navigate = useCallback(function(to) {
-    setPrevPage(page)
+    if (to === page) return
+    setHistory(function(items) { return items.concat(page).slice(-12) })
     setPage(to)
   }, [page])
 
+  var goBack = useCallback(function() {
+    setHistory(function(items) {
+      var next = items.length ? items[items.length - 1] : 'home'
+      setPage(next)
+      return items.slice(0, -1)
+    })
+  }, [])
+
   useEffect(function() {
     if (!tg) return
-    var isMain = NAV_KEYS.indexOf(page) !== -1
-    var onBack = function() { setPage(prevPage || 'home') }
-    if (!isMain) {
+    if (page !== 'home') {
       tg.BackButton.show()
-      tg.BackButton.onClick(onBack)
+      tg.BackButton.onClick(goBack)
     } else {
       tg.BackButton.hide()
     }
     return function() {
-      try { tg.BackButton.offClick(onBack) } catch (_) {}
+      try { tg.BackButton.offClick(goBack) } catch (_) {}
     }
-  }, [page, prevPage, tg])
+  }, [page, tg, goBack])
 
   useEffect(function() {
     if (!tgUser || !initData) {
@@ -115,6 +126,10 @@ export default function App() {
         showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
       }
       setBootLoading(false)
+    })
+    api.getUserPhoto(tgUser.id, initData).then(function(photoResult) {
+      var photoUrl = photoResult && photoResult.data && photoResult.data.photo_url
+      if (photoUrl && telegram.setPhotoUrl) telegram.setPhotoUrl(photoUrl)
     })
   }, [tgUser, initData, launchChecked, showToast])
 
@@ -144,6 +159,7 @@ export default function App() {
     refreshUser: refreshUser,
     page: page,
     navigate: navigate,
+    goBack: goBack,
     showToast: showToast,
     apiCall: apiCall,
   }
@@ -176,6 +192,7 @@ export default function App() {
   return (
     <AppContext.Provider value={ctx}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+        {page !== 'home' && <PageHeader title={PAGE_TITLES[page]} onBack={goBack} />}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} key={page}>
           <PageComponent />
         </div>

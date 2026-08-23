@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 function readLaunchData(tg) {
   var initData = (tg && tg.initData) || ''
@@ -30,6 +30,7 @@ function readLaunchData(tg) {
 }
 
 export function useTelegram() {
+  var [photoUrl, setPhotoUrl] = useState('')
   var [telegram, setTelegram] = useState(function() {
     return readLaunchData(window.Telegram && window.Telegram.WebApp)
   })
@@ -68,5 +69,9 @@ export function useTelegram() {
     }
   }, [])
 
-  return telegram
+  var resolvedUser = useMemo(function() {
+    return telegram.tgUser ? { ...telegram.tgUser, photo_url: photoUrl || telegram.tgUser.photo_url } : null
+  }, [telegram.tgUser, photoUrl])
+
+  return { ...telegram, tgUser: resolvedUser, setPhotoUrl: setPhotoUrl }
 }

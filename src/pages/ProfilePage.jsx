@@ -26,6 +26,7 @@ export default function ProfilePage() {
     { icon: '👥', label: 'معرفی دوستان', fn: function() { navigate('referral') } },
     { icon: '🏆', label: 'برترین‌ها', fn: function() { navigate('games') } },
     { icon: '❓', label: 'پشتیبانی', fn: function() { navigate('support') } },
+    { icon: '🌐', label: 'همه امکانات ربات', fn: function() { navigate('features') } },
   ]
 
   var profileStats = [

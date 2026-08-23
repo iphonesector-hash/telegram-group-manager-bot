@@ -12,7 +12,7 @@ function decorateProduct(item, index) {
     name: name,
     price: price,
     category: isVpn ? 'vpn' : 'extras',
-    duration: isVpn ? (id === 2 ? '۳ ماه' : '۱ ماه') : '—',
+    duration: isVpn ? (id === 5 ? '۶ ماه' : id === 2 ? '۳ ماه' : '۱ ماه') : '—',
     features: isVpn
       ? ['فعال‌سازی روی حساب واقعی ربات', 'ثبت خرید در تراکنش‌ها', 'تحویل از طریق SectorLand']
       : ['خرید با سکه حساب ربات', 'ثبت فوری در تاریخچه'],
