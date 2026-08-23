@@ -1,4 +1,7 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || ''
+// The Mini App is deployed as a separate static Vercel project.  Its own
+// /api runtime intentionally has no bot/database secrets, so authenticated
+// requests must always go to the unified bot backend.
+const BASE = import.meta.env.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
 
 async function request(endpoint, options, initData) {
   try {
