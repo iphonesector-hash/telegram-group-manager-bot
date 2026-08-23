@@ -99,6 +99,8 @@ export default function App() {
   var [history, setHistory] = useState([])
   var [dbUser, setDbUser] = useState(EMPTY_USER)
   var [bootLoading, setBootLoading] = useState(true)
+  var [membershipAllowed, setMembershipAllowed] = useState(null)
+  var [membershipError, setMembershipError] = useState('')
 
   var navigate = useCallback(function(to) {
     if (to === page) return
@@ -132,7 +134,7 @@ export default function App() {
     var safetyTimer = window.setTimeout(function() {
       if (active) {
         setBootLoading(false)
-        showToast('اتصال کند است؛ دوباره تلاش کنید', 'error')
+        setMembershipError('اتصال کند است؛ دوباره تلاش کن.')
       }
     }, 8000)
     if (!tgUser || !initData) {
@@ -141,17 +143,39 @@ export default function App() {
       window.clearTimeout(safetyTimer)
       return function() { active = false }
     }
-    api.getUser(tgUser.id, initData).then(function(result) {
-      if (!active) return
-      if (result && result.data && result.data.id) {
-        setDbUser(normalizeUser(result.data))
-      } else {
-        showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
+
+    api.getMembership(tgUser.id, initData).then(function(membershipResult) {
+      if (!active) return null
+      if (!membershipResult || !membershipResult.data) {
+        setMembershipAllowed(false)
+        setMembershipError((membershipResult && membershipResult.error) || 'بررسی عضویت موقتاً در دسترس نیست.')
+        setBootLoading(false)
+        window.clearTimeout(safetyTimer)
+        return null
       }
-      setBootLoading(false)
-      window.clearTimeout(safetyTimer)
+      if (!membershipResult.data.member) {
+        setMembershipAllowed(false)
+        setMembershipError('برای استفاده از Mini App باید عضو @sectorland باشی.')
+        setBootLoading(false)
+        window.clearTimeout(safetyTimer)
+        return null
+      }
+
+      setMembershipAllowed(true)
+      return api.getUser(tgUser.id, initData).then(function(result) {
+        if (!active) return
+        if (result && result.data && result.data.id) {
+          setDbUser(normalizeUser(result.data))
+        } else {
+          showToast('اطلاعات حساب از ربات دریافت نشد', 'error')
+        }
+        setBootLoading(false)
+        window.clearTimeout(safetyTimer)
+      })
     })
+
     api.getUserPhoto(tgUser.id, initData).then(function(photoResult) {
+      if (!active) return
       var photoUrl = photoResult && photoResult.data && photoResult.data.photo_url
       if (photoUrl && telegram.setPhotoUrl) telegram.setPhotoUrl(photoUrl)
     })
@@ -203,6 +227,20 @@ export default function App() {
         <button className="btn btn-primary" onClick={function(){window.location.reload()}}>🔄 تلاش دوباره</button>
         <a className="btn btn-gold" href="https://t.me/iSectorlandbot?start=miniapp" style={{textDecoration:'none'}}>🤖 باز کردن ربات</a>
         <div style={{fontSize:10,color:'var(--muted)'}}>کد تشخیص: {telegram.tg?'TG-NO-USER':'NO-TG-BRIDGE'}</div>
+      </div>
+    )
+  }
+
+  if (membershipAllowed !== true) {
+    return (
+      <div style={{height:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:22,background:'radial-gradient(circle at 50% 15%,rgba(79,123,255,.18),transparent 40%),var(--bg)',textAlign:'center'}}>
+        <div className="glass" style={{width:'100%',maxWidth:380,padding:'24px 20px'}}>
+          <img src="/assets/sector/brand-hero.webp" alt="SectorLand" style={{width:'100%',borderRadius:16,marginBottom:16}} />
+          <div style={{fontSize:22,fontWeight:900,marginBottom:8}}>🔒 عضویت در SectorLand الزامی است</div>
+          <div style={{fontSize:13,color:'var(--muted)',lineHeight:1.9,marginBottom:18}}>{membershipError || 'ابتدا عضو کانال اصلی SectorLand شو و بعد دوباره بررسی کن.'}</div>
+          <a className="btn btn-primary" href="https://t.me/sectorland" style={{textDecoration:'none',marginBottom:10}}>📣 عضویت در @sectorland</a>
+          <button className="btn btn-gold" onClick={function(){window.location.reload()}} style={{width:'100%'}}>✅ عضو شدم — بررسی کن</button>
+        </div>
       </div>
     )
   }
