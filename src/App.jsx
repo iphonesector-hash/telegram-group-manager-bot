@@ -71,6 +71,7 @@ export default function App() {
   var tg = telegram.tg
   var tgUser = telegram.tgUser
   var initData = telegram.initData
+  var launchChecked = telegram.launchChecked
 
   var toastState = useToast()
   var toast = toastState.toast
@@ -103,6 +104,7 @@ export default function App() {
 
   useEffect(function() {
     if (!tgUser || !initData) {
+      if (!launchChecked) return
       setBootLoading(false)
       return
     }
@@ -114,7 +116,7 @@ export default function App() {
       }
       setBootLoading(false)
     })
-  }, [tgUser, initData, showToast])
+  }, [tgUser, initData, launchChecked, showToast])
 
   var apiCall = useCallback(function(method) {
     var args = Array.prototype.slice.call(arguments, 1)
