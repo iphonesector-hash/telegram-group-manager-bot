@@ -49,6 +49,16 @@ export default function AdminPage() {
       <label style={{display:'flex',alignItems:'center',padding:'13px 0 4px'}}><span style={{flex:1,fontSize:12}}>حالت تعمیر فروشگاه</span><button className={'toggle'+(settings.maintenance_mode?' on':'')} onClick={function(){setSettings(function(v){return {...v,maintenance_mode:!v.maintenance_mode}})}} /></label>
       <label style={{display:'flex',alignItems:'center',padding:'13px 0 4px'}}><span style={{flex:1,fontSize:12}}>تورنمنت هفتگی</span><button className={'toggle'+(settings.weekly_tournament_enabled?' on':'')} onClick={function(){setSettings(function(v){return {...v,weekly_tournament_enabled:!v.weekly_tournament_enabled}})}} /></label>
     </div>
+    <div className="sec-title">🎁 موجودی تحویل خودکار</div>
+    <div className="glass" style={{padding:14,marginBottom:12}}>
+      <label style={{display:'block',fontSize:12,marginBottom:6}}>کانفیگ‌ها — هر مورد در یک خط</label>
+      <textarea value={(settings.config_inventory||[]).join('\n')} onChange={function(e){setSettings(function(v){return {...v,config_inventory:e.target.value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}})}} rows="5" dir="ltr" style={{width:'100%',resize:'vertical',padding:10,borderRadius:10,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:11}} />
+      <label style={{display:'block',fontSize:12,margin:'12px 0 6px'}}>پروکسی‌ها — هر مورد در یک خط</label>
+      <textarea value={(settings.proxy_inventory||[]).join('\n')} onChange={function(e){setSettings(function(v){return {...v,proxy_inventory:e.target.value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}})}} rows="5" dir="ltr" style={{width:'100%',resize:'vertical',padding:10,borderRadius:10,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:11}} />
+      <label style={{display:'block',fontSize:12,margin:'12px 0 6px'}}>کد تخفیف — فرمت CODE:10</label>
+      <textarea value={Object.entries(settings.coupon_codes||{}).map(function(x){return x[0]+':'+x[1]}).join('\n')} onChange={function(e){var coupons={};e.target.value.split('\n').forEach(function(line){var parts=line.split(':');var code=(parts[0]||'').trim().toUpperCase();var amount=Number(parts[1]);if(code&&Number.isFinite(amount))coupons[code]=Math.max(0,Math.min(80,amount))});setSettings(function(v){return {...v,coupon_codes:coupons}})}} rows="3" dir="ltr" style={{width:'100%',resize:'vertical',padding:10,borderRadius:10,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:11}} />
+      <div style={{fontSize:10,color:'var(--muted)',marginTop:8}}>موجودی فقط به برنده گردونه تحویل می‌شود و بعد از تحویل، همان مورد به‌صورت اتمی از فهرست حذف خواهد شد.</div>
+    </div>
     <button className="btn btn-primary" disabled={saving} onClick={save} style={{width:'100%',padding:14}}>{saving?'⏳ در حال ذخیره...':'💾 ذخیره تنظیمات'}</button>
     <div style={{height:20}} />
   </div>

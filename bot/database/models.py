@@ -95,3 +95,27 @@ class AppSetting(Base):
     key = Column(String, primary_key=True)
     value = Column(JSON, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class Order(Base):
+    __tablename__ = "isectorbot_orders"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    item_key = Column(Text, nullable=False)
+    item_name = Column(Text, nullable=False)
+    price = Column(BigInteger, nullable=False, default=0)
+    status = Column(Text, nullable=False, default="pending")
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+
+
+class Referral(Base):
+    __tablename__ = "isectorbot_referrals"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    referrer_id = Column(BigInteger, nullable=False)
+    referred_id = Column(BigInteger, nullable=False, unique=True)
+    reward = Column(BigInteger, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)

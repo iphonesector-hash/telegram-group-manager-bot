@@ -16,7 +16,7 @@ from urllib.parse import unquote
 from sqlalchemy import func
 
 from bot.database.session import get_session
-from bot.database.models import User, Group, Purchase, AppSetting
+from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral
 from api.quiz_bank import QUIZ_BANK
 from bot.modules.ai import get_ai_response, get_sector_prompt
 
@@ -40,11 +40,11 @@ OWNER_ID = _env_int("OWNER_ID", 5147526780)
 MAX_INIT_DATA_AGE = _env_int("TELEGRAM_INIT_DATA_MAX_AGE", 3600)
 
 SHOP_ITEMS = {
-    1: {"name": "VPN یک ماهه", "price": 15000},
-    2: {"name": "VPN سه ماهه", "price": 40000},
+    1: {"name": "VPN یک ماهه", "price": 15000, "kind":"vpn", "days":30, "volume":"۵۰ گیگابایت", "devices":2, "region":"اروپا", "warranty":"تعویض در صورت قطعی"},
+    2: {"name": "VPN سه ماهه", "price": 40000, "kind":"vpn", "days":90, "volume":"۱۵۰ گیگابایت", "devices":3, "region":"اروپا", "warranty":"پشتیبانی کامل"},
     3: {"name": "پک استیکر اختصاصی", "price": 8000},
     4: {"name": "لقب سفارشی در گروه", "price": 25000},
-    5: {"name": "VPN شش ماهه", "price": 75000},
+    5: {"name": "VPN شش ماهه", "price": 75000, "kind":"vpn", "days":180, "volume":"۳۰۰ گیگابایت", "devices":5, "region":"اروپا", "warranty":"پشتیبانی VIP"},
 }
 
 WHEEL_PRIZES = [
@@ -70,6 +70,9 @@ SETTING_DEFAULTS = {
     "wheel_cooldown_hours": 24,
     "referral_reward": 250,
     "weekly_tournament_enabled": False,
+    "coupon_codes": {"SECTOR10":10,"VIP15":15},
+    "config_inventory": [],
+    "proxy_inventory": [],
 }
 ADMIN_SETTING_KEYS = set(SETTING_DEFAULTS)
 WEATHER_LABELS = {0:"صاف",1:"عمدتاً صاف",2:"نیمه‌ابری",3:"ابری",45:"مه‌آلود",48:"مه یخ‌زن",51:"نم‌نم باران",53:"باران ریز",55:"باران شدید",61:"باران",63:"باران متوسط",65:"باران شدید",71:"برف",73:"برف متوسط",75:"برف شدید",80:"رگبار",81:"رگبار متوسط",82:"رگبار شدید",95:"رعدوبرق"}
@@ -96,6 +99,10 @@ def effective_shop_items(session) -> dict:
     items[2]["price"] = int(settings["vpn_price_3m"])
     items[5]["price"] = int(settings["vpn_price_6m"])
     return items
+
+
+def serialize_order(order:Order):
+    return {"id":order.id,"item_key":order.item_key,"name":order.item_name,"price":int(order.price or 0),"status":order.status,"created_at":order.created_at.isoformat() if order.created_at else None,"expires_at":order.expires_at.isoformat() if order.expires_at else None,"metadata":order.metadata_json or {}}
 
 
 def is_platform_admin(session, user_id: int) -> bool:
@@ -355,6 +362,32 @@ async def spin_wheel(user_id: int, init_data: Optional[str] = Header(None, alias
         prize_index = secrets.randbelow(len(WHEEL_PRIZES))
         prize = WHEEL_PRIZES[prize_index]
         coins = int(prize.get("coins", 0))
+        message = "جایزه به حسابت اضافه شد."
+        delivery = None
+        if prize["kind"] in ("config", "proxy"):
+            inventory_key = "config_inventory" if prize["kind"] == "config" else "proxy_inventory"
+            inventory_row = session.query(AppSetting).filter(AppSetting.key == inventory_key).with_for_update().first()
+            inventory = list(inventory_row.value or []) if inventory_row else []
+            if inventory:
+                delivery = str(inventory.pop(0)).strip()
+                if inventory_row:
+                    inventory_row.value = inventory
+                    inventory_row.updated_at = now
+                else:
+                    session.add(AppSetting(key=inventory_key, value=inventory, updated_at=now))
+                session.add(Order(
+                    user_id=user.id,
+                    item_key="wheel_" + prize["kind"],
+                    item_name=prize["label"],
+                    price=0,
+                    status="delivered",
+                    metadata_json={"delivery": delivery, "source": "wheel"},
+                ))
+                message = "جایزه آماده شد و در سفارش‌های من قرار گرفت."
+            else:
+                coins = 150
+                prize = {"kind":"coins","label":"۱۵۰ سکه جایگزین","coins":coins}
+                message = "موجودی جایزه ویژه تمام شده بود؛ ۱۵۰ سکه جایگزین دریافت کردی."
         if coins:
             user.coins = int(user.coins or 0) + coins
         session.add(Purchase(
@@ -364,9 +397,6 @@ async def spin_wheel(user_id: int, init_data: Optional[str] = Header(None, alias
             status="reward",
         ))
         session.commit()
-        message = "جایزه به حسابت اضافه شد."
-        if prize["kind"] in ("config", "proxy"):
-            message = "جایزه ثبت شد؛ برای تحویل از بخش پشتیبانی پیام بده."
         return {"status":"success","index":prize_index,"prize":prize,"coins":int(user.coins or 0),"message":message}
     finally:
         session.close()
@@ -466,7 +496,35 @@ async def get_leaderboard(init_data:Optional[str]=Header(None,alias="init-data")
 @app.get("/api/orders/{user_id}")
 async def get_orders(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
     require_user(init_data,user_id); session=get_session()
-    try: return [serialize_purchase(p) for p in session.query(Purchase).filter(Purchase.user_id==user_id).order_by(Purchase.created_at.desc()).limit(50).all()]
+    try: return [serialize_order(o) for o in session.query(Order).filter(Order.user_id==user_id).order_by(Order.created_at.desc()).limit(50).all()]
+    finally: session.close()
+
+
+@app.post("/api/orders/{user_id}/{order_id}/renew")
+async def renew_order(user_id:int,order_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id); session=get_session()
+    try:
+        settings=load_settings(session)
+        if settings["maintenance_mode"]: return {"status":"error","message":"فروشگاه موقتاً در حال بروزرسانی است."}
+        order=session.query(Order).filter(Order.id==order_id,Order.user_id==user_id).with_for_update().first()
+        user=session.query(User).filter(User.id==user_id).with_for_update().first()
+        if not order or not user: raise HTTPException(status_code=404,detail="Order not found")
+        if not str(order.item_key).isdigit(): return {"status":"error","message":"این جایزه قابل تمدید نیست."}
+        item_id=int(order.item_key); item=effective_shop_items(session).get(item_id)
+        if not item or item.get("kind")!="vpn": return {"status":"error","message":"این محصول قابل تمدید نیست."}
+        price=int(item["price"])
+        if int(user.coins or 0)<price: return {"status":"error","message":"سکه کافی برای تمدید نداری."}
+        now=datetime.datetime.utcnow()
+        current_expiry=order.expires_at.replace(tzinfo=None) if order.expires_at and order.expires_at.tzinfo else order.expires_at
+        base=current_expiry if current_expiry and current_expiry>now else now
+        order.expires_at=base+datetime.timedelta(days=int(item["days"]))
+        order.status="active"
+        user.coins=int(user.coins or 0)-price
+        session.add(Purchase(user_id=user.id,item_id=f"renew_{item_id}",amount=price,status="coin_purchase"))
+        session.commit()
+        return {"status":"success","message":"اشتراک با موفقیت تمدید شد.","coins":int(user.coins or 0),"order":serialize_order(order)}
+    except:
+        session.rollback(); raise
     finally: session.close()
 
 
@@ -524,6 +582,12 @@ async def admin_update_settings(request: dict, init_data:Optional[str]=Header(No
             default=SETTING_DEFAULTS[key]
             if isinstance(default,bool):
                 if not isinstance(value,bool): raise HTTPException(status_code=400,detail=f"{key} must be boolean")
+            elif isinstance(default,list):
+                if not isinstance(value,list) or len(value)>500: raise HTTPException(status_code=400,detail=f"{key} must be a list")
+                value=[str(item).strip()[:2000] for item in value if str(item).strip()]
+            elif isinstance(default,dict):
+                if not isinstance(value,dict) or len(value)>100: raise HTTPException(status_code=400,detail=f"{key} must be an object")
+                value={str(k).upper()[:32]:max(0,min(80,int(v))) for k,v in value.items() if str(k).strip() and isinstance(v,(int,float)) and not isinstance(v,bool)}
             else:
                 if isinstance(value,bool) or not isinstance(value,(int,float)): raise HTTPException(status_code=400,detail=f"{key} must be numeric")
                 value=int(value)
@@ -561,7 +625,7 @@ async def get_stats():
 
 
 @app.post("/api/shop/buy/{user_id}")
-async def buy_item(user_id:int,item_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+async def buy_item(user_id:int,item_id:int,coupon_code:str="",init_data:Optional[str]=Header(None,alias="init-data")):
     require_user(init_data,user_id)
     session=get_session()
     try:
@@ -571,9 +635,25 @@ async def buy_item(user_id:int,item_id:int,init_data:Optional[str]=Header(None,a
         if not item: raise HTTPException(status_code=404,detail="Item not found")
         user=session.query(User).filter(User.id==user_id).with_for_update().first()
         if not user: raise HTTPException(status_code=404,detail="User not found")
-        if int(user.coins or 0)<item["price"]: return {"status":"error","message":"سکه کافی نداری."}
-        user.coins-=item["price"]
-        session.add(Purchase(user_id=user.id,item_id=str(item_id),amount=item["price"],status="coin_purchase"))
+        coupon=(coupon_code or "").strip().upper()
+        discount=0
+        if coupon:
+            coupons=settings.get("coupon_codes") or {}
+            if coupon not in coupons: return {"status":"error","message":"کد تخفیف معتبر نیست."}
+            discount=max(0,min(80,int(coupons[coupon])))
+        original_price=int(item["price"])
+        final_price=max(1,round(original_price*(100-discount)/100))
+        if int(user.coins or 0)<final_price: return {"status":"error","message":"سکه کافی نداری."}
+        user.coins=int(user.coins or 0)-final_price
+        now=datetime.datetime.utcnow()
+        expires_at=now+datetime.timedelta(days=int(item["days"])) if item.get("days") else None
+        metadata={key:item[key] for key in ("kind","days","volume","devices","region","warranty") if key in item}
+        metadata.update({"original_price":original_price,"discount_percent":discount,"coupon":coupon or None})
+        order=Order(user_id=user.id,item_key=str(item_id),item_name=item["name"],price=final_price,status="active" if item.get("kind")=="vpn" else "registered",created_at=now,expires_at=expires_at,metadata_json=metadata)
+        session.add(order)
+        session.add(Purchase(user_id=user.id,item_id=str(item_id),amount=final_price,status="coin_purchase"))
         session.commit()
-        return {"status":"success","message":f"{item['name']} با موفقیت خریداری شد.","coins":user.coins}
+        return {"status":"success","message":f"{item['name']} با موفقیت خریداری شد.","coins":int(user.coins or 0),"discount_percent":discount,"order":serialize_order(order)}
+    except:
+        session.rollback(); raise
     finally: session.close()

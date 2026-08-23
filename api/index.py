@@ -16,10 +16,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("telegram.request").setLevel(logging.WARNING)
 
-from api.main import app, require_user, serialize_purchase
+from api.main import app, require_user, serialize_purchase, serialize_order
 from bot.main import build_application
 from bot.database.session import engine, get_session
-from bot.database.models import Purchase
+from bot.database.models import Purchase, Order
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
 _menu_registered = False
@@ -75,13 +75,13 @@ async def miniapp_orders(user_id: int, init_data: Optional[str] = Header(None, a
     session = get_session()
     try:
         rows = (
-            session.query(Purchase)
-            .filter(Purchase.user_id == user_id, Purchase.status == "coin_purchase")
-            .order_by(Purchase.created_at.desc())
+            session.query(Order)
+            .filter(Order.user_id == user_id)
+            .order_by(Order.created_at.desc())
             .limit(50)
             .all()
         )
-        return [serialize_purchase(p) for p in rows]
+        return [serialize_order(order) for order in rows]
     finally:
         session.close()
 

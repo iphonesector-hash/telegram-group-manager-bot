@@ -14,7 +14,7 @@ function decorateProduct(item, index) {
     category: isVpn ? 'vpn' : 'extras',
     duration: isVpn ? (id === 5 ? '۶ ماه' : id === 2 ? '۳ ماه' : '۱ ماه') : '—',
     features: isVpn
-      ? ['فعال‌سازی روی حساب واقعی ربات', 'ثبت خرید در تراکنش‌ها', 'تحویل از طریق SectorLand']
+      ? [item.volume || 'حجم اختصاصی', Number(item.devices || 1).toLocaleString('fa-IR') + ' دستگاه', item.region || 'سرور پرسرعت', item.warranty || 'پشتیبانی']
       : ['خرید با سکه حساب ربات', 'ثبت فوری در تاریخچه'],
     badge: index === 0 ? 'پیشنهاد' : '',
   }
@@ -33,11 +33,14 @@ export default function ShopPage() {
   var [buying, setBuying] = useState(false)
   var [products, setProducts] = useState([])
   var [loading, setLoading] = useState(true)
+  var [maintenance, setMaintenance] = useState(false)
+  var [coupon, setCoupon] = useState('')
 
   useEffect(function() {
     setLoading(true)
     apiCall('getShop').then(function(result) {
       var raw = result && result.data && Array.isArray(result.data.items) ? result.data.items : []
+      setMaintenance(Boolean(result && result.data && result.data.status === 'maintenance'))
       setProducts(raw.map(decorateProduct))
       if (!raw.length) showToast('فروشگاه از سرور دریافت نشد.', 'error')
       setLoading(false)
@@ -57,23 +60,25 @@ export default function ShopPage() {
   function handleBuy() {
     if (!selected || buying || !tgUser) return
     setBuying(true)
-    apiCall('buyItem', tgUser.id, selected.id).then(function(result) {
+    apiCall('buyItem', tgUser.id, selected.id, coupon.trim()).then(function(result) {
       var data = result && result.data
       if (data && data.status === 'success') {
         if (data.coins != null) setDbUser(function(u) { return { ...u, coins: Number(data.coins) } })
-        showToast('✅ خرید موفق: ' + selected.name, 'success')
+        showToast('✅ خرید موفق' + (data.discount_percent ? ' با ' + data.discount_percent + '٪ تخفیف' : '') + ': ' + selected.name, 'success')
         refreshUser()
       } else {
         showToast((data && data.message) || '❌ خرید انجام نشد.', 'error')
       }
       setBuying(false)
       setSelected(null)
+      setCoupon('')
     })
   }
 
   return (
     <div className="page fade-up">
       <div className="sec-title">🛒 فروشگاه</div>
+      {maintenance && <div className="glass" style={{padding:13,marginBottom:12,color:'var(--gold)',textAlign:'center'}}>🛠 فروشگاه موقتاً در حال بروزرسانی است؛ مشاهده محصولات آزاد است اما خرید غیرفعال شده.</div>}
       <div className="glass" style={{padding:'10px 14px',marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <span style={{fontSize:12,color:'var(--muted)'}}>موجودی حساب واقعی</span>
         <span style={{fontWeight:800,color:'var(--gold)'}}>{Number(dbUser.coins || 0).toLocaleString()} 🪙</span>
@@ -116,8 +121,10 @@ export default function ShopPage() {
             <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{selected.name}</div>
             <div style={{color:'var(--muted)',fontSize:13,marginBottom:14}}>این خرید روی همان حساب تلگرام ثبت می‌شود.</div>
             <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'var(--muted)'}}>هزینه:</span><span style={{fontWeight:800,color:'var(--gold)',fontSize:18}}>{selected.price.toLocaleString()} 🪙</span></div>
+            <label style={{display:'block',marginTop:14,fontSize:12,color:'var(--muted)'}}>کد تخفیف (اختیاری)</label>
+            <input value={coupon} onChange={function(e){setCoupon(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,''))}} placeholder="مثلاً SECTOR10" style={{width:'100%',marginTop:6,padding:'11px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',direction:'ltr'}} />
           </div>
-          <button className="btn btn-primary" onClick={handleBuy} disabled={buying || Number(dbUser.coins || 0) < selected.price} style={{marginBottom:10}}>{buying?'⏳ در حال ثبت...':Number(dbUser.coins || 0) < selected.price?'سکه کافی نیست':'✅ تأیید خرید'}</button>
+          <button className="btn btn-primary" onClick={handleBuy} disabled={maintenance || buying || Number(dbUser.coins || 0) < selected.price} style={{marginBottom:10}}>{maintenance?'فروشگاه در حال تعمیر است':buying?'⏳ در حال ثبت...':Number(dbUser.coins || 0) < selected.price?'سکه کافی نیست':'✅ تأیید خرید'}</button>
           <button className="btn btn-ghost" style={{width:'100%'}} onClick={function() { setSelected(null) }}>انصراف</button>
         </div>}
       </Modal>
