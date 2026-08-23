@@ -1,6 +1,7 @@
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
+from bot.utils.keyboards import get_main_menu
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
 BOT_DEEP_LINK = os.getenv("BOT_DEEP_LINK", "https://t.me/iSectorlandbot?start=miniapp")
 
@@ -41,6 +42,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 برای همگام‌سازی امن حساب، Mini App باید از دکمه Web App داخل چت خصوصی ربات باز شود.",
         reply_markup=keyboard,
     )
+    if is_private:
+        # Inline keyboards cannot be combined with Telegram's persistent reply
+        # keyboard. Send the private-chat command panel as a second message so
+        # it always appears below the input field, including after /start.
+        await update.effective_message.reply_text(
+            "🏠 منوی اصلی ربات آماده است؛ یکی از دکمه‌های پایین چت را انتخاب کن.",
+            reply_markup=get_main_menu(),
+        )
     raise ApplicationHandlerStop()
 
 

@@ -3,13 +3,14 @@ import datetime
 import random
 import html
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardButtonRequestUsers, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardButtonRequestUsers, ReplyKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, ApplicationHandlerStop, filters
 
 from bot.database.session import get_session
 from bot.database.models import AppSetting, Purchase, User
 from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn
 from bot.services import sector_pet as service
+from bot.utils.keyboards import get_main_menu
 
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
@@ -337,11 +338,11 @@ async def pending_text(update:Update,context:ContextTypes.DEFAULT_TYPE):
     if not action:return
     text=(update.effective_message.text or "").strip()
     if text=="لغو عملیات":
-        context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("عملیات لغو شد.",reply_markup=ReplyKeyboardRemove());raise ApplicationHandlerStop()
+        context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("عملیات لغو شد.",reply_markup=get_main_menu());raise ApplicationHandlerStop()
     if action=="rename":
-        context.args=[text];context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("نام دریافت شد.",reply_markup=ReplyKeyboardRemove());await sector_name(update,context)
+        context.args=[text];context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("نام دریافت شد.",reply_markup=get_main_menu());await sector_name(update,context)
     elif action=="talk":
-        context.args=[text];context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("سکتور در حال فکرکردن است…",reply_markup=ReplyKeyboardRemove());await sector_talk(update,context)
+        context.args=[text];context.user_data.pop("sector_pending",None);await update.effective_message.reply_text("سکتور در حال فکرکردن است…",reply_markup=get_main_menu());await sector_talk(update,context)
 
 
 async def selected_user(update:Update,context:ContextTypes.DEFAULT_TYPE):
@@ -350,12 +351,12 @@ async def selected_user(update:Update,context:ContextTypes.DEFAULT_TYPE):
     if not shared or action not in ("play","rob") or not shared.users:return
     target_id=shared.users[0].user_id
     if target_id==update.effective_user.id:
-        await update.effective_message.reply_text("خودت را نمی‌توانی انتخاب کنی.",reply_markup=ReplyKeyboardRemove());raise ApplicationHandlerStop()
+        await update.effective_message.reply_text("خودت را نمی‌توانی انتخاب کنی.",reply_markup=get_main_menu());raise ApplicationHandlerStop()
     session=get_session()
     try: target=session.query(User).filter(User.id==target_id).first();target_name=target.first_name if target else f"کاربر {target_id}"
     finally:session.close()
     context.user_data["sector_selected_target"]={"id":target_id,"name":target_name}
-    await update.effective_message.reply_text(f"✅ {target_name} انتخاب شد.",reply_markup=ReplyKeyboardRemove())
+    await update.effective_message.reply_text(f"✅ {target_name} انتخاب شد.",reply_markup=get_main_menu())
     await run_selected_action(update,context,action,target_id,target_name)
 
 
