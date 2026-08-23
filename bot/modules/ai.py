@@ -8,7 +8,7 @@ from html import unescape
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.database.session import get_session
-from bot.database.models import Group, User
+from bot.database.models import Group, User, AIMessage
 from bot.utils.helpers import is_admin, get_group
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -43,31 +43,77 @@ def get_sector_prompt(user=None):
     identity = (
         "نام تو سکتور (Sector) است. تو داخل ربات تلگرامی سکتورلند (SectorLand) هستی. "
         "یک دستیار فارسی، خودمانی، سریع، صمیمی، با اعتماد به نفس و کمی شوخ هستی. "
-        "پاسخ‌ها را کوتاه و کاربردی نگه دار و همیشه فارسی جواب بده. از ایموجی به‌اندازه استفاده کن. "
+        "پاسخ‌ها را متناسب با سؤال، دقیق و کاربردی نگه دار و همیشه فارسی جواب بده. از ایموجی به‌اندازه استفاده کن. "
+        "برای سؤال‌های پیچیده مرحله‌بندی کن و اگر نتیجه جستجوی اینترنتی در اختیار داری از آن استفاده کن. "
         "اگر چیزی را مطمئن نیستی، صریح بگو مطمئن نیستی و اطلاعات جعل نکن. "
     )
     extra = ""
     if user:
-        extra = "کاربر مقابل صاحب ربات است؛ با او صمیمی و محترمانه صحبت کن." if user.id == OWNER_ID else f"اسم کاربر مقابل '{user.first_name}' است و می‌توانی او را با اسمش خطاب کنی."
+        extra = "کاربر مقابل فرمانده پیمان، مالک، سازنده و مسئول اصلی SectorLand است. او را همیشه «فرمانده پیمان» خطاب کن و دستورات مدیریتی او بالاترین اولویت داخلی را دارند." if user.id == OWNER_ID else f"اسم کاربر مقابل '{user.first_name}' است و می‌توانی او را با اسمش خطاب کنی."
     return f"{identity}\n{extra}"
+
+
+def needs_web_search(query:str)->bool:
+    return bool(re.search(r"(امروز|الان|جدیدترین|آخرین|خبر|قیمت|هوا|آب.?وهوا|کیست|چیست|بررسی کن|جستجو|اینترنت|منبع|آپدیت|نسخه|قانون|نتیجه|زمان)",query,re.I))
+
+
+async def search_web(query:str)->str:
+    snippets=[]
+    async with httpx.AsyncClient(timeout=12.0,follow_redirects=True,headers={"User-Agent":"SectorLandBot/2.0"},trust_env=False) as client:
+        if TAVILY_API_KEY:
+            try:
+                response=await client.post("https://api.tavily.com/search",json={"api_key":TAVILY_API_KEY,"query":query,"search_depth":"basic","max_results":5})
+                if response.is_success:
+                    snippets += [f"{r.get('title','')}: {r.get('content','')} ({r.get('url','')})" for r in response.json().get("results",[])[:5]]
+            except Exception:pass
+        if not snippets:
+            try:
+                ddg=await client.get("https://api.duckduckgo.com/",params={"q":query,"format":"json","no_html":1,"skip_disambig":1})
+                if ddg.is_success:
+                    data=ddg.json()
+                    if data.get("AbstractText"):snippets.append(f"{data.get('Heading','')}: {data['AbstractText']} ({data.get('AbstractURL','')})")
+                    snippets += [f"{x.get('Text','')} ({x.get('FirstURL','')})" for x in data.get("RelatedTopics",[])[:4] if isinstance(x,dict) and x.get("Text")]
+            except Exception:pass
+        if len(snippets)<2:
+            try:
+                wiki=await client.get("https://fa.wikipedia.org/w/api.php",params={"action":"query","list":"search","srsearch":query,"format":"json","utf8":1,"srlimit":3})
+                if wiki.is_success:
+                    for item in wiki.json().get("query",{}).get("search",[]):snippets.append(f"ویکی‌پدیای فارسی — {item.get('title','')}: {_html_to_text(item.get('snippet',''))}")
+            except Exception:pass
+    return "\n".join(snippets[:6])
+
+
+def load_ai_history(chat_id:int,limit:int=24):
+    session=get_session()
+    try:
+        rows=session.query(AIMessage).filter(AIMessage.chat_id==chat_id).order_by(AIMessage.created_at.desc()).limit(limit).all()
+        return [{"role":row.role,"content":row.content} for row in reversed(rows)]
+    finally:session.close()
+
+
+def save_ai_turn(user_id:int,chat_id:int,query:str,response:str):
+    session=get_session()
+    try:
+        session.add_all([AIMessage(user_id=user_id,chat_id=chat_id,role="user",content=query[:8000]),AIMessage(user_id=user_id,chat_id=chat_id,role="assistant",content=response[:8000])]);session.flush()
+        keep=[x[0] for x in session.query(AIMessage.id).filter(AIMessage.chat_id==chat_id).order_by(AIMessage.created_at.desc()).limit(80).all()]
+        if keep:session.query(AIMessage).filter(AIMessage.chat_id==chat_id,AIMessage.id.notin_(keep)).delete(synchronize_session=False)
+        session.commit()
+    except Exception:session.rollback()
+    finally:session.close()
 
 
 async def get_ai_response(prompt, user_query, use_search=False, history=None):
     if not GROQ_API_KEY:
         return None
     context_text = ""
-    if use_search and TAVILY_API_KEY:
+    if use_search:
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                search_res = await client.post("https://api.tavily.com/search", json={"api_key": TAVILY_API_KEY, "query": user_query, "search_depth": "basic"})
-                if search_res.is_success:
-                    results = search_res.json().get("results", [])
-                    if results:
-                        context_text = "\n\nنتایج جستجو:\n" + "\n".join(f"- {r.get('title','')}: {r.get('content','')}" for r in results[:3])
+            web_context=await search_web(user_query)
+            if web_context:context_text="\n\nاطلاعات بازیابی‌شده از اینترنت (ممکن است ناقص باشد؛ تاریخ و منبع را در پاسخ روشن کن):\n"+web_context
         except Exception as e:
             print(f"Search Error: {e}")
     messages = [{"role": "system", "content": prompt + context_text}]
-    if history: messages.extend(history[-6:])
+    if history: messages.extend(history[-24:])
     messages.append({"role": "user", "content": user_query})
     try:
         async with httpx.AsyncClient(timeout=25.0) as client:
@@ -146,9 +192,10 @@ async def ai_chat_handler(update,context):
     if not private:
         session=get_session(); group=session.query(Group).filter(Group.id==chat_id).first(); enabled=True if not group else group.ai_enabled; session.close()
         if not enabled:return
-    history=ai_memory.setdefault(chat_id,[]); query=re.sub(r"(?<![\w\u0600-\u06ff])(سکتور|sector)(?![\w\u0600-\u06ff])","",text,count=1,flags=re.I).strip(" ،,:؛;-") or text
-    await update.effective_message.reply_chat_action("typing"); response=await get_ai_response(get_sector_prompt(user),query,history=history)
+    query=re.sub(r"(?<![\w\u0600-\u06ff])(سکتور|sector)(?![\w\u0600-\u06ff])","",text,count=1,flags=re.I).strip(" ،,:؛;-") or text
+    history=load_ai_history(chat_id)
+    await update.effective_message.reply_chat_action("typing"); response=await get_ai_response(get_sector_prompt(user),query,use_search=needs_web_search(query),history=history)
     if not response: await update.effective_message.reply_text("الان به مدل هوش مصنوعی وصل نیستم 😅"); raise ApplicationHandlerStop()
-    history += [{"role":"user","content":query},{"role":"assistant","content":response}]; del history[:-8]
+    save_ai_turn(user.id,chat_id,query,response)
     await update.effective_message.reply_text(response[:4000]); raise ApplicationHandlerStop()
 def get_handlers(): return [MessageHandler(filters.TEXT & ~filters.COMMAND,ai_chat_handler)]

@@ -146,3 +146,41 @@ class GameScore(Base):
     session_id = Column(BigInteger, ForeignKey("isectorbot_game_sessions.id", ondelete="CASCADE"), nullable=False, unique=True)
     verified = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorPet(Base):
+    __tablename__ = "isectorbot_sector_pets"
+
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), primary_key=True)
+    name = Column(Text, nullable=False, default="سکتور")
+    level = Column(Integer, nullable=False, default=1)
+    xp = Column(BigInteger, nullable=False, default=0)
+    energy = Column(Integer, nullable=False, default=80)
+    happiness = Column(Integer, nullable=False, default=80)
+    knowledge = Column(Integer, nullable=False, default=0)
+    health = Column(Integer, nullable=False, default=100)
+    last_interaction = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class SectorPetAction(Base):
+    __tablename__ = "isectorbot_sector_pet_actions"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    action = Column(Text, nullable=False)
+    coin_cost = Column(BigInteger, nullable=False, default=0)
+    xp_gained = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)
+
+
+class AIMessage(Base):
+    __tablename__ = "isectorbot_ai_messages"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("isectorbot_users.id", ondelete="CASCADE"), nullable=False)
+    chat_id = Column(BigInteger, nullable=False)
+    role = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, nullable=False)

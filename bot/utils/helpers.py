@@ -7,7 +7,12 @@ from bot.database.session import get_session
 from bot.database.models import Group
 
 # Commander / Owner Identity
-OWNER_ID = 5382025178  # Recognized as "فرمانده پیمان"
+def _env_int(name: str, default: int) -> int:
+    try: return int((os.getenv(name) or "").strip() or default)
+    except ValueError: return default
+
+
+OWNER_ID = _env_int("OWNER_ID", 5147526780)  # فرمانده پیمان / @isector
 OWNER_NAME = "فرمانده پیمان"
 
 async def is_owner(user_id):

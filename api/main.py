@@ -16,9 +16,9 @@ from urllib.parse import unquote
 from sqlalchemy import func
 
 from bot.database.session import get_session
-from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral, GameSession, GameScore
+from bot.database.models import User, Group, Purchase, AppSetting, Order, Referral, GameSession, GameScore, SectorPet, SectorPetAction
 from api.quiz_bank import QUIZ_BANK
-from bot.modules.ai import get_ai_response, get_sector_prompt
+from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn, needs_web_search
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -85,6 +85,7 @@ MISSION_DEFS = {
     "daily_wheel":{"title":"چرخاندن گردونه","target":1,"coins":25,"xp":10,"period":"daily","kind":"wheel"},
     "weekly_quiz_15":{"title":"۱۵ پاسخ مسابقه","target":15,"coins":250,"xp":100,"period":"weekly","kind":"quiz"},
     "weekly_tools_5":{"title":"پنج بار استفاده از دستیار","target":5,"coins":100,"xp":40,"period":"weekly","kind":"tools"},
+    "daily_sector_3":{"title":"سه بار مراقبت از سکتور","target":3,"coins":80,"xp":35,"period":"daily","kind":"sector"},
 }
 GAME_LIMITS={
     "racer":{"max_score":2_000_000,"min_seconds":8},"galaxy":{"max_score":5_000_000,"min_seconds":8},
@@ -162,7 +163,38 @@ def mission_progress(session,user_id:int,definition:dict,start:datetime.datetime
     if definition["kind"]=="quiz": return query.filter(Purchase.status.in_(("quiz_correct","quiz_wrong"))).count()
     if definition["kind"]=="tools": return query.filter(Purchase.item_id=="miniapp_ai").count()
     if definition["kind"]=="wheel": return query.filter(Purchase.item_id.like("wheel_%")).count()
+    if definition["kind"]=="sector": return session.query(SectorPetAction).filter(SectorPetAction.user_id==user_id,SectorPetAction.created_at>=start).count()
     return 0
+
+
+PET_ACTIONS={
+    "charge":{"title":"شارژ انرژی","cost":20,"xp":10,"energy":30,"happiness":3,"knowledge":0,"health":3},
+    "play":{"title":"بازی","cost":15,"xp":15,"energy":-8,"happiness":25,"knowledge":1,"health":0},
+    "train":{"title":"تمرین","cost":30,"xp":30,"energy":-18,"happiness":5,"knowledge":5,"health":1},
+    "learn":{"title":"یادگیری","cost":40,"xp":40,"energy":-12,"happiness":2,"knowledge":12,"health":0},
+    "repair":{"title":"تعمیر","cost":60,"xp":15,"energy":5,"happiness":4,"knowledge":0,"health":35},
+}
+
+
+def pet_stage(level:int)->dict:
+    if level>=25:return {"id":4,"title":"سکتور همه‌چیزدان","next_level":None}
+    if level>=12:return {"id":3,"title":"سکتور حرفه‌ای","next_level":25}
+    if level>=5:return {"id":2,"title":"سکتور کنجکاو","next_level":12}
+    return {"id":1,"title":"سکتور کوچولو","next_level":5}
+
+
+def refresh_pet(pet:SectorPet,now:datetime.datetime):
+    last=pet.last_interaction.replace(tzinfo=None) if pet.last_interaction and pet.last_interaction.tzinfo else pet.last_interaction
+    hours=max(0,int((now-(last or now)).total_seconds()//3600))
+    if hours:
+        pet.energy=max(0,int(pet.energy or 0)-min(40,hours*2));pet.happiness=max(0,int(pet.happiness or 0)-min(30,hours))
+        if pet.energy==0 or pet.happiness==0:pet.health=max(20,int(pet.health or 100)-min(20,hours))
+        pet.last_interaction=now;pet.updated_at=now
+
+
+def serialize_pet(pet:SectorPet):
+    level=max(1,min(100,1+int(pet.xp or 0)//250));pet.level=level
+    return {"name":pet.name,"level":level,"xp":int(pet.xp or 0),"xp_in_level":int(pet.xp or 0)%250,"xp_next":250,"energy":int(pet.energy or 0),"happiness":int(pet.happiness or 0),"knowledge":int(pet.knowledge or 0),"health":int(pet.health or 0),"stage":pet_stage(level)}
 
 
 def user_achievements(session,user:User)->list:
@@ -190,13 +222,13 @@ async def miniapp_assistant(user_id:int, request:dict, init_data:Optional[str]=H
     try:
         since=datetime.datetime.utcnow()-datetime.timedelta(hours=1)
         used=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.item_id=="miniapp_ai",Purchase.created_at>=since).count()
-        if used>=30: raise HTTPException(status_code=429,detail="سقف استفاده ساعتی دستیار پر شده است.")
-        history=request.get("history") if isinstance(request.get("history"),list) else []
-        history=[{"role":str(x.get("role")),"content":str(x.get("content"))[:1200]} for x in history[-6:] if isinstance(x,dict) and x.get("role") in ("user","assistant")]
+        if used>=30 and user_id!=OWNER_ID: raise HTTPException(status_code=429,detail="سقف استفاده ساعتی دستیار پر شده است.")
+        history=load_ai_history(user_id,24)
         prompt=get_sector_prompt(type("MiniUser",(),{"id":user_id,"first_name":telegram_user.get("first_name") or "کاربر"})())
         if mode=="translate": prompt="متن را اگر فارسی است به انگلیسی و اگر غیرفارسی است به فارسی ترجمه کن. فقط ترجمه را برگردان."
-        response=await get_ai_response(prompt,message,history=history)
+        response=await get_ai_response(prompt,message,use_search=needs_web_search(message),history=history)
         if not response: raise HTTPException(status_code=503,detail="دستیار موقتاً در دسترس نیست.")
+        save_ai_turn(user_id,user_id,message,response)
         session.add(Purchase(user_id=user_id,item_id="miniapp_ai",amount=0,status="activity"));session.commit()
         return {"response":response[:4000],"remaining":max(0,29-used)}
     finally: session.close()
@@ -324,8 +356,43 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="
         orders_count = session.query(Purchase).filter(Purchase.user_id == user_id).count()
         total_spent = session.query(func.coalesce(func.sum(Purchase.amount), 0)).filter(Purchase.user_id == user_id, Purchase.status == "coin_purchase").scalar() or 0
         correct_answers=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.status=="quiz_correct").count()
-        return {"id":user.id,"first_name":user.first_name,"username":user.username,"coins":int(user.coins or 0),"bank_balance":int(user.bank_balance or 0),"loan_balance":int(user.loan_balance or 0),"xp":int(user.xp or 0),"level":int(user.level or 1),"rank":rank,"joined_at":user.joined_at.isoformat() if user.joined_at else None,"achievements":user_achievements(session,user),"correct_answers":correct_answers,"message_count":int(user.message_count or 0),"orders_count":orders_count,"total_spent":int(total_spent),"referrals":0,"is_admin":is_platform_admin(session,user.id),"vip_until":user.vip_until.isoformat() if user.vip_until else None}
+        return {"id":user.id,"first_name":"فرمانده پیمان" if user.id==OWNER_ID else user.first_name,"username":user.username,"coins":int(user.coins or 0),"unlimited_wallet":user.id==OWNER_ID,"role":"فرمانده و مسئول اصلی SectorLand" if user.id==OWNER_ID else "کاربر","bank_balance":int(user.bank_balance or 0),"loan_balance":int(user.loan_balance or 0),"xp":int(user.xp or 0),"level":int(user.level or 1),"rank":rank,"joined_at":user.joined_at.isoformat() if user.joined_at else None,"achievements":user_achievements(session,user),"correct_answers":correct_answers,"message_count":int(user.message_count or 0),"orders_count":orders_count,"total_spent":int(total_spent),"referrals":0,"is_admin":is_platform_admin(session,user.id),"vip_until":user.vip_until.isoformat() if user.vip_until else None}
     finally: session.close()
+
+
+@app.get("/api/sector-pet/{user_id}")
+async def get_sector_pet(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        now=datetime.datetime.utcnow();pet=session.query(SectorPet).filter(SectorPet.user_id==user_id).first()
+        if not pet:pet=SectorPet(user_id=user_id,last_interaction=now,created_at=now,updated_at=now);session.add(pet);session.flush()
+        refresh_pet(pet,now);data=serialize_pet(pet);session.commit();return {"pet":data,"actions":[{"id":key,**value} for key,value in PET_ACTIONS.items()]}
+    finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/{action}")
+async def sector_pet_action(user_id:int,action:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);definition=PET_ACTIONS.get(action)
+    if not definition:raise HTTPException(status_code=404,detail="Action not found")
+    session=get_session()
+    try:
+        now=datetime.datetime.utcnow();user=session.query(User).filter(User.id==user_id).with_for_update().first()
+        if not user:raise HTTPException(status_code=404,detail="User not found")
+        recent=session.query(SectorPetAction).filter(SectorPetAction.user_id==user_id,SectorPetAction.created_at>=now-datetime.timedelta(minutes=1)).count()
+        if recent>=8:raise HTTPException(status_code=429,detail="سکتور کمی استراحت می‌خواهد؛ یک دقیقه بعد برگرد.")
+        pet=session.query(SectorPet).filter(SectorPet.user_id==user_id).with_for_update().first()
+        if not pet:pet=SectorPet(user_id=user_id,last_interaction=now,created_at=now,updated_at=now);session.add(pet);session.flush()
+        refresh_pet(pet,now);cost=int(definition["cost"])
+        if user.id!=OWNER_ID and int(user.coins or 0)<cost:return {"status":"error","message":"برای این کار سکه کافی نداری."}
+        if user.id!=OWNER_ID:user.coins=int(user.coins or 0)-cost
+        for field in ("energy","happiness","knowledge","health"):
+            setattr(pet,field,max(0,min(100,int(getattr(pet,field) or 0)+int(definition[field]))))
+        pet.xp=int(pet.xp or 0)+int(definition["xp"]);pet.last_interaction=now;pet.updated_at=now
+        session.add(SectorPetAction(user_id=user_id,action=action,coin_cost=0 if user.id==OWNER_ID else cost,xp_gained=definition["xp"],created_at=now));session.commit()
+        return {"status":"success","message":f"{definition['title']} انجام شد؛ سکتور +{definition['xp']} XP گرفت!","coins":int(user.coins or 0),"pet":serialize_pet(pet)}
+    except:
+        session.rollback();raise
+    finally:session.close()
 
 
 @app.post("/api/daily-claim/{user_id}")

@@ -56,6 +56,7 @@ export default function HomePage() {
   }
 
   var quickActions = [
+    { icon: '🤖', label: 'سکتور کوچولو', sub: 'همراه هوشمندت را بزرگ کن', fn: function() { navigate('sectorpet') } },
     { icon: '🎁', label: 'هدیه روزانه', sub: 'هر روز سکه بگیر', fn: handleClaim, loading: claiming },
     { icon: '🎯', label: 'ماموریت‌ها', sub: 'سکه و XP جایزه بگیر', fn: function() { navigate('missions') } },
     { icon: '🛒', label: 'فروشگاه', sub: 'خرید با سکه واقعی', fn: function() { navigate('shop') } },
@@ -77,7 +78,7 @@ export default function HomePage() {
             <div style={{fontWeight:800,fontSize:18,marginBottom:2}}>سلام، {dbUser.first_name || (tgUser && tgUser.first_name) || 'کاربر'} 👋</div>
             <div style={{color:'var(--muted)',fontSize:12}}>سطح {level} • رتبه {dbUser.rank ? '#' + Number(dbUser.rank).toLocaleString('fa-IR') : '—'}</div>
           </div>
-          <div style={{textAlign:'center'}}><div style={{fontWeight:800,fontSize:20,color:'var(--gold)'}}>{Number(dbUser.coins || 0).toLocaleString()}</div><div style={{fontSize:10,color:'var(--muted)'}}>سکه 🪙</div></div>
+          <div style={{textAlign:'center'}}><div style={{fontWeight:800,fontSize:20,color:'var(--gold)'}}>{dbUser.unlimited_wallet?'∞':Number(dbUser.coins || 0).toLocaleString()}</div><div style={{fontSize:10,color:'var(--muted)'}}>سکه 🪙</div></div>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--muted)',marginBottom:5}}><span>پیشرفت سطح {level}</span><span>{xp.toLocaleString()} / {levelEnd.toLocaleString()} XP</span></div>
         <div className="progress-bar"><div className="progress-fill" style={{width:xpPct + '%'}} /></div>

@@ -20,6 +20,7 @@ import FeaturesPage from './pages/FeaturesPage'
 import AdminPage from './pages/AdminPage'
 import ToolsPage from './pages/ToolsPage'
 import MissionsPage from './pages/MissionsPage'
+import SectorPetPage from './pages/SectorPetPage'
 
 var AppContext = createContext(null)
 export function useAppContext() { return useContext(AppContext) }
@@ -37,10 +38,11 @@ var PAGES = {
   admin: AdminPage,
   tools: ToolsPage,
   missions: MissionsPage,
+  sectorpet: SectorPetPage,
 }
 
 var NAV_KEYS = NAV_ITEMS.map(function(n) { return n.key })
-var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها' }
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو' }
 
 var EMPTY_USER = {
   id: 0,
@@ -58,6 +60,8 @@ var EMPTY_USER = {
   total_spent: 0,
   referrals: 0,
   is_admin: false,
+  unlimited_wallet: false,
+  role: 'کاربر',
   correct_answers: 0,
   message_count: 0,
 }

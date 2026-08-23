@@ -28,11 +28,12 @@ export default function ProfilePage() {
     { icon: '❓', label: 'پشتیبانی', fn: function() { navigate('support') } },
     { icon: '🌐', label: 'سایر امکانات ربات', fn: function() { navigate('features') } },
     { icon: '🎯', label: 'ماموریت‌های من', fn: function() { navigate('missions') } },
+    { icon: '🤖', label: 'سکتور کوچولوی من', fn: function() { navigate('sectorpet') } },
   ]
   if (dbUser.is_admin) menuItems.unshift({ icon:'👑', label:'پنل مدیریت SectorLand', fn:function(){navigate('admin')} })
 
   var profileStats = [
-    { icon: '🪙', label: 'سکه', val: Number(dbUser.coins || 0).toLocaleString() },
+    { icon: '🪙', label: 'سکه', val: dbUser.unlimited_wallet ? '∞' : Number(dbUser.coins || 0).toLocaleString() },
     { icon: '⭐', label: 'XP', val: Number(dbUser.xp || 0).toLocaleString() },
     { icon: '📦', label: 'خرید', val: Number(dbUser.orders_count || 0).toLocaleString('fa-IR') },
   ]
@@ -47,6 +48,7 @@ export default function ProfilePage() {
           </div>
         </div>
         <div style={{fontWeight:800,fontSize:20,marginBottom:4}}>{tgUser ? tgUser.first_name : (dbUser.first_name || 'کاربر')} {tgUser && tgUser.last_name ? tgUser.last_name : ''}</div>
+        {dbUser.role && dbUser.role !== 'کاربر' && <div style={{color:'var(--gold)',fontSize:12,fontWeight:900,marginBottom:8}}>👑 {dbUser.role}</div>}
         {tgUser && tgUser.username && <div style={{color:'var(--muted)',fontSize:13,marginBottom:10}}>@{tgUser.username}</div>}
         <div style={{display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap'}}>
           <span className="badge badge-blue">سطح {Number(dbUser.level || 1).toLocaleString('fa-IR')}</span>

@@ -1,4 +1,5 @@
-from telegram import Update, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+import os
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.utils.keyboards import (
     get_main_menu, get_admin_menu, get_user_menu, get_economy_menu,
@@ -7,6 +8,8 @@ from bot.utils.keyboards import (
     get_welcome_settings_menu, get_rules_settings_menu,
 )
 from bot.utils.helpers import is_admin
+
+MINI_APP_URL=os.getenv("MINI_APP_URL","https://isectorland-miniapp.vercel.app")
 
 
 async def _delete_group_press(update: Update):
@@ -61,6 +64,12 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
     elif text == "🤖 دستیار هوشمند":
         msg = "🤖 همین‌جا هر سوالی داری بپرس." if private else "🤖 در گروه من را با «سکتور» صدا بزن، منشن کن یا روی پیامم ریپلای کن."
         await context.bot.send_message(update.effective_chat.id, msg, reply_markup=get_main_menu())
+    elif text == "🤖 سکتور کوچولو":
+        if private:
+            markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 مراقبت از سکتور",web_app=WebAppInfo(url=MINI_APP_URL))]])
+        else:
+            markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 باز کردن در چت خصوصی",url="https://t.me/iSectorlandbot?start=miniapp")]])
+        await context.bot.send_message(update.effective_chat.id,"🤖 سکتور کوچولو همراه دیجیتال توئه؛ با سکه، مأموریت، بازی و تمرین کمکش کن رشد کنه و به سکتور همه‌چیزدان تبدیل بشه!",reply_markup=markup)
     elif text == "🤝 پشتیبانی":
         await context.bot.send_message(update.effective_chat.id, "🤝 پشتیبانی: @sector_ad", reply_markup=get_main_menu())
     elif text in ("🔒 قفل‌های گروه", "🔒 قفل‌ها"):
@@ -96,7 +105,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
 def get_panel_handlers():
     nav_regex = (
-        "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🤝 پشتیبانی|"
+        "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🤖 سکتور کوچولو|🤝 پشتیبانی|"
         "🔒 قفل‌های گروه|🔒 قفل‌ها|👤 مدیریت اعضا|⚙️ تنظیمات گروه|👋 خوشامدگویی|📜 قوانین|"
         "🔙 بازگشت به مدیریت|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"
     )
