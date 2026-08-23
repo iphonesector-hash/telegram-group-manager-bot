@@ -11,6 +11,7 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 from bot.database.session import init_db
 from bot.handlers.start import start_handler
 from bot.handlers.errors import error_handler
+from bot.modules.release_announcements import get_handlers as get_release_announcement_handlers
 from bot.modules.required_membership import get_handlers as get_required_membership_handlers
 from bot.modules.panel import get_panel_handlers
 from bot.modules.locks import get_handlers as get_lock_handlers
@@ -51,6 +52,10 @@ def build_application() -> Application:
 
     init_db()
     app = Application.builder().token(BOT_TOKEN).post_init(setup_telegram_ui).build()
+
+    # Group -20 checks the release manifest before normal user handling. It is
+    # database-idempotent, so Vercel cold starts cannot duplicate channel posts.
+    for h in get_release_announcement_handlers(): app.add_handler(h, group=-20)
 
     # Group -10 is a private-chat access gate. It runs before every normal bot
     # feature and stops propagation when the Telegram user is not in @sectorland.
