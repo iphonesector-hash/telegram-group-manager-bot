@@ -6,6 +6,7 @@ import { api } from './services/api'
 import BottomNav from './components/ui/BottomNav'
 import Toast from './components/ui/Toast'
 import PageHeader from './components/ui/PageHeader'
+import SectorBootSplash from './components/ui/SectorBootSplash'
 
 import HomePage    from './pages/HomePage'
 import ShopPage    from './pages/ShopPage'
@@ -186,15 +187,7 @@ export default function App() {
     apiCall: apiCall,
   }
 
-  if (bootLoading) {
-    return (
-      <div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20,background:'var(--bg)'}}>
-        <div style={{ fontSize: 52 }}>🌐</div>
-        <div className="spinner" />
-        <div style={{ color: 'var(--muted)', fontSize: 14 }}>SectorLand در حال بارگذاری...</div>
-      </div>
-    )
-  }
+  if (bootLoading) return <SectorBootSplash />
 
   if (!tgUser) {
     return (
