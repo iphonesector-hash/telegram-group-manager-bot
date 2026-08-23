@@ -13,7 +13,16 @@ from bot.utils.helpers import is_admin, get_group
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
+def _env_int(name: str, default: int) -> int:
+    """Return a usable integer when Vercel defines an env var as blank."""
+    raw = (os.getenv(name) or "").strip()
+    try:
+        return int(raw) if raw else default
+    except ValueError:
+        return default
+
+
+OWNER_ID = _env_int("OWNER_ID", 5147526780)
 AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-20b")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 AI_FALLBACK_MODELS = ["openai/gpt-oss-120b"]
