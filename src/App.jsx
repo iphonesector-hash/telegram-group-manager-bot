@@ -34,7 +34,7 @@ var PAGES = {
 }
 
 var NAV_KEYS = NAV_ITEMS.map(function(n) { return n.key })
-var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'امکانات ربات' }
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات' }
 
 var EMPTY_USER = {
   id: 0,

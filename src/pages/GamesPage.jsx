@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { useAppContext } from '../App'
 import WheelOfFortune from '../components/WheelOfFortune'
 
-var ARCADE_GAMES = [
-  {id:'snake3d',name:'Snake 3D',icon:'🐍',desc:'مار سه‌بعدی سکتور با مراحل مختلف',url:'https://love-hub-snake-3-d.vercel.app'},
-  {id:'2048',name:'2048',icon:'🔢',desc:'ترکیب اعداد و رکوردشکنی',url:'https://lovehub-games.vercel.app/games/2048/'},
-  {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',url:'https://lovehub-games.vercel.app/games/tetris-touch/'},
-  {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',url:'https://lovehub-games.vercel.app/games/memory/src/'},
-  {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',url:'https://lovehub-games.vercel.app/games/minesweeper/'},
+const ARCADE_GAMES = [
+  {id:'racer',name:'Neon Racer',icon:'🏎️',desc:'مسابقه سریع در بزرگراه نئونی',type:'اکشن',featured:true,url:'https://sectorland-neon-arcade.vercel.app/games/neon-racer/'},
+  {id:'galaxy',name:'Galaxy Defender',icon:'🚀',desc:'نبرد فضایی، باس و موج‌های سخت',type:'شوتر',featured:true,url:'https://sectorland-neon-arcade.vercel.app/games/galaxy-defender/'},
+  {id:'snake3d',name:'Snake 3D',icon:'🐍',desc:'مار سه‌بعدی سکتور با مراحل مختلف',type:'سه‌بعدی',featured:true,url:'https://love-hub-snake-3-d.vercel.app'},
+  {id:'2048',name:'2048',icon:'🔢',desc:'ترکیب اعداد و رکوردشکنی',type:'فکری',url:'https://lovehub-games.vercel.app/games/2048/'},
+  {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',type:'آرکید',url:'https://lovehub-games.vercel.app/games/tetris-touch/'},
+  {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',type:'فکری',url:'https://lovehub-games.vercel.app/games/memory/src/'},
+  {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',type:'فکری',url:'https://lovehub-games.vercel.app/games/minesweeper/'},
 ]
 
 export default function GamesPage() {
@@ -27,6 +29,10 @@ export default function GamesPage() {
   var [quizLoading, setQuizLoading] = useState(false)
   var [answering, setAnswering] = useState(false)
   var [result, setResult] = useState(null)
+  var [gameFilter, setGameFilter] = useState('همه')
+  var [lastGame, setLastGame] = useState(function(){
+    try { return window.localStorage.getItem('sectorland_last_game') || '' } catch (_) { return '' }
+  })
 
   useEffect(function() {
     if (!tgUser) return
@@ -82,6 +88,9 @@ export default function GamesPage() {
   }
 
   function openArcade(game) {
+    setLastGame(game.id)
+    try { window.localStorage.setItem('sectorland_last_game', game.id) } catch (_) {}
+    try { ctx.tg && ctx.tg.HapticFeedback && ctx.tg.HapticFeedback.impactOccurred('medium') } catch (_) {}
     try {
       if (ctx.tg && ctx.tg.openLink) ctx.tg.openLink(game.url)
       else window.location.assign(game.url)
@@ -106,9 +115,16 @@ export default function GamesPage() {
 
       {!loading && tab === 'games' && (
         <div>
+          <div className="glass" style={{padding:18,marginBottom:14,background:'radial-gradient(circle at 15% 10%,rgba(0,238,255,.2),transparent 42%),linear-gradient(135deg,rgba(91,43,255,.22),rgba(255,43,175,.1))',overflow:'hidden'}}>
+            <div style={{fontSize:11,color:'#6ff7ff',fontWeight:900}}>SECTORLAND ARCADE</div>
+            <div style={{fontWeight:900,fontSize:20,marginTop:5}}>مرکز بازی‌های حرفه‌ای</div>
+            <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8,marginTop:5}}>بازی‌های لمسی، تمام‌صفحه و سبک؛ بدون نصب و مناسب تلگرام</div>
+          </div>
+          {lastGame && ARCADE_GAMES.some(function(g){return g.id===lastGame}) && <button className="btn" onClick={function(){openArcade(ARCADE_GAMES.find(function(g){return g.id===lastGame}))}} style={{width:'100%',marginBottom:12,background:'linear-gradient(135deg,rgba(0,210,255,.15),rgba(143,66,255,.15))',border:'1px solid rgba(80,220,255,.25)',color:'inherit'}}>▶️ ادامه آخرین بازی</button>}
+          <div style={{display:'flex',gap:7,overflowX:'auto',paddingBottom:10}}>{['همه','اکشن','شوتر','سه‌بعدی','فکری','آرکید'].map(function(f){return <button key={f} className="btn btn-sm" onClick={function(){setGameFilter(f)}} style={{flex:'0 0 auto',background:gameFilter===f?'linear-gradient(135deg,#04bfe8,#714cff)':'var(--card)',color:gameFilter===f?'#fff':'var(--muted)',border:'1px solid var(--border)'}}>{f}</button>})}</div>
           <div style={{fontWeight:800,fontSize:14,margin:'2px 0 10px'}}>🕹 بازی‌های کامل</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-            {ARCADE_GAMES.map(function(game){return <button key={game.id} onClick={function(){openArcade(game)}} className="glass" style={{padding:14,border:'1px solid var(--border)',color:'inherit',textAlign:'right',cursor:'pointer',minHeight:132}}><div style={{fontSize:30}}>{game.icon}</div><div style={{fontWeight:800,fontSize:14,marginTop:7}}>{game.name}</div><div style={{fontSize:10,color:'var(--muted)',lineHeight:1.6,marginTop:3}}>{game.desc}</div><div className="badge badge-blue" style={{marginTop:8}}>بازی کن</div></button>})}
+            {ARCADE_GAMES.filter(function(game){return gameFilter==='همه'||game.type===gameFilter}).map(function(game){return <button key={game.id} onClick={function(){openArcade(game)}} className="glass" style={{padding:14,border:game.featured?'1px solid rgba(69,227,255,.35)':'1px solid var(--border)',background:game.featured?'linear-gradient(145deg,rgba(25,201,255,.1),rgba(119,57,255,.1))':'var(--card)',color:'inherit',textAlign:'right',cursor:'pointer',minHeight:145,position:'relative'}}>{game.featured&&<span style={{position:'absolute',top:9,left:9,fontSize:9,color:'#06131c',fontWeight:900,padding:'4px 7px',borderRadius:10,background:'#66f2ff'}}>ویژه</span>}<div style={{fontSize:34}}>{game.icon}</div><div style={{fontWeight:800,fontSize:14,marginTop:7}}>{game.name}</div><div style={{fontSize:10,color:'var(--muted)',lineHeight:1.6,marginTop:3}}>{game.desc}</div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:9}}><span className="badge badge-blue">بازی کن</span><span style={{fontSize:9,color:'var(--muted)'}}>{game.type}</span></div></button>})}
           </div>
           <div style={{fontWeight:800,fontSize:14,margin:'2px 0 10px'}}>🧩 مسابقه‌های سکه‌ای ربات</div>
           {games.map(function(g){

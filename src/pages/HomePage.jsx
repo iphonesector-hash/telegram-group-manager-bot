@@ -60,7 +60,7 @@ export default function HomePage() {
     { icon: '🛒', label: 'فروشگاه', sub: 'خرید با سکه واقعی', fn: function() { navigate('shop') } },
     { icon: '🎡', label: 'گردونه و بازی', sub: 'جایزه و بازی‌های جدید', fn: function() { navigate('games') } },
     { icon: '💰', label: 'بانک', sub: 'واریز، برداشت و وام', fn: function() { navigate('wallet') } },
-    { icon: '🌐', label: 'همه امکانات', sub: 'مدیریت، ابزار و سرگرمی', fn: function() { navigate('features') } },
+    { icon: '🌐', label: 'سایر امکانات', sub: 'مدیریت، ابزار و سرگرمی', fn: function() { navigate('features') } },
     { icon: '👤', label: 'پروفایل من', sub: 'حساب و سوابق واقعی', fn: function() { navigate('profile') } },
   ]
 
