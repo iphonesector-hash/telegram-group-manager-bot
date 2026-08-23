@@ -62,6 +62,9 @@ def build_application() -> Application:
     # feature and stops propagation when the Telegram user is not in @sectorland.
     for h in get_required_membership_handlers(): app.add_handler(h, group=-10)
 
+    # Owner-only maintenance commands should run before broad text/menu handlers.
+    for h in get_sticker_handlers(): app.add_handler(h, group=-5)
+
     for h in get_registration_handlers(): app.add_handler(h, group=0)
     for h in get_warning_handlers():
         if not isinstance(h, CommandHandler): app.add_handler(h, group=1)
@@ -87,7 +90,6 @@ def build_application() -> Application:
         if isinstance(h, CommandHandler) or (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=2)
     for h in get_extra_handlers(): app.add_handler(h, group=2)
     for h in get_game_handlers(): app.add_handler(h, group=2)
-    for h in get_sticker_handlers(): app.add_handler(h, group=2)
     for h in get_ai_handlers(): app.add_handler(h, group=3)
     for h in get_welcome_handlers():
         if not isinstance(h, CommandHandler) and not (hasattr(h, "filters") and "TEXT" in str(h.filters)): app.add_handler(h, group=4)
