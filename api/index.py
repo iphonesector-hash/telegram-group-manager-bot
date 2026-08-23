@@ -26,12 +26,11 @@ _menu_registered = False
 
 
 async def _register_default_menu(bot: Bot) -> bool:
-    await bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(
-            text="sector",
-            web_app=WebAppInfo(url=MINI_APP_URL),
-        )
-    )
+    button = MenuButtonWebApp(text="sector", web_app=WebAppInfo(url=MINI_APP_URL))
+    await bot.set_chat_menu_button(menu_button=button)
+    # The owner had an older per-chat override. Per-chat values take priority
+    # over the default menu, so keep the commander's launcher in sync too.
+    await bot.set_chat_menu_button(chat_id=5147526780, menu_button=button)
     return True
 
 
@@ -60,6 +59,18 @@ async def miniapp_status():
             web_app = getattr(button, "web_app", None)
             return {"type": button.type, "text": getattr(button, "text", None), "url": getattr(web_app, "url", None)}
         return {"expected_url": MINI_APP_URL, "default": info(default_button), "owner": info(owner_button)}
+
+
+@app.post("/api/miniapp-repair")
+async def miniapp_repair():
+    """Idempotently repair the default and commander-specific launchers."""
+    token = os.getenv("BOT_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(status_code=503, detail="bot token not configured")
+    async with Bot(token=token) as bot:
+        await _register_default_menu(bot)
+        owner_button = await bot.get_chat_menu_button(chat_id=5147526780)
+        return {"ok": True, "text": owner_button.text, "url": owner_button.web_app.url}
 
 
 @app.post("/api/miniapp-diagnostic")
