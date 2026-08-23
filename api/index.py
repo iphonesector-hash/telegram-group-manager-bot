@@ -22,6 +22,8 @@ from bot.database.session import engine, get_session
 from bot.database.models import Purchase, Order
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
+REQUIRED_MEMBERSHIP_CHAT = os.getenv("REQUIRED_MEMBERSHIP_CHAT", "@sectorland")
+REQUIRED_MEMBERSHIP_URL = os.getenv("REQUIRED_MEMBERSHIP_URL", "https://t.me/sectorland")
 _menu_registered = False
 
 
@@ -44,6 +46,34 @@ async def health():
         "webhook_secret_configured": bool(os.getenv("TELEGRAM_WEBHOOK_SECRET")),
         "mini_app_url": MINI_APP_URL,
     }
+
+
+@app.get("/api/membership/{user_id}")
+async def miniapp_membership(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
+    """Require @sectorland membership before the Mini App unlocks."""
+    require_user(init_data, user_id)
+    token = os.getenv("BOT_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(status_code=503, detail="Membership check unavailable")
+    try:
+        async with Bot(token=token) as bot:
+            member = await bot.get_chat_member(REQUIRED_MEMBERSHIP_CHAT, user_id)
+        status = getattr(member.status, "value", str(member.status))
+        allowed = status in {"creator", "owner", "administrator", "member"}
+        if status == "restricted":
+            allowed = bool(getattr(member, "is_member", False))
+        return {
+            "required": True,
+            "member": bool(allowed),
+            "chat": REQUIRED_MEMBERSHIP_CHAT,
+            "url": REQUIRED_MEMBERSHIP_URL,
+            "status": status,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Mini App membership check failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Membership check temporarily unavailable")
 
 
 @app.get("/api/miniapp-status")
