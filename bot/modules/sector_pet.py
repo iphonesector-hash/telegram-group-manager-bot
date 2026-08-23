@@ -10,30 +10,34 @@ from bot.database.session import get_session
 from bot.database.models import AppSetting, Purchase, User
 from bot.modules.ai import get_ai_response, get_sector_prompt
 from bot.services import sector_pet as service
+from bot.services.miniapp_launch import create_launch_url
 
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0] + "?v=20260823-3"
 
 
-def sector_emoji_id():
+def sector_emoji_ids():
     try:session=get_session()
     except RuntimeError:return None
     try:
         row=session.query(AppSetting).filter(AppSetting.key=="sector_custom_emoji_id").first()
-        return str(row.value) if row and row.value else None
+        if not row or not row.value:return []
+        values=row.value if isinstance(row.value,list) else [row.value]
+        return [str(x) for x in values if str(x).isdigit()][:16]
     finally:session.close()
 
 
-def pet_keyboard():
-    icon=sector_emoji_id()
+def pet_keyboard(user_id=None):
+    icons=sector_emoji_ids();icon=lambda n:icons[n%len(icons)] if icons else None
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("شارژ", callback_data="sector_action:charge",style="success",icon_custom_emoji_id=icon), InlineKeyboardButton("بازی", callback_data="sector_action:play",style="primary")],
-        [InlineKeyboardButton("تمرین", callback_data="sector_action:train",style="primary"), InlineKeyboardButton("یادگیری", callback_data="sector_action:learn",style="success")],
-        [InlineKeyboardButton("تعمیر", callback_data="sector_action:repair",style="danger"), InlineKeyboardButton("تازه‌سازی", callback_data="sector_pet",style="primary")],
-        [InlineKeyboardButton("ماموریت و چالش",callback_data="sector_quests",style="success"),InlineKeyboardButton("مهارت‌ها",callback_data="sector_skills",style="primary")],
-        [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary"),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success")],
-        [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon)],
+        [InlineKeyboardButton("شارژ", callback_data="sector_action:charge",style="success",icon_custom_emoji_id=icon(0)), InlineKeyboardButton("بازی", callback_data="sector_action:play",style="primary",icon_custom_emoji_id=icon(1))],
+        [InlineKeyboardButton("تمرین", callback_data="sector_action:train",style="primary",icon_custom_emoji_id=icon(2)), InlineKeyboardButton("یادگیری", callback_data="sector_action:learn",style="success",icon_custom_emoji_id=icon(3))],
+        [InlineKeyboardButton("تعمیر", callback_data="sector_action:repair",style="danger",icon_custom_emoji_id=icon(4)), InlineKeyboardButton("تازه‌سازی", callback_data="sector_pet",style="primary",icon_custom_emoji_id=icon(5))],
+        [InlineKeyboardButton("ماموریت و چالش",callback_data="sector_quests",style="success",icon_custom_emoji_id=icon(6)),InlineKeyboardButton("مهارت‌ها",callback_data="sector_skills",style="primary",icon_custom_emoji_id=icon(7))],
+        [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success",icon_custom_emoji_id=icon(9))],
+        [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon(10))],
         [InlineKeyboardButton("نسخه کامل در مینی‌اپ", web_app=WebAppInfo(url=MINI_APP_URL),style="success")],
+        *([[InlineKeyboardButton("ورود مستقیم امن",url=create_launch_url(user_id),style="primary",icon_custom_emoji_id=icon(11))]] if user_id else []),
     ])
 
 
@@ -70,9 +74,9 @@ SOCIAL_HELP = (
 
 
 def social_keyboard():
-    icon=sector_emoji_id()
+    icons=sector_emoji_ids();icon=lambda n:icons[n%len(icons)] if icons else None
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("تغییر نام",callback_data="sector_ui:rename",style="primary",icon_custom_emoji_id=icon),InlineKeyboardButton("گفت‌وگو",callback_data="sector_ui:talk",style="success")],
+        [InlineKeyboardButton("تغییر نام",callback_data="sector_ui:rename",style="primary",icon_custom_emoji_id=icon(0)),InlineKeyboardButton("گفت‌وگو",callback_data="sector_ui:talk",style="success",icon_custom_emoji_id=icon(1))],
         [InlineKeyboardButton("بازی دونفره",callback_data="sector_ui:play",style="primary"),InlineKeyboardButton("عملیات بانکی",callback_data="sector_ui:rob",style="danger")],
         [InlineKeyboardButton("بازگشت به سکتور",callback_data="sector_pet",style="primary")],
     ])
@@ -117,7 +121,7 @@ async def sector_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("🤖 سکتور کوچولو فقط در چت خصوصی رشد می‌کند.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("باز کردن چت خصوصی", url="https://t.me/iSectorlandbot?start=sector")]]))
     else:
         pet, daily = load_pet(update.effective_user.id)
-        await update.effective_message.reply_text(pet_text(pet, daily), parse_mode="HTML", reply_markup=pet_keyboard())
+        await update.effective_message.reply_text(pet_text(pet, daily), parse_mode="HTML", reply_markup=pet_keyboard(update.effective_user.id))
     raise ApplicationHandlerStop()
 
 
@@ -176,7 +180,7 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pet, daily = service.serialize_pet(pet_obj), service.daily_progress(session, query.from_user.id)
             session.commit()
         await query.answer("انجام شد 🤖" if query.data.startswith("sector_action:") else "به‌روز شد")
-        await query.edit_message_text(pet_text(pet, daily), parse_mode="HTML", reply_markup=pet_keyboard())
+        await query.edit_message_text(pet_text(pet, daily), parse_mode="HTML", reply_markup=pet_keyboard(query.from_user.id))
     finally:
         session.close()
 
@@ -272,18 +276,20 @@ async def set_sector_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise ApplicationHandlerStop()
     source=update.effective_message.reply_to_message or update.effective_message
     entities=list(source.entities or [])+list(source.caption_entities or [])
-    custom_id=next((e.custom_emoji_id for e in entities if str(e.type)=="custom_emoji" and e.custom_emoji_id),None)
-    if not custom_id:
+    custom_ids=[e.custom_emoji_id for e in entities if str(e.type)=="custom_emoji" and e.custom_emoji_id]
+    if not custom_ids:
         await update.effective_message.reply_text("یک پیام حاوی ایموجی متحرک پرمیوم بفرست، روی آن ریپلای کن و /setsectoremoji را بزن.")
         raise ApplicationHandlerStop()
     session=get_session()
     try:
         row=session.query(AppSetting).filter(AppSetting.key=="sector_custom_emoji_id").first()
-        if row:row.value=custom_id
-        else:session.add(AppSetting(key="sector_custom_emoji_id",value=custom_id))
+        existing=(row.value if row and isinstance(row.value,list) else ([row.value] if row and row.value else []))
+        merged=list(dict.fromkeys([str(x) for x in existing+custom_ids]))[:16]
+        if row:row.value=merged
+        else:session.add(AppSetting(key="sector_custom_emoji_id",value=merged))
         session.commit()
     finally:session.close()
-    await update.effective_message.reply_text("✅ ایموجی متحرک سکتور روی دکمه‌های اختصاصی فعال شد.")
+    await update.effective_message.reply_text(f"✅ {len(custom_ids)} ایموجی دریافت شد و کتابخانه سکتور به‌روزرسانی شد.")
     raise ApplicationHandlerStop()
 
 

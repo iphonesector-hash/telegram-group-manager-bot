@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 
 function readLaunchData(tg) {
   var initData = (tg && tg.initData) || ''
+  var sectorToken = new URLSearchParams(window.location.search || '').get('sectorLaunch') || ''
+  var sectorUser = null
+  if (sectorToken) {
+    var uid = Number(sectorToken.split('.')[0])
+    if (uid) { initData = 'sector:' + sectorToken; sectorUser = { id: uid, first_name: 'کاربر سکتور' } }
+  }
 
   // Telegram iOS can expose the launch parameters in the URL a few frames
   // before telegram-web-app.js copies them onto WebApp.initData.
@@ -11,7 +17,7 @@ function readLaunchData(tg) {
     initData = hashParams.get('tgWebAppData') || queryParams.get('tgWebAppData') || ''
   }
 
-  var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+  var user = sectorUser || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user)
   if (!user && initData) {
     try {
       var rawUser = new URLSearchParams(initData).get('user')

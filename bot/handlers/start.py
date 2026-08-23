@@ -1,6 +1,7 @@
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
+from bot.services.miniapp_launch import create_launch_url
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0] + "?v=20260823-3"
 BOT_DEEP_LINK = os.getenv("BOT_DEEP_LINK", "https://t.me/iSectorlandbot?start=miniapp")
@@ -24,7 +25,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("سکتور کوچولوی من", callback_data="sector_pet", style="primary")],
-            [InlineKeyboardButton("باز کردن SectorLand Mini App", web_app=WebAppInfo(url=MINI_APP_URL), style="success")]
+            [InlineKeyboardButton("باز کردن SectorLand Mini App", web_app=WebAppInfo(url=MINI_APP_URL), style="success")],
+            [InlineKeyboardButton("ورود مستقیم امن",url=create_launch_url(update.effective_user.id),style="primary")]
         ])
     else:
         # Telegram only provides trusted WebApp initData when the Mini App is

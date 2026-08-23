@@ -20,6 +20,7 @@ from bot.database.models import User, Group, Purchase, AppSetting, Order, Referr
 from api.quiz_bank import QUIZ_BANK
 from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn, needs_web_search
 from bot.services import sector_pet as sector_service
+from bot.services.miniapp_launch import verify_launch_token
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -295,6 +296,10 @@ async def claim_mission(user_id:int,mission_id:str,init_data:Optional[str]=Heade
 def validate_telegram_init_data(init_data: Optional[str]) -> dict:
     if not BOT_TOKEN:
         raise HTTPException(status_code=500, detail="Bot token not configured")
+    if init_data and init_data.startswith("sector:"):
+        user=verify_launch_token(init_data.split(":",1)[1])
+        if user:return user
+        raise HTTPException(status_code=403,detail="Expired Sector launch link")
     if not init_data:
         raise HTTPException(status_code=401, detail="Missing Telegram init data")
     try:
