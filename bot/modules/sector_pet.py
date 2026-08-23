@@ -27,6 +27,14 @@ def sector_emoji_ids():
     finally:session.close()
 
 
+def animated_emoji(index, fallback):
+    """Render a saved Premium emoji in HTML text, with a normal emoji fallback."""
+    icons = sector_emoji_ids() or []
+    if not icons:
+        return fallback
+    return f'<tg-emoji emoji-id="{icons[index % len(icons)]}">{fallback}</tg-emoji>'
+
+
 def pet_keyboard(user_id=None):
     icons=sector_emoji_ids();icon=lambda n:icons[n%len(icons)] if icons else None
     return InlineKeyboardMarkup([
@@ -49,12 +57,13 @@ def progress_bar(value, size=10):
 def pet_text(pet, daily):
     gate = (pet.get("stage") or {}).get("next_gate")
     gate_text = "به آخرین فرم رسیده‌ای" if not gate else f"فرم بعدی: سطح {gate['level']} + {gate['care_days']} روز مراقبت"
+    robot, energy, joy, brain, heart = [animated_emoji(i, x) for i, x in enumerate(("🤖", "⚡", "💙", "🧠", "❤️"))]
     return (
-        f"🤖 <b>{html.escape(pet['name'])}</b> — {pet['stage']['title']} — سطح {pet['level']}\n\n"
-        f"⚡ انرژی   {progress_bar(pet['energy'])} {pet['energy']}٪\n"
-        f"💙 شادی    {progress_bar(pet['happiness'])} {pet['happiness']}٪\n"
-        f"🧠 دانش    {progress_bar(pet['knowledge'])} {pet['knowledge']}٪\n"
-        f"❤️ سلامت  {progress_bar(pet['health'])} {pet['health']}٪\n\n"
+        f"{robot} <b>{html.escape(pet['name'])}</b> — {pet['stage']['title']} — سطح {pet['level']}\n\n"
+        f"{energy} انرژی   {progress_bar(pet['energy'])} {pet['energy']}٪\n"
+        f"{joy} شادی    {progress_bar(pet['happiness'])} {pet['happiness']}٪\n"
+        f"{brain} دانش    {progress_bar(pet['knowledge'])} {pet['knowledge']}٪\n"
+        f"{heart} سلامت  {progress_bar(pet['health'])} {pet['health']}٪\n\n"
         f"🔥 زنجیره حضور: <b>{pet['streak_days']} روز</b>\n"
         f"📅 روزهای مراقبت: <b>{pet['total_care_days']}</b>\n"
         f"🎯 مأموریت امروز: <b>{min(daily['actions'], daily['target'])}/{daily['target']}</b> فعالیت\n"
@@ -77,8 +86,8 @@ def social_keyboard():
     icons=sector_emoji_ids();icon=lambda n:icons[n%len(icons)] if icons else None
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("تغییر نام",callback_data="sector_ui:rename",style="primary",icon_custom_emoji_id=icon(0)),InlineKeyboardButton("گفت‌وگو",callback_data="sector_ui:talk",style="success",icon_custom_emoji_id=icon(1))],
-        [InlineKeyboardButton("بازی دونفره",callback_data="sector_ui:play",style="primary"),InlineKeyboardButton("عملیات بانکی",callback_data="sector_ui:rob",style="danger")],
-        [InlineKeyboardButton("بازگشت به سکتور",callback_data="sector_pet",style="primary")],
+        [InlineKeyboardButton("بازی دونفره",callback_data="sector_ui:play",style="primary",icon_custom_emoji_id=icon(2)),InlineKeyboardButton("عملیات بانکی",callback_data="sector_ui:rob",style="danger",icon_custom_emoji_id=icon(3))],
+        [InlineKeyboardButton("بازگشت به سکتور",callback_data="sector_pet",style="primary",icon_custom_emoji_id=icon(4))],
     ])
 
 
@@ -88,7 +97,7 @@ def back_keyboard(extra=None):
 
 
 def quest_text(pet,daily,claimed=False):
-    return (f"🎯 <b>ماموریت‌های {html.escape(pet['name'])}</b>\n\n"
+    return (f"{animated_emoji(6, '🎯')} <b>ماموریت‌های {html.escape(pet['name'])}</b>\n\n"
             f"{'✅' if daily['complete'] else '🔄'} مراقبت روزانه: {min(daily['actions'],3)}/3\n"
             f"🔥 حفظ زنجیره حضور: {pet['streak_days']} روز\n"
             f"🧠 دانش‌آموز سکتور: دانش {pet['knowledge']}/100\n"
@@ -131,7 +140,7 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if query.data == "sector_social":
             await query.answer()
-            await query.edit_message_text("🤝 <b>تعامل‌های سکتور</b>\n\nهمه امکانات را از دکمه‌های زیر اجرا کن.",parse_mode="HTML",reply_markup=social_keyboard())
+            await query.edit_message_text(f"{animated_emoji(10, '🤝')} <b>تعامل‌های سکتور</b>\n\nهمه امکانات را از دکمه‌های زیر اجرا کن.",parse_mode="HTML",reply_markup=social_keyboard())
             return
         if query.data in ("sector_quests","sector_skills","sector_evolution","sector_art","sector_claim_daily"):
             await query.answer();pet,daily=load_pet(query.from_user.id)
@@ -143,9 +152,9 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if pet['level']>=10:unlocked+=['تحلیل و یادگیری سریع','شانس بیشتر در عملیات']
                 if pet['level']>=30:unlocked+=['ماموریت‌های حرفه‌ای','پاداش تیمی']
                 if pet['level']>=60:unlocked+=['فرم همه‌چیزدان','توانایی‌های ویژه']
-                await query.edit_message_text("🧠 <b>مهارت‌های سکتور</b>\n\n"+"\n".join("✅ "+x for x in unlocked)+"\n\nمهارت بعدی با بالا رفتن سطح و روزهای مراقبت آزاد می‌شود.",parse_mode="HTML",reply_markup=back_keyboard());return
+                await query.edit_message_text(f"{animated_emoji(7, '🧠')} <b>مهارت‌های سکتور</b>\n\n"+"\n".join("✅ "+x for x in unlocked)+"\n\nمهارت بعدی با بالا رفتن سطح و روزهای مراقبت آزاد می‌شود.",parse_mode="HTML",reply_markup=back_keyboard());return
             if query.data=="sector_evolution":
-                await query.edit_message_text("🧬 <b>مسیر تکامل چندماهه</b>\n\n🤖 کوچولو — شروع\n🔹 کنجکاو — سطح ۱۰ + ۱۴ روز\n⚙️ حرفه‌ای — سطح ۳۰ + ۶۰ روز\n👑 همه‌چیزدان — سطح ۶۰ + ۱۵۰ روز\n\nدر آینده شاخه‌های شخصیتی و فرم‌های کمیاب نیز به این مسیر اضافه می‌شوند.",parse_mode="HTML",reply_markup=back_keyboard());return
+                await query.edit_message_text(f"{animated_emoji(8, '🧬')} <b>مسیر تکامل چندماهه</b>\n\n🤖 کوچولو — شروع\n🔹 کنجکاو — سطح ۱۰ + ۱۴ روز\n⚙️ حرفه‌ای — سطح ۳۰ + ۶۰ روز\n👑 همه‌چیزدان — سطح ۶۰ + ۱۵۰ روز\n\nدر آینده شاخه‌های شخصیتی و فرم‌های کمیاب نیز به این مسیر اضافه می‌شوند.",parse_mode="HTML",reply_markup=back_keyboard());return
             session=get_session()
             try:
                 key=f"sector_daily:{query.from_user.id}:{datetime.datetime.utcnow().strftime('%Y%m%d')}";claimed=session.query(Purchase.id).filter(Purchase.telegram_payment_charge_id==key).first() is not None
