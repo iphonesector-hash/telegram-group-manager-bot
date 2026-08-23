@@ -1,5 +1,6 @@
 import datetime
 import math
+import random
 
 from bot.database.models import SectorPet, SectorPetAction, User
 from bot.utils.helpers import OWNER_ID
@@ -135,4 +136,12 @@ def perform_action(session, user_id: int, action: str, now=None):
     pet.updated_at = now
     session.add(SectorPetAction(user_id=user_id, action=action, coin_cost=0 if user_id == OWNER_ID else cost, xp_gained=gained_xp, created_at=now))
     session.flush()
-    return {"status": "success", "message": f"{definition['title']} انجام شد؛ سکتور +{gained_xp} XP گرفت!", "coins": int(user.coins or 0), "pet": serialize_pet(pet), "daily": daily_progress(session, user_id, now)}
+    reactions = {
+        "charge": ["چراغ‌های صورتم دوباره روشن شد!", "پر از انرژی شدم؛ بزن بریم!"],
+        "play": ["چه بازی خوبی بود! دوباره هم بازی می‌کنیم؟", "برد و باخت مهم نبود؛ حسابی خوش گذشت!", "این دور را من بردم… تقریباً!"],
+        "train": ["دارم قوی‌تر می‌شوم؛ دیدی؟", "تمرین سخت بود ولی کم نیاوردم!"],
+        "learn": ["یک چیز تازه یاد گرفتم و توی حافظه‌ام نگه داشتم!", "حس می‌کنم یک مدارم باهوش‌تر شد!"],
+        "repair": ["پیچ آخر هم سفت شد؛ مثل روز اولم!", "الان خیلی بهترم، ممنون که حواست بهم بود."],
+    }
+    voice = random.choice(reactions.get(action, ["خیلی بهتر شدم!"]))
+    return {"status": "success", "message": f"{pet.name}: {voice}  +{gained_xp} XP", "coins": int(user.coins or 0), "pet": serialize_pet(pet), "daily": daily_progress(session, user_id, now)}

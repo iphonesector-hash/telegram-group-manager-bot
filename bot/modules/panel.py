@@ -8,9 +8,7 @@ from bot.utils.keyboards import (
     get_welcome_settings_menu, get_rules_settings_menu,
 )
 from bot.utils.helpers import is_admin
-from bot.services.miniapp_launch import create_launch_url
-
-MINI_APP_URL=os.getenv("MINI_APP_URL","https://isectorland-miniapp.vercel.app").split("?",1)[0]+"?v=20260823-3"
+MINI_APP_URL=os.getenv("MINI_APP_URL","https://isectorland-miniapp.vercel.app").split("?",1)[0]
 
 
 async def _delete_group_press(update: Update):
@@ -67,7 +65,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
         await context.bot.send_message(update.effective_chat.id, msg, reply_markup=get_main_menu())
     elif text in ("🤖 سکتور کوچولو","سکتور کوچولو"):
         if private:
-            markup=InlineKeyboardMarkup([[InlineKeyboardButton("مراقبت در چت",callback_data="sector_pet",style="primary")],[InlineKeyboardButton("نسخه کامل مینی‌اپ",web_app=WebAppInfo(url=MINI_APP_URL),style="success")],[InlineKeyboardButton("ورود مستقیم امن",url=create_launch_url(update.effective_user.id),style="primary")]])
+            markup=InlineKeyboardMarkup([[InlineKeyboardButton("مراقبت در چت",callback_data="sector_pet",style="primary")],[InlineKeyboardButton("نسخه کامل مینی‌اپ",web_app=WebAppInfo(url=MINI_APP_URL),style="success")]])
         else:
             markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 باز کردن در چت خصوصی",url="https://t.me/iSectorlandbot?start=miniapp")]])
         await context.bot.send_message(update.effective_chat.id,"🤖 سکتور کوچولو همراه دیجیتال توئه؛ با سکه، مأموریت، بازی و تمرین کمکش کن رشد کنه و به سکتور همه‌چیزدان تبدیل بشه!",reply_markup=markup)

@@ -20,7 +20,6 @@ from bot.database.models import User, Group, Purchase, AppSetting, Order, Referr
 from api.quiz_bank import QUIZ_BANK
 from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, save_ai_turn, needs_web_search
 from bot.services import sector_pet as sector_service
-from bot.services.miniapp_launch import verify_launch_token
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -296,10 +295,6 @@ async def claim_mission(user_id:int,mission_id:str,init_data:Optional[str]=Heade
 def validate_telegram_init_data(init_data: Optional[str]) -> dict:
     if not BOT_TOKEN:
         raise HTTPException(status_code=500, detail="Bot token not configured")
-    if init_data and init_data.startswith("sector:"):
-        user=verify_launch_token(init_data.split(":",1)[1])
-        if user:return user
-        raise HTTPException(status_code=403,detail="Expired Sector launch link")
     if not init_data:
         raise HTTPException(status_code=401, detail="Missing Telegram init data")
     try:
@@ -400,6 +395,28 @@ async def sector_pet_rename(user_id:int,request:dict,init_data:Optional[str]=Hea
         pet=sector_service.get_or_create_pet(session,user_id,lock=True);pet.name=name;session.commit()
         return {"status":"success","pet":sector_service.serialize_pet(pet),"message":f"نام سکتور به {name} تغییر کرد."}
     finally:session.close()
+
+
+@app.post("/api/sector-pet/{user_id}/talk/message")
+async def sector_pet_talk(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id)
+    message=str(request.get("message") or "").strip()
+    if not message or len(message)>700:raise HTTPException(status_code=400,detail="پیام باید بین ۱ تا ۷۰۰ نویسه باشد.")
+    session=get_session()
+    try:
+        pet=sector_service.get_or_create_pet(session,user_id)
+        sector_service.refresh_pet(pet);sector_service.touch_daily_visit(pet)
+        data=sector_service.serialize_pet(pet);session.commit()
+    finally:session.close()
+    mood="سرحال و بازیگوش" if data["happiness"]>=70 else ("کمی دلگیر و نیازمند توجه" if data["happiness"]<35 else "آرام و صمیمی")
+    prompt=(f"تو خودِ ربات همراه شخصی کاربر هستی و نامت «{data['name']}» است؛ هرگز خودت را Sector AI یا دستیار عمومی معرفی نکن. "
+            f"سطح {data['level']}، انرژی {data['energy']}، شادی {data['happiness']}، دانش {data['knowledge']} و حالتت {mood} است. "
+            "مثل یک شخصیت کوچولوی واقعی، بامزه، صمیمی و کمی شیطون فارسی حرف بزن. وضعیت و خاطراتت روی پاسخ اثر بگذارد. کوتاه و طبیعی جواب بده.")
+    history=load_ai_history(-user_id,16)
+    response=await get_ai_response(prompt,message,history=history)
+    if not response:raise HTTPException(status_code=503,detail="سکتور کوچولو فعلاً خواب‌آلود است؛ کمی بعد دوباره صدایش کن.")
+    save_ai_turn(user_id,-user_id,message,response)
+    return {"status":"success","response":response[:2000],"pet":data}
 
 
 @app.post("/api/daily-claim/{user_id}")

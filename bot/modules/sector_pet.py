@@ -10,10 +10,9 @@ from bot.database.session import get_session
 from bot.database.models import AppSetting, Purchase, User
 from bot.modules.ai import get_ai_response, get_sector_prompt
 from bot.services import sector_pet as service
-from bot.services.miniapp_launch import create_launch_url
 
 
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0] + "?v=20260823-3"
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
 
 
 def sector_emoji_ids():
@@ -45,7 +44,6 @@ def pet_keyboard(user_id=None):
         [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon(10))],
         [InlineKeyboardButton("نسخه کامل در مینی‌اپ", web_app=WebAppInfo(url=MINI_APP_URL),style="success")],
-        *([[InlineKeyboardButton("ورود مستقیم امن",url=create_launch_url(user_id),style="primary",icon_custom_emoji_id=icon(11))]] if user_id else []),
     ])
 
 
@@ -96,6 +94,19 @@ def back_keyboard(extra=None):
     return InlineKeyboardMarkup(rows+[[InlineKeyboardButton("بازگشت به سکتور",callback_data="sector_pet",style="primary")]])
 
 
+async def show_panel(query, text, reply_markup):
+    """Edit text messages, but send a fresh panel when the source is a photo."""
+    if query.message and query.message.text:
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        return
+    if query.message:
+        try:
+            await query.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+
+
 def quest_text(pet,daily,claimed=False):
     return (f"{animated_emoji(6, '🎯')} <b>ماموریت‌های {html.escape(pet['name'])}</b>\n\n"
             f"{'✅' if daily['complete'] else '🔄'} مراقبت روزانه: {min(daily['actions'],3)}/3\n"
@@ -140,7 +151,7 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if query.data == "sector_social":
             await query.answer()
-            await query.edit_message_text(f"{animated_emoji(10, '🤝')} <b>تعامل‌های سکتور</b>\n\nهمه امکانات را از دکمه‌های زیر اجرا کن.",parse_mode="HTML",reply_markup=social_keyboard())
+            await show_panel(query, f"{animated_emoji(10, '🤝')} <b>تعامل‌های سکتور</b>\n\nهمه امکانات را از دکمه‌های زیر اجرا کن.", social_keyboard())
             return
         if query.data in ("sector_quests","sector_skills","sector_evolution","sector_art","sector_claim_daily"):
             await query.answer();pet,daily=load_pet(query.from_user.id)
@@ -152,9 +163,9 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if pet['level']>=10:unlocked+=['تحلیل و یادگیری سریع','شانس بیشتر در عملیات']
                 if pet['level']>=30:unlocked+=['ماموریت‌های حرفه‌ای','پاداش تیمی']
                 if pet['level']>=60:unlocked+=['فرم همه‌چیزدان','توانایی‌های ویژه']
-                await query.edit_message_text(f"{animated_emoji(7, '🧠')} <b>مهارت‌های سکتور</b>\n\n"+"\n".join("✅ "+x for x in unlocked)+"\n\nمهارت بعدی با بالا رفتن سطح و روزهای مراقبت آزاد می‌شود.",parse_mode="HTML",reply_markup=back_keyboard());return
+                await show_panel(query, f"{animated_emoji(7, '🧠')} <b>مهارت‌های سکتور</b>\n\n"+"\n".join("✅ "+x for x in unlocked)+"\n\nمهارت بعدی با بالا رفتن سطح و روزهای مراقبت آزاد می‌شود.", back_keyboard());return
             if query.data=="sector_evolution":
-                await query.edit_message_text(f"{animated_emoji(8, '🧬')} <b>مسیر تکامل چندماهه</b>\n\n🤖 کوچولو — شروع\n🔹 کنجکاو — سطح ۱۰ + ۱۴ روز\n⚙️ حرفه‌ای — سطح ۳۰ + ۶۰ روز\n👑 همه‌چیزدان — سطح ۶۰ + ۱۵۰ روز\n\nدر آینده شاخه‌های شخصیتی و فرم‌های کمیاب نیز به این مسیر اضافه می‌شوند.",parse_mode="HTML",reply_markup=back_keyboard());return
+                await show_panel(query, f"{animated_emoji(8, '🧬')} <b>مسیر تکامل چندماهه</b>\n\n🤖 کوچولو — شروع\n🔹 کنجکاو — سطح ۱۰ + ۱۴ روز\n⚙️ حرفه‌ای — سطح ۳۰ + ۶۰ روز\n👑 همه‌چیزدان — سطح ۶۰ + ۱۵۰ روز\n\nدر آینده شاخه‌های شخصیتی و فرم‌های کمیاب نیز به این مسیر اضافه می‌شوند.", back_keyboard());return
             session=get_session()
             try:
                 key=f"sector_daily:{query.from_user.id}:{datetime.datetime.utcnow().strftime('%Y%m%d')}";claimed=session.query(Purchase.id).filter(Purchase.telegram_payment_charge_id==key).first() is not None
@@ -162,7 +173,7 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     user=session.query(User).filter(User.id==query.from_user.id).with_for_update().first();pet_obj=service.get_or_create_pet(session,query.from_user.id,lock=True)
                     user.coins=int(user.coins or 0)+80;pet_obj.xp=int(pet_obj.xp or 0)+35;session.add(Purchase(user_id=user.id,item_id="sector_daily_reward",amount=80,status="reward",telegram_payment_charge_id=key));session.commit();claimed=True;pet=service.serialize_pet(pet_obj)
                 buttons=[] if claimed else [[InlineKeyboardButton("دریافت جایزه",callback_data="sector_claim_daily",style="success")]]
-                await query.edit_message_text(quest_text(pet,daily,claimed),parse_mode="HTML",reply_markup=back_keyboard(buttons))
+                await show_panel(query, quest_text(pet,daily,claimed), back_keyboard(buttons))
             finally:session.close()
             return
         if query.data.startswith("sector_ui:"):
@@ -189,7 +200,7 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pet, daily = service.serialize_pet(pet_obj), service.daily_progress(session, query.from_user.id)
             session.commit()
         await query.answer("انجام شد 🤖" if query.data.startswith("sector_action:") else "به‌روز شد")
-        await query.edit_message_text(pet_text(pet, daily), parse_mode="HTML", reply_markup=pet_keyboard(query.from_user.id))
+        await show_panel(query, pet_text(pet, daily), pet_keyboard(query.from_user.id))
     finally:
         session.close()
 
@@ -215,7 +226,13 @@ async def sector_talk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("💬 نمونه: /sectortalk امروز حالت چطوره؟")
         raise ApplicationHandlerStop()
     pet, _ = load_pet(update.effective_user.id)
-    prompt = get_sector_prompt(update.effective_user) + f" نام همراه شخصی کاربر {pet['name']} است. مثل یک ربات کوچولوی دوست‌داشتنی، صمیمی و کوتاه جواب بده. سطح {pet['level']}، شادی {pet['happiness']} و دانش {pet['knowledge']} است."
+    mood = "سرحال و بازیگوش" if pet['happiness'] >= 70 else ("کمی دلگیر و نیازمند توجه" if pet['happiness'] < 35 else "آرام و صمیمی")
+    prompt = (
+        f"تو خودِ ربات همراه شخصی این کاربر هستی؛ نامت «{pet['name']}» است و هرگز خودت را Sector AI، دستیار عمومی یا مدل هوش مصنوعی معرفی نکن. "
+        f"سطح تو {pet['level']}، انرژی {pet['energy']}، شادی {pet['happiness']}، دانش {pet['knowledge']} و حالت فعلی‌ات {mood} است. "
+        "با شخصیت یک ربات کوچولوی بامزه، گرم، کمی شیطون و دارای احساس جواب بده. وضعیتت باید روی لحن و حرفت اثر بگذارد. "
+        "پاسخ فارسی، طبیعی، کوتاه و مخصوص رابطه خودت با صاحب تو باشد؛ از لحن رسمی ربات مدیریت گروه استفاده نکن."
+    )
     answer = await get_ai_response(prompt, message[:700])
     await update.effective_message.reply_text(f"🤖 {pet['name']}:\n{answer or 'الان یکم خواب‌آلودم؛ دوباره صدایم کن!'}")
     raise ApplicationHandlerStop()

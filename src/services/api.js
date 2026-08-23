@@ -57,4 +57,5 @@ export const api = {
   getSectorPet: function(userId, initData) { return request('/api/sector-pet/' + userId, {}, initData) },
   sectorPetAction: function(userId, action, initData) { return request('/api/sector-pet/' + userId + '/' + encodeURIComponent(action), { method:'POST' }, initData) },
   renameSectorPet: function(userId, name, initData) { return request('/api/sector-pet/' + userId + '/rename/name', { method:'POST', body:JSON.stringify({name:name}) }, initData) },
+  talkSectorPet: function(userId, message, initData) { return request('/api/sector-pet/' + userId + '/talk/message', { method:'POST', body:JSON.stringify({message:message}) }, initData) },
 }
