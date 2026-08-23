@@ -1,5 +1,5 @@
 // All runtime config comes from env vars — no hardcoded values
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
 // Empty string → relative URLs (/api/...) → Vite proxy handles it in dev,
 // Nginx/Vercel rewrites handle it in production.
 
