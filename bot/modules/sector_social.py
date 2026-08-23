@@ -1,148 +1,59 @@
 import html
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationHandlerStop, CallbackQueryHandler, CommandHandler, ContextTypes
-
 from bot.database.models import User
 from bot.database.session import get_session
 from bot.services import sector_pet as service
 from bot.services.sector_economy import appearance_icons
 
-MINI_APP_URL = "https://isectorland-miniapp.vercel.app"
+MAIN_APP_LINK='https://t.me/iSectorlandbot?startapp=sector'
 
-
-def _reply_target(update: Update):
-    message = update.effective_message
-    reply = message.reply_to_message if message else None
-    user = reply.from_user if reply and reply.from_user else None
-    if not user or user.is_bot or user.id == update.effective_user.id:
-        return None
-    return user
-
+def _reply_target(update):
+    m=update.effective_message;r=m.reply_to_message if m else None;u=r.from_user if r and r.from_user else None
+    return None if not u or u.is_bot or u.id==update.effective_user.id else u
 
 def _gear_line(pet):
-    items = appearance_icons(pet)
-    if not items:
-        return "بدون تجهیزات"
-    return " ".join(item["icon"] for item in items) + "  " + " • ".join(item["title"] for item in items[:4])
+    items=appearance_icons(pet)
+    return 'بدون تجهیزات' if not items else ' '.join(i['icon'] for i in items)+'  '+' • '.join(i['title'] for i in items[:4])
 
+def _keyboard(actor,target):
+    p=f'sectorx:{actor}:{target}:'
+    return InlineKeyboardMarkup([[InlineKeyboardButton('⚔️ دوئل',callback_data=p+'battle',style='danger'),InlineKeyboardButton('🎁 هدیه ۵۰',callback_data=p+'gift',style='success')],[InlineKeyboardButton('🏠 ملاقات',callback_data=p+'visit',style='success'),InlineKeyboardButton('🐾 کارت سکتور',callback_data=p+'profile',style='primary')],[InlineKeyboardButton('sector',url=MAIN_APP_LINK,style='primary')]])
 
-def _action_keyboard(actor_id, target_id):
-    prefix = f"sectorx:{actor_id}:{target_id}:"
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("⚔️ دوئل", callback_data=prefix + "battle", style="danger"),
-            InlineKeyboardButton("🎁 هدیه ۵۰", callback_data=prefix + "gift", style="success"),
-        ],
-        [
-            InlineKeyboardButton("🏠 ملاقات", callback_data=prefix + "visit", style="primary"),
-            InlineKeyboardButton("🐾 کارت سکتور", callback_data=prefix + "profile", style="primary"),
-        ],
-        [InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL))],
-    ])
+def _card(a,ap,t,tp):
+    return ('🐾 <b>تعامل سکتورها</b>\n\n'+f'🤖 <b>{html.escape(ap.name)}</b> • {html.escape(a.first_name or "کاربر")} • Lv.{service.level_from_xp(ap.xp)}\n👕 {_gear_line(ap)}\n\nVS / WITH\n\n'+f'🤖 <b>{html.escape(tp.name)}</b> • {html.escape(t.first_name or "کاربر")} • Lv.{service.level_from_xp(tp.xp)}\n👕 {_gear_line(tp)}\n\nیک اکشن انتخاب کن؛ همین کارت به‌روزرسانی می‌شود تا تاپیک شلوغ نشود.')
 
-
-def _card(actor_user, actor_pet, target_user, target_pet):
-    return (
-        "🐾 <b>تعامل سکتورها</b>\n\n"
-        f"🤖 <b>{html.escape(actor_pet.name)}</b> • {html.escape(actor_user.first_name or 'کاربر')} • Lv.{service.level_from_xp(actor_pet.xp)}\n"
-        f"👕 {_gear_line(actor_pet)}\n\n"
-        "VS / WITH\n\n"
-        f"🤖 <b>{html.escape(target_pet.name)}</b> • {html.escape(target_user.first_name or 'کاربر')} • Lv.{service.level_from_xp(target_pet.xp)}\n"
-        f"👕 {_gear_line(target_pet)}\n\n"
-        "یک اکشن انتخاب کن؛ همین کارت به‌روزرسانی می‌شود تا تاپیک شلوغ نشود."
-    )
-
-
-async def show_sector_reply_actions(update: Update, context: ContextTypes.DEFAULT_TYPE, target=None):
-    if not update.effective_chat or update.effective_chat.type == "private":
-        return False
-    target = target or _reply_target(update)
-    if not target:
-        return False
-    session = get_session()
+async def show_sector_reply_actions(update:Update,context:ContextTypes.DEFAULT_TYPE,target=None):
+    if not update.effective_chat or update.effective_chat.type=='private':return False
+    target=target or _reply_target(update)
+    if not target:return False
+    s=get_session()
     try:
-        actor = session.query(User).filter(User.id == update.effective_user.id).first()
-        target_db = session.query(User).filter(User.id == target.id).first()
-        if not actor or not target_db:
-            await update.effective_message.reply_text("🐾 هر دو کاربر باید یک‌بار ربات را /start کرده باشند.")
-            return True
-        actor_pet = service.get_or_create_pet(session, actor.id)
-        target_pet = service.get_or_create_pet(session, target_db.id)
-        session.commit()
-        await update.effective_message.reply_text(
-            _card(actor, actor_pet, target_db, target_pet),
-            parse_mode="HTML",
-            reply_markup=_action_keyboard(actor.id, target_db.id),
-        )
-        return True
-    finally:
-        session.close()
+        a=s.query(User).filter(User.id==update.effective_user.id).first();t=s.query(User).filter(User.id==target.id).first()
+        if not a or not t:await update.effective_message.reply_text('🐾 هر دو کاربر باید یک‌بار ربات را /start کرده باشند.');return True
+        ap=service.get_or_create_pet(s,a.id);tp=service.get_or_create_pet(s,t.id);s.commit();await update.effective_message.reply_text(_card(a,ap,t,tp),parse_mode='HTML',reply_markup=_keyboard(a.id,t.id));return True
+    finally:s.close()
 
-
-async def sector_actions_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type == "private":
-        await update.effective_message.reply_text("🐾 این دستور داخل گروه و روی Reply یک کاربر استفاده می‌شود.")
-        raise ApplicationHandlerStop()
-    if not await show_sector_reply_actions(update, context):
-        await update.effective_message.reply_text("🐾 روی پیام یک کاربر Reply کن و /sectoractions بزن.")
+async def sector_actions_command(update,context):
+    if update.effective_chat.type=='private':await update.effective_message.reply_text('🐾 این دستور داخل گروه و روی Reply یک کاربر استفاده می‌شود.');raise ApplicationHandlerStop()
+    if not await show_sector_reply_actions(update,context):await update.effective_message.reply_text('🐾 روی پیام یک کاربر Reply کن و /sectoractions بزن.')
     raise ApplicationHandlerStop()
 
-
-async def sector_social_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
+async def sector_social_callback(update,context):
+    q=update.callback_query
+    try:_,ar,tr,action=q.data.split(':',3);aid,tid=int(ar),int(tr)
+    except Exception:await q.answer('اکشن نامعتبر است.',show_alert=True);return
+    if q.from_user.id!=aid:await q.answer('این پنل برای صاحب سکتوریه که اکشن رو شروع کرده.',show_alert=True);return
+    s=get_session()
     try:
-        _, actor_raw, target_raw, action = query.data.split(":", 3)
-        actor_id, target_id = int(actor_raw), int(target_raw)
-    except Exception:
-        await query.answer("اکشن نامعتبر است.", show_alert=True)
-        return
-    if query.from_user.id != actor_id:
-        await query.answer("این پنل برای صاحب سکتوریه که اکشن رو شروع کرده.", show_alert=True)
-        return
+        a=s.query(User).filter(User.id==aid).first();t=s.query(User).filter(User.id==tid).first()
+        if not a or not t:await q.answer('یکی از حساب‌ها پیدا نشد.',show_alert=True);return
+        ap=service.get_or_create_pet(s,aid);tp=service.get_or_create_pet(s,tid)
+        if action=='profile':
+            s.commit();text=f'🐾 <b>کارت {html.escape(tp.name)}</b>\n\n👤 صاحب: {html.escape(t.first_name or "کاربر")}\n⭐ سطح: {service.level_from_xp(tp.xp)}\n🔥 Streak: {int(tp.streak_days or 0)} روز\n🧠 دانش: {int(tp.knowledge or 0)}٪\n❤️ سلامت: {int(tp.health or 0)}٪\n👕 تجهیزات: {_gear_line(tp)}';await q.answer();await q.edit_message_text(text,parse_mode='HTML',reply_markup=_keyboard(aid,tid));return
+        result=service.social_action(s,aid,tid,action)
+        if result.get('status')!='success':s.rollback();await q.answer(result.get('message') or 'اکشن انجام نشد.',show_alert=True);return
+        s.commit();ap=service.get_or_create_pet(s,aid);tp=service.get_or_create_pet(s,tid);text=f'{_card(a,ap,t,tp)}\n\n━━━━━━━━━━\n<b>{html.escape(result["message"])}</b>';await q.answer('انجام شد 🐾');await q.edit_message_text(text,parse_mode='HTML',reply_markup=_keyboard(aid,tid))
+    finally:s.close()
 
-    session = get_session()
-    try:
-        actor = session.query(User).filter(User.id == actor_id).first()
-        target = session.query(User).filter(User.id == target_id).first()
-        if not actor or not target:
-            await query.answer("یکی از حساب‌ها پیدا نشد.", show_alert=True)
-            return
-        actor_pet = service.get_or_create_pet(session, actor_id)
-        target_pet = service.get_or_create_pet(session, target_id)
-
-        if action == "profile":
-            session.commit()
-            text = (
-                f"🐾 <b>کارت {html.escape(target_pet.name)}</b>\n\n"
-                f"👤 صاحب: {html.escape(target.first_name or 'کاربر')}\n"
-                f"⭐ سطح: {service.level_from_xp(target_pet.xp)}\n"
-                f"🔥 Streak: {int(target_pet.streak_days or 0)} روز\n"
-                f"🧠 دانش: {int(target_pet.knowledge or 0)}٪\n"
-                f"❤️ سلامت: {int(target_pet.health or 0)}٪\n"
-                f"👕 تجهیزات: {_gear_line(target_pet)}"
-            )
-            await query.answer()
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=_action_keyboard(actor_id, target_id))
-            return
-
-        result = service.social_action(session, actor_id, target_id, action)
-        if result.get("status") != "success":
-            session.rollback()
-            await query.answer(result.get("message") or "اکشن انجام نشد.", show_alert=True)
-            return
-        session.commit()
-        actor_pet = service.get_or_create_pet(session, actor_id)
-        target_pet = service.get_or_create_pet(session, target_id)
-        result_text = f"{_card(actor, actor_pet, target, target_pet)}\n\n━━━━━━━━━━\n<b>{html.escape(result['message'])}</b>"
-        await query.answer("انجام شد 🐾")
-        await query.edit_message_text(result_text, parse_mode="HTML", reply_markup=_action_keyboard(actor_id, target_id))
-    finally:
-        session.close()
-
-
-def get_handlers():
-    return [
-        CommandHandler("sectoractions", sector_actions_command),
-        CallbackQueryHandler(sector_social_callback, pattern=r"^sectorx:\d+:\d+:(battle|gift|visit|profile)$"),
-    ]
+def get_handlers():return [CommandHandler('sectoractions',sector_actions_command),CallbackQueryHandler(sector_social_callback,pattern=r'^sectorx:\d+:\d+:(battle|gift|visit|profile)$')]

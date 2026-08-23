@@ -1,0 +1,8 @@
+"""API package bootstrap for Vercel.
+
+Importing these modules registers Sector routes on the shared FastAPI app
+before api.index finishes loading.
+"""
+from api import sector_v2_routes  # noqa: F401,E402
+from api import sector_v2_extra_routes  # noqa: F401,E402
+from api import sector_meta_routes  # noqa: F401,E402
