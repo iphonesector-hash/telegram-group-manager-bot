@@ -7,6 +7,15 @@ function formatDate(value) {
   try { return new Date(value).toLocaleString('fa-IR') } catch (_) { return '—' }
 }
 
+function rankName(level) {
+  if (level >= 30) return 'Legend Sector'
+  if (level >= 24) return 'Galaxy Elite'
+  if (level >= 18) return 'Diamond Master'
+  if (level >= 12) return 'Gold Champion'
+  if (level >= 6) return 'Silver Explorer'
+  return 'Bronze Newbie'
+}
+
 export default function HomePage() {
   var ctx = useAppContext()
   var tgUser = ctx.tgUser
@@ -68,6 +77,14 @@ export default function HomePage() {
 
   return (
     <div className="page fade-up">
+      <button onClick={function(){navigate('sectorpet')}} className="glass" style={{display:'block',width:'100%',padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(125,92,255,.35)',cursor:'pointer',textAlign:'inherit',color:'inherit',background:'#090c27'}}>
+        <img src="/assets/sector/brand-hero.webp" alt="Sector - Play Earn Grow" style={{display:'block',width:'100%',aspectRatio:'1.32',objectFit:'cover'}} />
+        <div style={{padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+          <div><b style={{fontSize:13}}>💙 سکتور کوچولو، همراه همیشگی تو</b><div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>بازی کن • رشد کن • جایزه بگیر</div></div>
+          <span style={{fontSize:18}}>‹</span>
+        </div>
+      </button>
+
       <div className="glass" style={{padding:'20px',marginBottom:14,background:'linear-gradient(135deg,rgba(79,123,255,.15),rgba(162,89,255,.12))'}}>
         <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
           <div style={{position:'relative'}}>
@@ -76,12 +93,21 @@ export default function HomePage() {
           </div>
           <div style={{flex:1}}>
             <div style={{fontWeight:800,fontSize:18,marginBottom:2}}>سلام، {dbUser.first_name || (tgUser && tgUser.first_name) || 'کاربر'} 👋</div>
-            <div style={{color:'var(--muted)',fontSize:12}}>سطح {level} • رتبه {dbUser.rank ? '#' + Number(dbUser.rank).toLocaleString('fa-IR') : '—'}</div>
+            <div style={{color:'var(--muted)',fontSize:12}}>سطح {level} • {rankName(level)} • رتبه {dbUser.rank ? '#' + Number(dbUser.rank).toLocaleString('fa-IR') : '—'}</div>
           </div>
           <div style={{textAlign:'center'}}><div style={{fontWeight:800,fontSize:20,color:'var(--gold)'}}>{dbUser.unlimited_wallet?'∞':Number(dbUser.coins || 0).toLocaleString()}</div><div style={{fontSize:10,color:'var(--muted)'}}>سکه 🪙</div></div>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--muted)',marginBottom:5}}><span>پیشرفت سطح {level}</span><span>{xp.toLocaleString()} / {levelEnd.toLocaleString()} XP</span></div>
         <div className="progress-bar"><div className="progress-fill" style={{width:xpPct + '%'}} /></div>
+      </div>
+
+      <div className="glass" style={{padding:0,overflow:'hidden',marginBottom:10}}>
+        <img src="/assets/sector/mascot-emotions.webp" alt="حالت‌های سکتور کوچولو" loading="lazy" style={{display:'block',width:'100%'}} />
+      </div>
+
+      <div className="glass" style={{padding:'12px 12px 9px',marginBottom:8,overflow:'hidden'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><b style={{fontSize:12}}>🏆 مسیر رتبه‌های Sector</b><span style={{fontSize:10,color:'var(--gold)'}}>{rankName(level)}</span></div>
+        <img src="/assets/sector/rank-badges.webp" alt="نشان‌های رتبه Sector" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
       </div>
 
       <div className="glass" style={{padding:'12px 16px',marginBottom:8,display:'flex',alignItems:'center',gap:10,borderColor:'rgba(34,216,122,.2)'}}><span style={{fontSize:22}}>🔄</span><span style={{fontSize:13}}>این صفحه مستقیماً با حساب ربات SectorLand همگام است.</span></div>
