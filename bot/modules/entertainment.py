@@ -27,13 +27,18 @@ async def get_story_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_chat_action("typing")
     persona = get_sector_prompt(update.effective_user)
-    prompt = "یک معمای کوتاه و باحال به زبان فارسی بگو. فرمت خروجی دقیقا این باشد: معما: [متن] | پاسخ: [پاسخ]"
+    recent = list(context.user_data.get("recent_riddles", []))
+    avoid = "\n".join(f"- {item}" for item in recent[-8:])
+    prompt = "یک معمای کوتاه، دقیق و تازه به زبان فارسی بگو. معمای تکراری یا بسیار معروف انتخاب نکن. فرمت خروجی دقیقا این باشد: معما: [متن] | پاسخ: [پاسخ]"
+    if avoid:
+        prompt += "\nمعما باید با موارد زیر متفاوت باشد:\n" + avoid
     res = await get_ai_response(persona + "\n\n" + prompt, "معما بگو")
 
     if res and "|" in res:
         parts = res.split("|")
         riddle = parts[0].replace("معما:", "").strip()
         answer = parts[1].replace("پاسخ:", "").strip()
+        context.user_data["recent_riddles"] = (recent + [riddle])[-12:]
         riddle_answers[update.effective_chat.id] = answer
         await update.effective_message.reply_text(f"❓ {riddle}\n\n💡 برای دیدن جواب بنویسید: جواب معما یا جوابش؟", parse_mode=None)
     else:

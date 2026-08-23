@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, CallbackQ
 from bot.modules.ai import get_ai_response, get_sector_prompt
 from bot.database.session import get_session
 from bot.database.models import User
+from api.quiz_bank import QUIZ_BANK as CURATED_QUIZ_BANK, _FLAGS
 
 # game_states is used by the older text games.
 game_states = {}
@@ -15,18 +16,11 @@ game_states = {}
 quiz_states = {}
 
 QUIZ_BANK = {
-    "intel": [
-        {"q": "عدد بعدی در این دنباله کدام است؟ ۲، ۶، ۱۲، ۲۰، ۳۰، ؟", "options": ["۳۶", "۴۰", "۴۲", "۴۴"], "correct": 2, "explain": "اختلاف‌ها ۴، ۶، ۸، ۱۰ هستند؛ اختلاف بعدی ۱۲ است، پس پاسخ ۴۲ می‌شود."},
-        {"q": "اگر همهٔ زِپ‌ها لور باشند و هیچ لوری نِپ نباشد، کدام نتیجه حتماً درست است؟", "options": ["بعضی زپ‌ها نپ‌اند", "هیچ زپی نپ نیست", "همه نپ‌ها زپ‌اند", "هیچ نتیجه‌ای نمی‌شود گرفت"], "correct": 1, "explain": "چون همه زپ‌ها زیرمجموعه لورها هستند و هیچ لوری نپ نیست، زپ و نپ اشتراک ندارند."},
-        {"q": "کدام عدد با بقیه متفاوت است؟ ۱۶، ۲۵، ۳۶، ۴۹، ۶۳", "options": ["۲۵", "۳۶", "۴۹", "۶۳"], "correct": 3, "explain": "۱۶، ۲۵، ۳۶ و ۴۹ مربع کامل‌اند؛ ۶۳ مربع کامل نیست."},
-        {"q": "اگر ساعت ۳:۰۰ باشد، زاویه کوچک‌تر بین عقربه ساعت و دقیقه چند درجه است؟", "options": ["۳۰", "۶۰", "۹۰", "۱۲۰"], "correct": 2, "explain": "در ساعت ۳ دقیقاً، دقیقه روی ۱۲ و ساعت روی ۳ است؛ فاصله یک‌چهارم دایره یعنی ۹۰ درجه است."},
-    ],
-    "logic": [
-        {"q": "سه جعبه با برچسب‌های «سیب»، «پرتقال» و «سیب و پرتقال» داریم و هر سه برچسب اشتباه‌اند. برای اصلاح همه برچسب‌ها حداقل از کدام جعبه باید یک میوه برداریم؟", "options": ["جعبه سیب", "جعبه پرتقال", "جعبه سیب و پرتقال", "فرقی ندارد"], "correct": 2, "explain": "چون برچسب «سیب و پرتقال» حتماً اشتباه است، آن جعبه فقط یک نوع میوه دارد. با دیدن یک میوه، بقیه برچسب‌ها هم با حذف حالت‌ها مشخص می‌شوند."},
-        {"q": "علی از رضا بلندتر است و رضا از مهدی بلندتر است. کدام گزینه حتماً درست است؟", "options": ["مهدی از علی بلندتر است", "علی از مهدی بلندتر است", "رضا از علی بلندتر است", "قد علی و مهدی برابر است"], "correct": 1, "explain": "رابطه بلندتر بودن انتقالی است: علی > رضا > مهدی، پس علی از مهدی بلندتر است."},
-        {"q": "پدری ۴ دختر دارد و هر دختر یک برادر دارد. این پدر چند فرزند دارد؟", "options": ["۴", "۵", "۸", "۹"], "correct": 1, "explain": "چهار دختر می‌توانند همگی یک برادر مشترک داشته باشند؛ در مجموع ۵ فرزند."},
-        {"q": "در اتاقی ۳ کلید و در اتاق دیگر ۳ لامپ خاموش است. فقط یک بار اجازه ورود به اتاق لامپ‌ها را داری. چطور کلید هر لامپ را تشخیص می‌دهی؟", "options": ["هر سه کلید را روشن می‌کنم", "یکی را روشن می‌کنم و مستقیم می‌روم", "یکی را مدتی روشن و خاموش می‌کنم، دومی را روشن می‌گذارم", "با یک بار ورود ممکن نیست"], "correct": 2, "explain": "لامپ روشن مربوط به کلید دوم، لامپ خاموش ولی گرم مربوط به کلید اول، و لامپ خاموش و سرد مربوط به کلید سوم است."},
-    ],
+    kind: [
+        {"id": q["id"], "q": q["question"], "options": q["options"], "correct": q["answer"], "explain": q["explanation"]}
+        for q in CURATED_QUIZ_BANK if q["kind"] == kind
+    ]
+    for kind in ("intel", "logic")
 }
 
 
@@ -59,8 +53,15 @@ def _quiz_keyboard(qid, options):
     return InlineKeyboardMarkup(rows)
 
 
-async def _send_quiz(update, kind):
-    item = random.choice(QUIZ_BANK[kind])
+async def _send_quiz(update, context, kind):
+    recent_key = f"recent_quiz_{kind}"
+    recent = list(context.user_data.get(recent_key, []))
+    fresh = [item for item in QUIZ_BANK[kind] if item["id"] not in recent]
+    if not fresh:
+        recent = []
+        fresh = QUIZ_BANK[kind]
+    item = random.choice(fresh)
+    context.user_data[recent_key] = (recent + [item["id"]])[-12:]
     qid = uuid.uuid4().hex[:10]
     quiz_states[qid] = {
         "kind": kind,
@@ -175,8 +176,10 @@ async def handle_word_guess(update, context, state):
 
 
 async def start_flag_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    flags = {"🇮🇷": "ایران", "🇫🇷": "فرانسه", "🇩🇪": "آلمان", "🇯🇵": "ژاپن", "🇧🇷": "برزیل", "🇨🇦": "کانادا", "🇮🇹": "ایتالیا", "🇪🇸": "اسپانیا", "🇦🇷": "آرژانتین", "🇰🇷": "کره جنوبی"}
-    flag, country = random.choice(list(flags.items()))
+    recent = list(context.user_data.get("recent_flags", []))
+    fresh = [item for item in _FLAGS if item[0] not in recent] or _FLAGS
+    code, flag, country, _ = random.choice(fresh)
+    context.user_data["recent_flags"] = (recent + [code])[-12:]
     game_states[update.effective_chat.id] = {"type": "flag_guess", "country": country, "user_id": update.effective_user.id}
     await update.effective_message.reply_text(f"🚩 این پرچم کدوم کشوره؟\n\n{flag}")
     raise ApplicationHandlerStop()
@@ -222,12 +225,12 @@ async def start_duel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def intelligence_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await _send_quiz(update, "intel")
+    await _send_quiz(update, context, "intel")
     raise ApplicationHandlerStop()
 
 
 async def logic_riddle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await _send_quiz(update, "logic")
+    await _send_quiz(update, context, "logic")
     raise ApplicationHandlerStop()
 
 

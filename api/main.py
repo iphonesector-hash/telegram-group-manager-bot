@@ -14,6 +14,7 @@ from sqlalchemy import func
 
 from bot.database.session import get_session
 from bot.database.models import User, Group, Purchase
+from api.quiz_bank import QUIZ_BANK
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -50,14 +51,6 @@ WHEEL_PRIZES = [
     {"kind":"coins","label":"۷۵ سکه","coins":75},
 ]
 
-QUIZ_BANK = [
-    {"id":"intel-1","kind":"intel","question":"اگر ۵ دستگاه در ۵ دقیقه، ۵ قطعه بسازند، ۱۰۰ دستگاه در ۵ دقیقه چند قطعه می‌سازند؟","options":["۵","۲۰","۱۰۰","۵۰۰"],"answer":2,"explanation":"هر دستگاه در ۵ دقیقه یک قطعه می‌سازد؛ پس ۱۰۰ دستگاه، ۱۰۰ قطعه.","coins":5,"xp":10},
-    {"id":"intel-2","kind":"intel","question":"عدد بعدی چیست؟ ۲، ۶، ۱۲، ۲۰، ۳۰، ؟","options":["۳۶","۴۰","۴۲","۴۸"],"answer":2,"explanation":"اختلاف‌ها ۴،۶،۸،۱۰ و سپس ۱۲ است؛ ۳۰+۱۲=۴۲.","coins":5,"xp":10},
-    {"id":"logic-1","kind":"logic","question":"علی از رضا بلندتر است و رضا از مهدی بلندتر است. کوتاه‌ترین نفر کیست؟","options":["علی","رضا","مهدی","مشخص نیست"],"answer":2,"explanation":"ترتیب قد: علی > رضا > مهدی.","coins":6,"xp":12},
-    {"id":"logic-2","kind":"logic","question":"همه گل‌های باغ قرمزند. این شیء یک گل از همان باغ است. رنگ آن چیست؟","options":["آبی","قرمز","سفید","مشخص نیست"],"answer":1,"explanation":"طبق گزاره، همه گل‌های همان باغ قرمزند.","coins":6,"xp":12},
-    {"id":"flag-ir","kind":"flag","question":"این پرچم متعلق به کدام کشور است؟ 🇮🇷","options":["عراق","ایران","ایتالیا","هند"],"answer":1,"explanation":"🇮🇷 پرچم ایران است.","coins":4,"xp":8},
-    {"id":"flag-jp","kind":"flag","question":"این پرچم متعلق به کدام کشور است؟ 🇯🇵","options":["چین","کره جنوبی","ژاپن","سنگاپور"],"answer":2,"explanation":"🇯🇵 پرچم ژاپن است.","coins":4,"xp":8},
-]
 QUIZ_BY_ID = {q["id"]: q for q in QUIZ_BANK}
 
 
@@ -233,9 +226,15 @@ async def bank_action(user_id:int, action:str, amount:int=0, init_data:Optional[
 
 @app.get("/api/quiz")
 async def get_quiz(kind:str="intel", init_data:Optional[str]=Header(None,alias="init-data")):
-    require_user(init_data)
+    telegram_user = require_user(init_data)
     pool=[q for q in QUIZ_BANK if q["kind"]==kind] or QUIZ_BANK
-    q=random.choice(pool)
+    session=get_session()
+    try:
+        answered={str(x[0]) for x in session.query(Purchase.item_id).filter(Purchase.user_id==int(telegram_user["id"]),Purchase.item_id.like(f"{kind}-%")).all()}
+    finally:
+        session.close()
+    fresh=[q for q in pool if q["id"] not in answered]
+    q=secrets.choice(fresh or pool)
     return {"id":q["id"],"kind":q["kind"],"question":q["question"],"options":q["options"],"reward":{"coins":q["coins"],"xp":q["xp"]}}
 
 
