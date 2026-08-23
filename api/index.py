@@ -22,6 +22,7 @@ from bot.database.session import engine, get_session
 from bot.database.models import Purchase, Order
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
+BOT_BUILD = "2026.08.24-fast-keyboard"
 REQUIRED_MEMBERSHIP_CHAT = os.getenv("REQUIRED_MEMBERSHIP_CHAT", "@sectorland")
 REQUIRED_MEMBERSHIP_URL = os.getenv("REQUIRED_MEMBERSHIP_URL", "https://t.me/sectorland")
 _menu_registered = False
@@ -41,6 +42,7 @@ async def health():
     return {
         "ok": True,
         "service": "isectorland-unified",
+        "build": BOT_BUILD,
         "bot_configured": bool(os.getenv("BOT_TOKEN")),
         "database_configured": bool(os.getenv("DATABASE_URL")),
         "webhook_secret_configured": bool(os.getenv("TELEGRAM_WEBHOOK_SECRET")),
