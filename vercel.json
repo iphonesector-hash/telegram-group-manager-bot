@@ -10,7 +10,7 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Content-Security-Policy", "value": "frame-ancestors https://web.telegram.org https://*.telegram.org" }
+        { "key": "Content-Security-Policy", "value": "frame-ancestors https://t.me https://telegram.org https://web.telegram.org https://*.telegram.org" }
       ]
     }
   ]

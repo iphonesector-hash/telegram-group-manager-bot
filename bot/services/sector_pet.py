@@ -116,8 +116,8 @@ def perform_action(session, user_id: int, action: str, now=None):
         return {"status": "error", "message": "ابتدا /start را بزن تا حسابت ساخته شود."}
     last = session.query(SectorPetAction).filter(SectorPetAction.user_id == user_id).order_by(SectorPetAction.created_at.desc()).first()
     last_at = last.created_at.replace(tzinfo=None) if last and last.created_at and last.created_at.tzinfo else (last.created_at if last else None)
-    if last_at and (now - last_at).total_seconds() < 12:
-        return {"status": "error", "message": "سکتور کمی نفس می‌گیرد؛ چند ثانیه دیگر دوباره امتحان کن."}
+    if last_at and (now - last_at).total_seconds() < 3:
+        return {"status": "error", "message": "سکتور سه ثانیه استراحت می‌خواهد؛ دوباره بزن."}
     pet = get_or_create_pet(session, user_id, now, lock=True)
     refresh_pet(pet, now)
     touch_daily_visit(pet, now)
