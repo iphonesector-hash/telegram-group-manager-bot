@@ -1,0 +1,24 @@
+{
+  "release_id": "sector-koochooloo-2026-08-23-v1",
+  "version": "1.0",
+  "title": "سکتور کوچولو بزرگ‌تر و زنده‌تر شد",
+  "channel": "@sectorlandS",
+  "image": "/assets/sector/brand-hero.webp",
+  "summary": "ظاهر جدید، پاداش‌های تصویری، پروفایل حرفه‌ای، Streak و تجربه بهتر روی آیفون و تلگرام اضافه شد.",
+  "features": [
+    "ظاهر گرافیکی اختصاصی Sector و سکتور کوچولو در Mini App",
+    "نمایش Mood و واکنش‌های تصویری برای سکتور کوچولو",
+    "Streak و milestone های ۳، ۷، ۱۴ و ۳۰ روزه",
+    "Celebration برای Daily Reward، Level Up، Rank Up و پاسخ درست مسابقه",
+    "پروفایل جدید با Avatar Frame و Badge های رتبه",
+    "ظاهر جدید Arcade، Daily Reward و Leaderboard",
+    "بهبود Safe Area، لمس، Motion و سازگاری بهتر با آیفون"
+  ],
+  "usage": [
+    "ربات @iSectorlandbot را باز کن و عضو @sectorland باش.",
+    "از دکمه sector پایین صفحه وارد Mini App شو.",
+    "در بخش سکتور کوچولو هر روز سر بزن تا Streak و جایزه‌هایت بیشتر شوند.",
+    "ماموریت‌ها، Daily Reward و مسابقه‌ها را انجام بده تا سکه و XP واقعی بگیری.",
+    "از Profile رتبه، Level و Badge های جدیدت را ببین."
+  ]
+}
