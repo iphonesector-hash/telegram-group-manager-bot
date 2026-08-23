@@ -206,6 +206,9 @@ export default function App() {
         <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.7 }}>
           لطفاً این اپ رو از داخل تلگرام باز کنید.<br />از طریق بات @iSectorlandbot وارد بشید.
         </div>
+        <button className="btn btn-primary" onClick={function(){window.location.reload()}}>🔄 تلاش دوباره</button>
+        <a className="btn btn-gold" href="https://t.me/iSectorlandbot?start=miniapp" style={{textDecoration:'none'}}>🤖 باز کردن ربات</a>
+        <div style={{fontSize:10,color:'var(--muted)'}}>کد تشخیص: {telegram.tg?'TG-NO-USER':'NO-TG-BRIDGE'}</div>
       </div>
     )
   }

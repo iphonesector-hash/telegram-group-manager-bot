@@ -4,24 +4,33 @@ import random
 import html
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, ApplicationHandlerStop
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, ApplicationHandlerStop, filters
 
 from bot.database.session import get_session
-from bot.database.models import Purchase, User
+from bot.database.models import AppSetting, Purchase, User
 from bot.modules.ai import get_ai_response, get_sector_prompt
 from bot.services import sector_pet as service
 
 
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0] + "?v=20260823-3"
+
+
+def sector_emoji_id():
+    session=get_session()
+    try:
+        row=session.query(AppSetting).filter(AppSetting.key=="sector_custom_emoji_id").first()
+        return str(row.value) if row and row.value else None
+    finally:session.close()
 
 
 def pet_keyboard():
+    icon=sector_emoji_id()
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("⚡ شارژ", callback_data="sector_action:charge"), InlineKeyboardButton("🎮 بازی", callback_data="sector_action:play")],
-        [InlineKeyboardButton("🏋️ تمرین", callback_data="sector_action:train"), InlineKeyboardButton("🧠 یادگیری", callback_data="sector_action:learn")],
-        [InlineKeyboardButton("🔧 تعمیر", callback_data="sector_action:repair"), InlineKeyboardButton("🔄 تازه‌سازی", callback_data="sector_pet")],
-        [InlineKeyboardButton("💬 حرف‌زدن و تعامل‌ها", callback_data="sector_social")],
-        [InlineKeyboardButton("🚀 نسخه کامل در مینی‌اپ", web_app=WebAppInfo(url=MINI_APP_URL))],
+        [InlineKeyboardButton("شارژ", callback_data="sector_action:charge",style="success",icon_custom_emoji_id=icon), InlineKeyboardButton("بازی", callback_data="sector_action:play",style="primary")],
+        [InlineKeyboardButton("تمرین", callback_data="sector_action:train",style="primary"), InlineKeyboardButton("یادگیری", callback_data="sector_action:learn",style="success")],
+        [InlineKeyboardButton("تعمیر", callback_data="sector_action:repair",style="danger"), InlineKeyboardButton("تازه‌سازی", callback_data="sector_pet",style="primary")],
+        [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon)],
+        [InlineKeyboardButton("نسخه کامل در مینی‌اپ", web_app=WebAppInfo(url=MINI_APP_URL),style="success")],
     ])
 
 
@@ -192,5 +201,30 @@ async def sector_rob(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raise ApplicationHandlerStop()
 
 
+async def set_sector_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != 5147526780:
+        raise ApplicationHandlerStop()
+    source=update.effective_message.reply_to_message or update.effective_message
+    entities=list(source.entities or [])+list(source.caption_entities or [])
+    custom_id=next((e.custom_emoji_id for e in entities if str(e.type)=="custom_emoji" and e.custom_emoji_id),None)
+    if not custom_id:
+        await update.effective_message.reply_text("یک پیام حاوی ایموجی متحرک پرمیوم بفرست، روی آن ریپلای کن و /setsectoremoji را بزن.")
+        raise ApplicationHandlerStop()
+    session=get_session()
+    try:
+        row=session.query(AppSetting).filter(AppSetting.key=="sector_custom_emoji_id").first()
+        if row:row.value=custom_id
+        else:session.add(AppSetting(key="sector_custom_emoji_id",value=custom_id))
+        session.commit()
+    finally:session.close()
+    await update.effective_message.reply_text("✅ ایموجی متحرک سکتور روی دکمه‌های اختصاصی فعال شد.")
+    raise ApplicationHandlerStop()
+
+
+async def capture_sector_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner can simply send a Premium custom emoji once to configure Sector."""
+    await set_sector_emoji(update,context)
+
+
 def get_handlers():
-    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social)")]
+    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(5147526780)&filters.Entity("custom_emoji"),capture_sector_emoji),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social)")]

@@ -6,10 +6,9 @@ function readLaunchData(tg) {
   // Telegram iOS can expose the launch parameters in the URL a few frames
   // before telegram-web-app.js copies them onto WebApp.initData.
   if (!initData) {
-    var params = new URLSearchParams(
-      (window.location.hash || '').replace(/^#/, '')
-    )
-    initData = params.get('tgWebAppData') || ''
+    var hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''))
+    var queryParams = new URLSearchParams(window.location.search || '')
+    initData = hashParams.get('tgWebAppData') || queryParams.get('tgWebAppData') || ''
   }
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user

@@ -27,7 +27,7 @@ from bot.modules.extra import get_extra_handlers
 from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0] + "?v=20260823-3"
 
 
 async def setup_telegram_ui(app: Application):

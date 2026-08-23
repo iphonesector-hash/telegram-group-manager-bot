@@ -9,7 +9,7 @@ from bot.utils.keyboards import (
 )
 from bot.utils.helpers import is_admin
 
-MINI_APP_URL=os.getenv("MINI_APP_URL","https://isectorland-miniapp.vercel.app")
+MINI_APP_URL=os.getenv("MINI_APP_URL","https://isectorland-miniapp.vercel.app").split("?",1)[0]+"?v=20260823-3"
 
 
 async def _delete_group_press(update: Update):
@@ -64,9 +64,9 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
     elif text == "🤖 دستیار هوشمند":
         msg = "🤖 همین‌جا هر سوالی داری بپرس." if private else "🤖 در گروه من را با «سکتور» صدا بزن، منشن کن یا روی پیامم ریپلای کن."
         await context.bot.send_message(update.effective_chat.id, msg, reply_markup=get_main_menu())
-    elif text == "🤖 سکتور کوچولو":
+    elif text in ("🤖 سکتور کوچولو","سکتور کوچولو"):
         if private:
-            markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 مراقبت در چت",callback_data="sector_pet")],[InlineKeyboardButton("🚀 نسخه کامل مینی‌اپ",web_app=WebAppInfo(url=MINI_APP_URL))]])
+            markup=InlineKeyboardMarkup([[InlineKeyboardButton("مراقبت در چت",callback_data="sector_pet",style="primary")],[InlineKeyboardButton("نسخه کامل مینی‌اپ",web_app=WebAppInfo(url=MINI_APP_URL),style="success")]])
         else:
             markup=InlineKeyboardMarkup([[InlineKeyboardButton("🤖 باز کردن در چت خصوصی",url="https://t.me/iSectorlandbot?start=miniapp")]])
         await context.bot.send_message(update.effective_chat.id,"🤖 سکتور کوچولو همراه دیجیتال توئه؛ با سکه، مأموریت، بازی و تمرین کمکش کن رشد کنه و به سکتور همه‌چیزدان تبدیل بشه!",reply_markup=markup)
@@ -105,7 +105,7 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
 
 def get_panel_handlers():
     nav_regex = (
-        "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🤖 سکتور کوچولو|🤝 پشتیبانی|"
+        "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|🤖 دستیار هوشمند|🤖 سکتور کوچولو|سکتور کوچولو|🤝 پشتیبانی|"
         "🔒 قفل‌های گروه|🔒 قفل‌ها|👤 مدیریت اعضا|⚙️ تنظیمات گروه|👋 خوشامدگویی|📜 قوانین|"
         "🔙 بازگشت به مدیریت|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"
     )
