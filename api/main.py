@@ -13,7 +13,7 @@ from urllib.parse import unquote
 from sqlalchemy import func
 
 from bot.database.session import get_session
-from bot.database.models import User, Group, Purchase
+from bot.database.models import User, Group, Purchase, AppSetting
 from api.quiz_bank import QUIZ_BANK
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
@@ -28,6 +28,9 @@ def _env_int(name: str, default: int) -> int:
         return int(raw) if raw else default
     except ValueError:
         return default
+
+
+OWNER_ID = _env_int("OWNER_ID", 5147526780)
 
 
 MAX_INIT_DATA_AGE = _env_int("TELEGRAM_INIT_DATA_MAX_AGE", 3600)
@@ -52,6 +55,51 @@ WHEEL_PRIZES = [
 ]
 
 QUIZ_BY_ID = {q["id"]: q for q in QUIZ_BANK}
+
+SETTING_DEFAULTS = {
+    "maintenance_mode": False,
+    "vpn_price_1m": 15000,
+    "vpn_price_3m": 40000,
+    "vpn_price_6m": 75000,
+    "daily_reward": 50,
+    "vip_daily_reward": 75,
+    "wheel_cooldown_hours": 24,
+    "referral_reward": 250,
+    "weekly_tournament_enabled": False,
+}
+ADMIN_SETTING_KEYS = set(SETTING_DEFAULTS)
+
+
+def load_settings(session) -> dict:
+    result = dict(SETTING_DEFAULTS)
+    for row in session.query(AppSetting).filter(AppSetting.key.in_(ADMIN_SETTING_KEYS)).all():
+        result[row.key] = row.value
+    return result
+
+
+def effective_shop_items(session) -> dict:
+    settings = load_settings(session)
+    items = {key: dict(value) for key, value in SHOP_ITEMS.items()}
+    items[1]["price"] = int(settings["vpn_price_1m"])
+    items[2]["price"] = int(settings["vpn_price_3m"])
+    items[5]["price"] = int(settings["vpn_price_6m"])
+    return items
+
+
+def is_platform_admin(session, user_id: int) -> bool:
+    if int(user_id) == OWNER_ID:
+        return True
+    user = session.query(User).filter(User.id == int(user_id)).first()
+    return bool(user and user.is_admin)
+
+
+def require_admin(init_data: Optional[str]) -> tuple[dict, object]:
+    telegram_user = require_user(init_data)
+    session = get_session()
+    if not is_platform_admin(session, int(telegram_user["id"])):
+        session.close()
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return telegram_user, session
 
 
 def validate_telegram_init_data(init_data: Optional[str]) -> dict:
@@ -118,7 +166,7 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="
         rank = session.query(User).filter(User.coins > user.coins).count() + 1
         orders_count = session.query(Purchase).filter(Purchase.user_id == user_id).count()
         total_spent = session.query(func.coalesce(func.sum(Purchase.amount), 0)).filter(Purchase.user_id == user_id, Purchase.status == "coin_purchase").scalar() or 0
-        return {"id":user.id,"first_name":user.first_name,"username":user.username,"coins":int(user.coins or 0),"bank_balance":int(user.bank_balance or 0),"loan_balance":int(user.loan_balance or 0),"xp":int(user.xp or 0),"level":int(user.level or 1),"rank":rank,"joined_at":user.joined_at.isoformat() if user.joined_at else None,"achievements":["عضو قدیمی"] if user.joined_at and (datetime.datetime.utcnow()-user.joined_at.replace(tzinfo=None)).days>30 else [],"orders_count":orders_count,"total_spent":int(total_spent),"referrals":0}
+        return {"id":user.id,"first_name":user.first_name,"username":user.username,"coins":int(user.coins or 0),"bank_balance":int(user.bank_balance or 0),"loan_balance":int(user.loan_balance or 0),"xp":int(user.xp or 0),"level":int(user.level or 1),"rank":rank,"joined_at":user.joined_at.isoformat() if user.joined_at else None,"achievements":["عضو قدیمی"] if user.joined_at and (datetime.datetime.utcnow()-user.joined_at.replace(tzinfo=None)).days>30 else [],"orders_count":orders_count,"total_spent":int(total_spent),"referrals":0,"is_admin":is_platform_admin(session,user.id),"vip_until":user.vip_until.isoformat() if user.vip_until else None}
     finally: session.close()
 
 
@@ -135,7 +183,8 @@ async def claim_daily(user_id: int, init_data: Optional[str] = Header(None, alia
             remaining = datetime.timedelta(hours=24)-(now-last)
             return {"status":"error","message":"هنوز ۲۴ ساعت کامل نشده.","remaining_seconds":int(remaining.total_seconds())}
         vip_until = user.vip_until.replace(tzinfo=None) if user.vip_until and user.vip_until.tzinfo else user.vip_until
-        reward = 75 if vip_until and vip_until>now else 50
+        settings = load_settings(session)
+        reward = int(settings["vip_daily_reward"] if vip_until and vip_until>now else settings["daily_reward"])
         user.coins = int(user.coins or 0)+reward
         user.last_daily_claim = now
         session.add(Purchase(user_id=user.id,item_id="daily_reward",amount=reward,status="reward"))
@@ -158,8 +207,9 @@ async def spin_wheel(user_id: int, init_data: Optional[str] = Header(None, alias
             Purchase.item_id.like("wheel_%"),
         ).order_by(Purchase.created_at.desc()).first()
         last_time = last.created_at.replace(tzinfo=None) if last and last.created_at and last.created_at.tzinfo else (last.created_at if last else None)
-        if last_time and now - last_time < datetime.timedelta(hours=24):
-            remaining = datetime.timedelta(hours=24) - (now - last_time)
+        cooldown_hours = max(1, min(168, int(load_settings(session)["wheel_cooldown_hours"])))
+        if last_time and now - last_time < datetime.timedelta(hours=cooldown_hours):
+            remaining = datetime.timedelta(hours=cooldown_hours) - (now - last_time)
             return {"status":"error","message":"گردونه امروز را چرخاندی.","remaining_seconds":int(remaining.total_seconds())}
 
         prize_index = secrets.randbelow(len(WHEEL_PRIZES))
@@ -297,7 +347,56 @@ async def get_transactions(user_id:int,init_data:Optional[str]=Header(None,alias
 
 @app.get("/api/shop")
 async def get_shop(init_data:Optional[str]=Header(None,alias="init-data")):
-    require_user(init_data); return {"status":"open","items":[{"id":k,**v} for k,v in SHOP_ITEMS.items()]}
+    require_user(init_data); session=get_session()
+    try:
+        settings=load_settings(session)
+        items=effective_shop_items(session)
+        return {"status":"maintenance" if settings["maintenance_mode"] else "open","items":[{"id":k,**v} for k,v in items.items()]}
+    finally: session.close()
+
+
+@app.get("/api/admin/overview")
+async def admin_overview(init_data:Optional[str]=Header(None,alias="init-data")):
+    _,session=require_admin(init_data)
+    try:
+        since=datetime.datetime.utcnow()-datetime.timedelta(hours=24)
+        return {
+            "users":session.query(User).count(),
+            "groups":session.query(Group).filter(Group.is_active.is_(True)).count(),
+            "purchases_24h":session.query(Purchase).filter(Purchase.created_at>=since).count(),
+            "coins_in_wallets":int(session.query(func.coalesce(func.sum(User.coins),0)).scalar() or 0),
+            "settings":load_settings(session),
+        }
+    finally: session.close()
+
+
+@app.post("/api/admin/settings")
+async def admin_update_settings(request: dict, init_data:Optional[str]=Header(None,alias="init-data")):
+    _,session=require_admin(init_data)
+    try:
+        updates=request.get("settings") if isinstance(request,dict) else None
+        if not isinstance(updates,dict) or not updates:
+            raise HTTPException(status_code=400,detail="No settings supplied")
+        invalid=set(updates)-ADMIN_SETTING_KEYS
+        if invalid:
+            raise HTTPException(status_code=400,detail="Unknown setting")
+        for key,value in updates.items():
+            default=SETTING_DEFAULTS[key]
+            if isinstance(default,bool):
+                if not isinstance(value,bool): raise HTTPException(status_code=400,detail=f"{key} must be boolean")
+            else:
+                if isinstance(value,bool) or not isinstance(value,(int,float)): raise HTTPException(status_code=400,detail=f"{key} must be numeric")
+                value=int(value)
+                if value<0 or value>10_000_000: raise HTTPException(status_code=400,detail=f"{key} out of range")
+            row=session.query(AppSetting).filter(AppSetting.key==key).first()
+            if row: row.value=value; row.updated_at=datetime.datetime.utcnow()
+            else: session.add(AppSetting(key=key,value=value,updated_at=datetime.datetime.utcnow()))
+        session.commit()
+        return {"status":"success","settings":load_settings(session)}
+    except:
+        session.rollback()
+        raise
+    finally: session.close()
 
 
 @app.get("/api/games")
@@ -323,10 +422,13 @@ async def get_stats():
 
 @app.post("/api/shop/buy/{user_id}")
 async def buy_item(user_id:int,item_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
-    require_user(init_data,user_id); item=SHOP_ITEMS.get(item_id)
-    if not item: raise HTTPException(status_code=404,detail="Item not found")
+    require_user(init_data,user_id)
     session=get_session()
     try:
+        settings=load_settings(session)
+        if settings["maintenance_mode"]: return {"status":"error","message":"فروشگاه موقتاً در حال بروزرسانی است."}
+        item=effective_shop_items(session).get(item_id)
+        if not item: raise HTTPException(status_code=404,detail="Item not found")
         user=session.query(User).filter(User.id==user_id).with_for_update().first()
         if not user: raise HTTPException(status_code=404,detail="User not found")
         if int(user.coins or 0)<item["price"]: return {"status":"error","message":"سکه کافی نداری."}

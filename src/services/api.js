@@ -42,4 +42,6 @@ export const api = {
   answerQuiz: function(userId, questionId, choice, initData) {
     return request('/api/quiz/answer/' + userId + '?question_id=' + encodeURIComponent(questionId) + '&choice=' + Number(choice), { method: 'POST' }, initData)
   },
+  getAdminOverview: function(initData) { return request('/api/admin/overview', {}, initData) },
+  updateAdminSettings: function(settings, initData) { return request('/api/admin/settings', { method:'POST', body:JSON.stringify({ settings:settings }) }, initData) },
 }

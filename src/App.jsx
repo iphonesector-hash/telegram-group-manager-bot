@@ -17,6 +17,7 @@ import ReferralPage from './pages/ReferralPage'
 import ProfilePage from './pages/ProfilePage'
 import SupportPage from './pages/SupportPage'
 import FeaturesPage from './pages/FeaturesPage'
+import AdminPage from './pages/AdminPage'
 
 var AppContext = createContext(null)
 export function useAppContext() { return useContext(AppContext) }
@@ -31,10 +32,11 @@ var PAGES = {
   profile: ProfilePage,
   support: SupportPage,
   features: FeaturesPage,
+  admin: AdminPage,
 }
 
 var NAV_KEYS = NAV_ITEMS.map(function(n) { return n.key })
-var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات' }
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت' }
 
 var EMPTY_USER = {
   id: 0,
@@ -51,6 +53,7 @@ var EMPTY_USER = {
   orders_count: 0,
   total_spent: 0,
   referrals: 0,
+  is_admin: false,
 }
 
 function normalizeUser(data) {

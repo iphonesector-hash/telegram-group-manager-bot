@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint, JSON
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
 
@@ -87,3 +87,11 @@ class Purchase(Base):
     telegram_payment_charge_id = Column(String, nullable=True)
     status = Column(String, default="completed")
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
+
+
+class AppSetting(Base):
+    __tablename__ = "isectorbot_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(JSON, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

@@ -28,6 +28,7 @@ export default function ProfilePage() {
     { icon: '❓', label: 'پشتیبانی', fn: function() { navigate('support') } },
     { icon: '🌐', label: 'سایر امکانات ربات', fn: function() { navigate('features') } },
   ]
+  if (dbUser.is_admin) menuItems.unshift({ icon:'👑', label:'پنل مدیریت SectorLand', fn:function(){navigate('admin')} })
 
   var profileStats = [
     { icon: '🪙', label: 'سکه', val: Number(dbUser.coins || 0).toLocaleString() },
