@@ -14,7 +14,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.set_chat_menu_button(
                 chat_id=chat.id,
                 menu_button=MenuButtonWebApp(
-                    text="🚀 مینی اپ SectorLand",
+                    text="sector",
                     web_app=WebAppInfo(url=MINI_APP_URL),
                 ),
             )
@@ -22,8 +22,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"Mini App menu button error: {e}")
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("سکتور کوچولوی من", callback_data="sector_pet", style="primary")],
-            [InlineKeyboardButton("باز کردن SectorLand Mini App", web_app=WebAppInfo(url=MINI_APP_URL), style="success")]
+            [InlineKeyboardButton("سکتور کوچولو", callback_data="sector_pet", style="primary"),
+             InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL))]
         ])
     else:
         # Telegram only provides trusted WebApp initData when the Mini App is

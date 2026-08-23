@@ -43,7 +43,7 @@ def pet_keyboard(user_id=None):
         [InlineKeyboardButton("ماموریت و چالش",callback_data="sector_quests",style="success",icon_custom_emoji_id=icon(6)),InlineKeyboardButton("مهارت‌ها",callback_data="sector_skills",style="primary",icon_custom_emoji_id=icon(7))],
         [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon(10))],
-        [InlineKeyboardButton("نسخه کامل در مینی‌اپ", web_app=WebAppInfo(url=MINI_APP_URL),style="success")],
+        [InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL))],
     ])
 
 

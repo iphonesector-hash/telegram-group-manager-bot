@@ -39,7 +39,7 @@ async def setup_telegram_ui(app: Application):
     try:
         await app.bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
-                text="🚀 SectorLand",
+                text="sector",
                 web_app=WebAppInfo(url=MINI_APP_URL),
             )
         )

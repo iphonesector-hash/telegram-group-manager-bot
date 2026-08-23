@@ -28,7 +28,7 @@ _menu_registered = False
 async def _register_default_menu(bot: Bot) -> bool:
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
-            text="🚀 SectorLand",
+            text="sector",
             web_app=WebAppInfo(url=MINI_APP_URL),
         )
     )
@@ -45,6 +45,21 @@ async def health():
         "webhook_secret_configured": bool(os.getenv("TELEGRAM_WEBHOOK_SECRET")),
         "mini_app_url": MINI_APP_URL,
     }
+
+
+@app.get("/api/miniapp-status")
+async def miniapp_status():
+    """Read the launcher configuration currently stored by Telegram."""
+    token = os.getenv("BOT_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(status_code=503, detail="bot token not configured")
+    async with Bot(token=token) as bot:
+        default_button = await bot.get_chat_menu_button()
+        owner_button = await bot.get_chat_menu_button(chat_id=5147526780)
+        def info(button):
+            web_app = getattr(button, "web_app", None)
+            return {"type": button.type, "text": getattr(button, "text", None), "url": getattr(web_app, "url", None)}
+        return {"expected_url": MINI_APP_URL, "default": info(default_button), "owner": info(owner_button)}
 
 
 @app.post("/api/miniapp-diagnostic")
