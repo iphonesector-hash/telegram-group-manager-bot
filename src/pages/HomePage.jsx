@@ -57,6 +57,7 @@ export default function HomePage() {
 
   var quickActions = [
     { icon: '🎁', label: 'هدیه روزانه', sub: 'هر روز سکه بگیر', fn: handleClaim, loading: claiming },
+    { icon: '🎯', label: 'ماموریت‌ها', sub: 'سکه و XP جایزه بگیر', fn: function() { navigate('missions') } },
     { icon: '🛒', label: 'فروشگاه', sub: 'خرید با سکه واقعی', fn: function() { navigate('shop') } },
     { icon: '🎡', label: 'گردونه و بازی', sub: 'جایزه و بازی‌های جدید', fn: function() { navigate('games') } },
     { icon: '💰', label: 'بانک', sub: 'واریز، برداشت و وام', fn: function() { navigate('wallet') } },

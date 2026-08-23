@@ -73,6 +73,13 @@ SETTING_DEFAULTS = {
 }
 ADMIN_SETTING_KEYS = set(SETTING_DEFAULTS)
 WEATHER_LABELS = {0:"صاف",1:"عمدتاً صاف",2:"نیمه‌ابری",3:"ابری",45:"مه‌آلود",48:"مه یخ‌زن",51:"نم‌نم باران",53:"باران ریز",55:"باران شدید",61:"باران",63:"باران متوسط",65:"باران شدید",71:"برف",73:"برف متوسط",75:"برف شدید",80:"رگبار",81:"رگبار متوسط",82:"رگبار شدید",95:"رعدوبرق"}
+MISSION_DEFS = {
+    "daily_quiz_3":{"title":"سه پاسخ مسابقه","target":3,"coins":60,"xp":25,"period":"daily","kind":"quiz"},
+    "daily_tools_2":{"title":"دو بار استفاده از دستیار","target":2,"coins":35,"xp":15,"period":"daily","kind":"tools"},
+    "daily_wheel":{"title":"چرخاندن گردونه","target":1,"coins":25,"xp":10,"period":"daily","kind":"wheel"},
+    "weekly_quiz_15":{"title":"۱۵ پاسخ مسابقه","target":15,"coins":250,"xp":100,"period":"weekly","kind":"quiz"},
+    "weekly_tools_5":{"title":"پنج بار استفاده از دستیار","target":5,"coins":100,"xp":40,"period":"weekly","kind":"tools"},
+}
 
 
 def load_settings(session) -> dict:
@@ -125,6 +132,36 @@ def safe_calculate(expression: str) -> float:
     return evaluate(ast.parse(expression,mode="eval"))
 
 
+def mission_window(period: str):
+    now=datetime.datetime.utcnow()
+    if period=="daily": start=now.replace(hour=0,minute=0,second=0,microsecond=0); key=start.strftime("%Y%m%d")
+    else: start=(now-datetime.timedelta(days=now.weekday())).replace(hour=0,minute=0,second=0,microsecond=0); key=start.strftime("%Y%m%d")
+    return start,key
+
+
+def mission_progress(session,user_id:int,definition:dict,start:datetime.datetime)->int:
+    query=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.created_at>=start)
+    if definition["kind"]=="quiz": return query.filter(Purchase.status.in_(("quiz_correct","quiz_wrong"))).count()
+    if definition["kind"]=="tools": return query.filter(Purchase.item_id=="miniapp_ai").count()
+    if definition["kind"]=="wheel": return query.filter(Purchase.item_id.like("wheel_%")).count()
+    return 0
+
+
+def user_achievements(session,user:User)->list:
+    correct=session.query(Purchase).filter(Purchase.user_id==user.id,Purchase.status=="quiz_correct").count()
+    wheel=session.query(Purchase).filter(Purchase.user_id==user.id,Purchase.item_id.like("wheel_%")).count()
+    items=[]
+    if correct>=1: items.append({"id":"first_answer","icon":"🎯","title":"اولین پاسخ درست"})
+    if correct>=10: items.append({"id":"quiz_10","icon":"🧠","title":"ذهن برتر"})
+    if correct>=50: items.append({"id":"quiz_50","icon":"🏆","title":"استاد مسابقه"})
+    if wheel>=5: items.append({"id":"wheel_5","icon":"🎡","title":"خوش‌شانس"})
+    if int(user.level or 1)>=5: items.append({"id":"level_5","icon":"⭐","title":"سطح پنج"})
+    if int(user.coins or 0)>=5000: items.append({"id":"wealth_5k","icon":"💰","title":"سرمایه‌دار"})
+    joined=user.joined_at.replace(tzinfo=None) if user.joined_at and user.joined_at.tzinfo else user.joined_at
+    if joined and datetime.datetime.utcnow()-joined>=datetime.timedelta(days=30): items.append({"id":"veteran","icon":"🛡️","title":"عضو قدیمی"})
+    return items
+
+
 @app.post("/api/tools/assistant/{user_id}")
 async def miniapp_assistant(user_id:int, request:dict, init_data:Optional[str]=Header(None,alias="init-data")):
     telegram_user=require_user(init_data,user_id)
@@ -171,6 +208,37 @@ async def miniapp_calculate(request:dict, init_data:Optional[str]=Header(None,al
     try: result=safe_calculate(str(request.get("expression") or ""))
     except Exception: raise HTTPException(status_code=400,detail="عبارت ریاضی معتبر نیست.")
     return {"result":round(float(result),10)}
+
+
+@app.get("/api/missions/{user_id}")
+async def get_missions(user_id:int, init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        result=[]
+        for mission_id,definition in MISSION_DEFS.items():
+            start,period_key=mission_window(definition["period"]);progress=mission_progress(session,user_id,definition,start)
+            claim_key=f"mission:{user_id}:{mission_id}:{period_key}"
+            claimed=session.query(Purchase.id).filter(Purchase.telegram_payment_charge_id==claim_key).first() is not None
+            result.append({"id":mission_id,**definition,"progress":min(progress,definition["target"]),"complete":progress>=definition["target"],"claimed":claimed})
+        return result
+    finally:session.close()
+
+
+@app.post("/api/missions/{user_id}/{mission_id}/claim")
+async def claim_mission(user_id:int,mission_id:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);definition=MISSION_DEFS.get(mission_id)
+    if not definition:raise HTTPException(status_code=404,detail="مأموریت پیدا نشد.")
+    session=get_session()
+    try:
+        user=session.query(User).filter(User.id==user_id).with_for_update().first()
+        if not user:raise HTTPException(status_code=404,detail="User not found")
+        start,period_key=mission_window(definition["period"]);claim_key=f"mission:{user_id}:{mission_id}:{period_key}"
+        if session.query(Purchase.id).filter(Purchase.telegram_payment_charge_id==claim_key).first():return {"status":"error","message":"جایزه این مأموریت قبلاً دریافت شده."}
+        if mission_progress(session,user_id,definition,start)<definition["target"]:return {"status":"error","message":"مأموریت هنوز کامل نشده."}
+        user.coins=int(user.coins or 0)+definition["coins"];user.xp=int(user.xp or 0)+definition["xp"];user.level=level_for_xp(user.xp)
+        session.add(Purchase(user_id=user_id,item_id="mission_reward",amount=definition["coins"],status="reward",telegram_payment_charge_id=claim_key));session.commit()
+        return {"status":"success","coins":user.coins,"xp":user.xp,"level":user.level,"reward":{"coins":definition["coins"],"xp":definition["xp"]}}
+    finally:session.close()
 
 
 def validate_telegram_init_data(init_data: Optional[str]) -> dict:
@@ -237,7 +305,8 @@ async def get_user(user_id: int, init_data: Optional[str] = Header(None, alias="
         rank = session.query(User).filter(User.coins > user.coins).count() + 1
         orders_count = session.query(Purchase).filter(Purchase.user_id == user_id).count()
         total_spent = session.query(func.coalesce(func.sum(Purchase.amount), 0)).filter(Purchase.user_id == user_id, Purchase.status == "coin_purchase").scalar() or 0
-        return {"id":user.id,"first_name":user.first_name,"username":user.username,"coins":int(user.coins or 0),"bank_balance":int(user.bank_balance or 0),"loan_balance":int(user.loan_balance or 0),"xp":int(user.xp or 0),"level":int(user.level or 1),"rank":rank,"joined_at":user.joined_at.isoformat() if user.joined_at else None,"achievements":["عضو قدیمی"] if user.joined_at and (datetime.datetime.utcnow()-user.joined_at.replace(tzinfo=None)).days>30 else [],"orders_count":orders_count,"total_spent":int(total_spent),"referrals":0,"is_admin":is_platform_admin(session,user.id),"vip_until":user.vip_until.isoformat() if user.vip_until else None}
+        correct_answers=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.status=="quiz_correct").count()
+        return {"id":user.id,"first_name":user.first_name,"username":user.username,"coins":int(user.coins or 0),"bank_balance":int(user.bank_balance or 0),"loan_balance":int(user.loan_balance or 0),"xp":int(user.xp or 0),"level":int(user.level or 1),"rank":rank,"joined_at":user.joined_at.isoformat() if user.joined_at else None,"achievements":user_achievements(session,user),"correct_answers":correct_answers,"message_count":int(user.message_count or 0),"orders_count":orders_count,"total_spent":int(total_spent),"referrals":0,"is_admin":is_platform_admin(session,user.id),"vip_until":user.vip_until.isoformat() if user.vip_until else None}
     finally: session.close()
 
 

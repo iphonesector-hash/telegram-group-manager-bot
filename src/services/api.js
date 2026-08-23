@@ -47,4 +47,6 @@ export const api = {
   assistant: function(userId, message, mode, history, initData) { return request('/api/tools/assistant/' + userId, { method:'POST', body:JSON.stringify({ message:message, mode:mode, history:history || [] }) }, initData) },
   weather: function(city, initData) { return request('/api/tools/weather?city=' + encodeURIComponent(city), {}, initData) },
   calculate: function(expression, initData) { return request('/api/tools/calculate', { method:'POST', body:JSON.stringify({ expression:expression }) }, initData) },
+  getMissions: function(userId, initData) { return request('/api/missions/' + userId, {}, initData) },
+  claimMission: function(userId, missionId, initData) { return request('/api/missions/' + userId + '/' + encodeURIComponent(missionId) + '/claim', { method:'POST' }, initData) },
 }

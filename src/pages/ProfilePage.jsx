@@ -27,6 +27,7 @@ export default function ProfilePage() {
     { icon: '🏆', label: 'برترین‌ها', fn: function() { navigate('games') } },
     { icon: '❓', label: 'پشتیبانی', fn: function() { navigate('support') } },
     { icon: '🌐', label: 'سایر امکانات ربات', fn: function() { navigate('features') } },
+    { icon: '🎯', label: 'ماموریت‌های من', fn: function() { navigate('missions') } },
   ]
   if (dbUser.is_admin) menuItems.unshift({ icon:'👑', label:'پنل مدیریت SectorLand', fn:function(){navigate('admin')} })
 
@@ -62,6 +63,14 @@ export default function ProfilePage() {
         <div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{color:'var(--muted)',fontSize:12}}>🏦 موجودی بانک</span><b>{Number(dbUser.bank_balance || 0).toLocaleString()} 🪙</b></div>
         <div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{color:'var(--muted)',fontSize:12}}>💳 بدهی وام</span><b>{Number(dbUser.loan_balance || 0).toLocaleString()} 🪙</b></div>
       </div>
+
+      <div className="glass" style={{padding:14,marginBottom:12}}>
+        <div style={{fontSize:11,color:'var(--muted)',fontWeight:800,marginBottom:10}}>🏅 نشان‌های من</div>
+        {(!dbUser.achievements||dbUser.achievements.length===0)&&<div style={{fontSize:11,color:'var(--muted)'}}>اولین نشان هنوز باز نشده؛ یک مسابقه را درست جواب بده.</div>}
+        <div style={{display:'flex',gap:8,overflowX:'auto'}}>{(dbUser.achievements||[]).map(function(a){return <div key={a.id||a.title} style={{minWidth:92,textAlign:'center',padding:10,borderRadius:12,background:'rgba(255,255,255,.04)',border:'1px solid var(--border)'}}><div style={{fontSize:25}}>{a.icon||'🏅'}</div><div style={{fontSize:9,fontWeight:800,marginTop:5}}>{a.title||a}</div></div>})}</div>
+      </div>
+
+      <div className="glass" style={{padding:'10px 16px',marginBottom:12}}><div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{fontSize:12,color:'var(--muted)'}}>✅ پاسخ درست</span><b>{Number(dbUser.correct_answers||0).toLocaleString('fa-IR')}</b></div><div style={{display:'flex',justifyContent:'space-between',padding:'7px 0'}}><span style={{fontSize:12,color:'var(--muted)'}}>💬 پیام‌های ثبت‌شده</span><b>{Number(dbUser.message_count||0).toLocaleString('fa-IR')}</b></div></div>
 
       <div className="glass" style={{overflow:'hidden',marginBottom:12}}>
         {menuItems.map(function(item,i){return <button key={i} onClick={item.fn} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 16px',width:'100%',background:'transparent',border:'none',borderBottom:i<menuItems.length-1?'1px solid var(--border)':'none',color:'var(--text)',cursor:'pointer',textAlign:'right',fontFamily:'Vazirmatn, sans-serif'}}><span style={{fontSize:20}}>{item.icon}</span><span style={{flex:1,fontSize:14,fontWeight:500}}>{item.label}</span><span style={{color:'var(--muted)',fontSize:18}}>‹</span></button>})}
