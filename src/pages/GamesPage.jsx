@@ -4,10 +4,10 @@ import WheelOfFortune from '../components/WheelOfFortune'
 
 var ARCADE_GAMES = [
   {id:'snake3d',name:'Snake 3D',icon:'🐍',desc:'مار سه‌بعدی سکتور با مراحل مختلف',url:'https://love-hub-snake-3-d.vercel.app'},
-  {id:'2048',name:'2048',icon:'🔢',desc:'ترکیب اعداد و رکوردشکنی',url:'https://lovehub-games-i-sector.vercel.app/games/2048/'},
-  {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',url:'https://lovehub-games-i-sector.vercel.app/games/tetris-touch/'},
-  {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',url:'https://lovehub-games-i-sector.vercel.app/games/memory/src/'},
-  {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',url:'https://lovehub-games-i-sector.vercel.app/games/minesweeper/'},
+  {id:'2048',name:'2048',icon:'🔢',desc:'ترکیب اعداد و رکوردشکنی',url:'https://lovehub-games.vercel.app/games/2048/'},
+  {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',url:'https://lovehub-games.vercel.app/games/tetris-touch/'},
+  {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',url:'https://lovehub-games.vercel.app/games/memory/src/'},
+  {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',url:'https://lovehub-games.vercel.app/games/minesweeper/'},
 ]
 
 export default function GamesPage() {
