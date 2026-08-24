@@ -153,7 +153,7 @@ export default function App() {
     return api.getMembership(tgUser.id, initData).then(function(membershipResult) {
       if (!membershipResult || !membershipResult.data) {
         setMembershipAllowed(false)
-        setMembershipError((membershipResult && membershipResult.error) || 'بررسی عضویت موقتاً در دسترس نیست.')
+        setMembershipError((membershipResult && membershipResult.error) || 'ارتباط با سرور بررسی عضویت برقرار نشد؛ دوباره تلاش کن.')
         return false
       }
       if (!membershipResult.data.member) {

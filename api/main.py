@@ -24,7 +24,7 @@ from bot.services import sector_pet as sector_service
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
 _allowed_origins = [item.strip().rstrip("/") for item in os.getenv(
     "CORS_ALLOWED_ORIGINS",
-    "https://telegram-group-manager-bot-iota.vercel.app,https://telegram-group-manager-bot-i-sector.vercel.app",
+    "https://isectorland-miniapp.vercel.app,https://telegram-group-manager-bot-iota.vercel.app,https://telegram-group-manager-bot-i-sector.vercel.app",
 ).split(",") if item.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=_allowed_origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type", "init-data"])
 
