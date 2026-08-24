@@ -30,6 +30,21 @@ for (const name of ['koochooloo-hero-v2.webp', 'koochooloo-moods-v2.webp', 'rank
   expect(body.subarray(8, 12).toString('ascii') === 'WEBP', `invalid webp signature: ${rel}`)
 }
 
+for (const [dir, minimum] of [['stages-v3', 6], ['actions-v3', 8], ['equipment-v3', 28], ['rooms-v3', 4]]) {
+  const full = path.join(root, 'public/assets/sector', dir)
+  if (!fs.existsSync(full)) {
+    failures.push(`missing art pack: ${dir}`)
+    continue
+  }
+  const files = fs.readdirSync(full).filter(name => name.endsWith('.webp'))
+  expect(files.length >= minimum, `incomplete art pack: ${dir} (${files.length}/${minimum})`)
+  for (const name of files) {
+    const body = fs.readFileSync(path.join(full, name))
+    expect(body.length > 4096, `art asset too small: ${dir}/${name}`)
+    expect(body.subarray(0, 4).toString('ascii') === 'RIFF', `invalid art asset: ${dir}/${name}`)
+  }
+}
+
 const splash = read('src/components/ui/SectorBootSplash.jsx')
 const home = read('src/pages/HomePage.jsx')
 const gate = read('src/App.jsx')

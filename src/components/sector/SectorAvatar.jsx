@@ -5,6 +5,7 @@ const STAGE={
 }
 const BODY={blue_shell:'#2f6fb5',gold_shell:'#cda63d',patched_vest:'#72533f',utility_jacket:'#41566d',officer_coat:'#243e6e',neon_armor:'#413671',royal_chassis:'#65426f',singularity_core:'#282433'}
 const HEAD={scrap_cap:'#69523e',engineer_cap:'#d0a53d',commander_cap:'#2c477b',captain_hat:'#2d497e',elite_crown:'#e5ba45',halo_core:'#ffe16b'}
+const ROOM_ART={workshop_bg:'/assets/sector/rooms-v3/workshop_bg.webp',neon_city_bg:'/assets/sector/rooms-v3/neon_city_bg.webp',orbit_bg:'/assets/sector/rooms-v3/orbit_bg.webp',command_room_bg:'/assets/sector/rooms-v3/command_room_bg.webp'}
 
 function Wearable({slot,id,accent}){
  if(!id)return null
@@ -41,7 +42,7 @@ export default function SectorAvatar({pet,previewItem,compact=false}){
  const mood=pet?.mood?.id||pet?.mood?.key||'happy', eye=mood.includes('sad')?'sad':mood.includes('angry')?'angry':mood.includes('sleep')?'sleep':mood.includes('love')?'love':'happy'
  const eyePath=eye==='sad'?['M148 160q10-7 20 0','M192 160q10-7 20 0']:eye==='angry'?['M147 164l21-8','M192 156l21 8']:eye==='sleep'?['M148 161h20','M192 161h20']:eye==='love'?['M147 160l8-8 8 8-8 8z','M192 160l8-8 8 8-8 8z']:['M148 157q10 10 20 0','M192 157q10 10 20 0']
  const room=appearance.background||'crystal_room'
- return <div className={`sector-room sector-room--${room} sector-stage--${stage}${compact?' sector-room--compact':''}`}>
+ return <div className={`sector-room sector-room--${room} sector-stage--${stage}${compact?' sector-room--compact':''}`} style={{backgroundImage:`url(${ROOM_ART[room]||'/assets/sector/companion-room-v3.webp'})`}}>
   <div className="sector-room__light"/>
   <svg className="sector-avatar" viewBox="0 0 360 360" role="img" aria-label={`${pet?.name||'سکتور کوچولو'}، مرحله ${stage}`}>
    <defs>
