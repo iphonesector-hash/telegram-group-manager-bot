@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { useTelegram } from './hooks/useTelegram'
 import { useToast } from './hooks/useToast'
 import { api } from './services/api'
+import { haptic } from './utils/feedback'
 
 import BottomNav from './components/ui/BottomNav'
 import Toast from './components/ui/Toast'
@@ -105,17 +106,19 @@ export default function App() {
 
   var navigate = useCallback(function(to) {
     if (to === page) return
+    haptic(tg, 'light')
     setHistory(function(items) { return items.concat(page).slice(-12) })
     setPage(to)
-  }, [page])
+  }, [page, tg])
 
   var goBack = useCallback(function() {
+    haptic(tg, 'light')
     setHistory(function(items) {
       var next = items.length ? items[items.length - 1] : 'home'
       setPage(next)
       return items.slice(0, -1)
     })
-  }, [])
+  }, [tg])
 
   useEffect(function() {
     if (!tg) return

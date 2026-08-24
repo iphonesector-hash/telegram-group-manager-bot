@@ -309,11 +309,42 @@ img {
   font-family: 'Vazirmatn', sans-serif;
 }
 .nav-item.active { color: var(--accent); }
-.nav-item .nav-icon { font-size: 22px; line-height: 1; }
+.nav-item .nav-icon { display:grid; place-items:center; line-height: 1; }
 .nav-item .nav-label { font-size: 10px; font-weight: 600; }
 .nav-item.active .nav-icon {
   filter: drop-shadow(0 0 8px rgba(79,123,255,0.6));
 }
+
+.sector-icon { display:inline-block; flex:0 0 auto; vertical-align:middle; }
+.btn .sector-icon { margin-inline-end:5px; }
+.sector-tabs { display:flex; gap:3px; padding:5px; margin:9px 0; overflow-x:auto; position:sticky; top:4px; z-index:5; scrollbar-width:none; }
+.sector-tabs::-webkit-scrollbar { display:none; }
+.sector-tabs button { flex:0 0 54px; min-height:47px; border:0; border-radius:11px; padding:5px 6px; display:grid; place-items:center; gap:2px; background:transparent; color:var(--muted); font:inherit; font-size:8px; }
+.sector-tabs button.active { color:#fff; background:linear-gradient(145deg,#3e5382,#273552); box-shadow:inset 0 0 0 1px rgba(130,210,255,.25),0 4px 14px rgba(0,0,0,.22); }
+.sector-stat { margin:8px 0; }
+.sector-stat__label { display:flex; justify-content:space-between; font-size:9px; margin-bottom:3px; }
+.sector-stat__label span,.sector-coin,.sector-action-card__title,.sector-shop-card__price { display:flex; align-items:center; gap:5px; }
+.sector-coin { color:#ffd777; }
+.sector-action-grid,.sector-shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:8px; }
+.sector-action-card { padding:10px; color:inherit; text-align:center; overflow:hidden; }
+.sector-action-card__title { justify-content:center; margin-top:4px; }
+.sector-action-card small { display:block; margin-top:3px; color:var(--muted); }
+.sector-shop-card { padding:9px; text-align:center; content-visibility:auto; contain-intrinsic-size:210px; }
+.sector-shop-card__price { justify-content:center; min-height:26px; font-size:9px; color:#ffd777; }
+.sector-sound-toggle { position:absolute; top:19px; left:19px; z-index:5; width:34px; height:34px; display:grid; place-items:center; border:1px solid rgba(120,210,255,.3); border-radius:50%; background:rgba(5,11,22,.66); color:#d9f5ff; backdrop-filter:blur(7px); }
+.sector-event-fx { position:fixed; inset:0; z-index:500; pointer-events:none; display:grid; place-content:center; gap:10px; text-align:center; color:white; background:radial-gradient(circle,rgba(56,119,255,.42),rgba(3,6,15,.08) 44%,transparent 70%); animation:sectorEventIn 1.2s both; }
+.sector-event-fx .sector-icon { margin:auto; filter:drop-shadow(0 0 18px currentColor); }
+.sector-event-fx--purchase { color:#ffd96b; }.sector-event-fx--equip { color:#64e7ff; }.sector-event-fx--evolution { color:#c597ff; }.sector-event-fx--reward { color:#7dffbd; }
+@keyframes sectorEventIn { 0%{opacity:0;transform:scale(.72)} 18%{opacity:1;transform:scale(1.08)} 55%{transform:scale(1)} 100%{opacity:0;transform:scale(1.04)} }
+.sector-skeleton__hero { height:min(82vw,390px); border-radius:24px; }
+.sector-skeleton__tabs { height:55px; margin:9px 0; }
+.sector-skeleton__panel { padding:16px; }
+.sector-skeleton__line { height:11px; margin:13px 0; }
+.sector-share-card { margin-top:8px; padding:16px; border:1px solid rgba(92,218,255,.24); border-radius:18px; overflow:hidden; position:relative; background:linear-gradient(135deg,rgba(14,31,54,.96),rgba(34,19,61,.92)),url('/assets/sector/social-v3/share_card.webp') center/cover; box-shadow:inset 0 0 28px rgba(84,208,255,.08); }
+.sector-share-card::after { content:''; position:absolute; width:120px; height:120px; border:1px solid rgba(95,218,255,.18); border-radius:50%; top:-55px; left:-35px; box-shadow:0 0 35px rgba(98,69,255,.23); }
+.sector-share-card__copy { position:relative; z-index:1; }
+.sector-share-card small { color:#64ddff; letter-spacing:.12em; font-size:7px; }.sector-share-card h3 { margin:5px 0 2px; font-size:19px; }.sector-share-card p { margin:0;color:var(--muted);font-size:9px; }
+.sector-share-card__chips { display:flex; gap:5px; flex-wrap:wrap; margin:10px 0; }.sector-share-card__chips span { padding:4px 7px; border-radius:99px; background:rgba(255,255,255,.07); font-size:7px; }.sector-share-card__button { position:relative; z-index:1; width:100%; }
 
 /* ── Toast ── */
 .toast {
