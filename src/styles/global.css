@@ -467,15 +467,15 @@ img {
   overflow: hidden;
   border-radius: 24px;
   isolation: isolate;
-  background: #080b12 url('/assets/sector/companion-room-v3.webp') center/cover no-repeat;
-  box-shadow: inset 0 0 0 1px rgba(121,211,255,.2), inset 0 -50px 70px rgba(3,5,12,.5), 0 18px 50px rgba(0,0,0,.35);
+  background: transparent url('/assets/sector/companion-room-v3.webp') center/cover no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(121,211,255,.2),0 18px 50px rgba(0,0,0,.28);
 }
 .sector-room::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(circle at 50% 58%, transparent 20%, rgba(3,6,16,.28) 78%);
+  background: linear-gradient(180deg,rgba(44,99,150,.04),transparent 72%);
 }
 .sector-room::after { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0; }
 .sector-room--workshop_bg::after { opacity:.28; background:linear-gradient(rgba(126,73,32,.52),rgba(15,8,4,.28)); mix-blend-mode:color; }
@@ -487,7 +487,7 @@ img {
   position: absolute;
   inset: 8% 20% 12%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(77,220,255,.18), rgba(121,70,255,.08) 48%, transparent 72%);
+  background: radial-gradient(circle, rgba(77,220,255,.12), rgba(121,70,255,.04) 48%, transparent 72%);
   filter: blur(13px);
   animation: sectorRoomPulse 3.8s ease-in-out infinite;
 }
@@ -516,6 +516,25 @@ img {
 .sector-room__stage i { width:6px; height:6px; border-radius:50%; box-shadow:0 0 9px currentColor; }
 @keyframes sectorFloat { 0%,100%{transform:translateY(1px) rotate(-.15deg)} 50%{transform:translateY(-7px) rotate(.15deg)} }
 @keyframes sectorRoomPulse { 0%,100%{opacity:.65;transform:scale(.96)} 50%{opacity:1;transform:scale(1.05)} }
+
+/* ── Sector chat terminal ── */
+.sector-chat { min-height:430px; display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(90,208,255,.2); border-radius:22px; background:linear-gradient(180deg,rgba(12,23,39,.98),rgba(7,11,21,.98)); box-shadow:inset 0 1px rgba(255,255,255,.04),0 18px 45px rgba(0,0,0,.3); }
+.sector-chat__header { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(110,203,255,.13); background:linear-gradient(90deg,rgba(43,87,130,.22),rgba(95,52,143,.12)); }
+.sector-chat__avatar { position:relative; width:46px; height:46px; overflow:hidden; border-radius:15px; background:#111a2a; }.sector-chat__avatar svg { width:60px!important; transform:translate(-7px,-6px); }.sector-chat__avatar i { position:absolute; right:3px; bottom:3px; width:8px; height:8px; border:2px solid #111a2a; border-radius:50%; background:#54e7a6; box-shadow:0 0 9px #54e7a6; }
+.sector-chat__header b { display:block; font-size:12px; }.sector-chat__header span { display:block; margin-top:3px; color:#60dca9; font-size:7px; letter-spacing:.06em; }
+.sector-chat__messages { flex:1; min-height:300px; max-height:460px; overflow-y:auto; padding:14px 12px; background-image:linear-gradient(rgba(80,160,220,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(80,160,220,.025) 1px,transparent 1px); background-size:24px 24px; }
+.sector-chat__welcome { min-height:260px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:var(--muted); }.sector-chat__welcome b { color:#e9f5ff; font-size:12px; }.sector-chat__welcome span { max-width:260px; margin-top:6px; font-size:9px; line-height:1.8; }
+.sector-chat__row { display:flex; margin:9px 0; }.sector-chat__row--user { justify-content:flex-start; }.sector-chat__row--pet,.sector-chat__row--system { justify-content:flex-end; }
+.sector-chat__bubble { max-width:82%; padding:9px 11px; border:1px solid rgba(255,255,255,.08); border-radius:15px 15px 5px 15px; background:linear-gradient(135deg,#304c83,#46346f); color:#f5f9ff; font-size:10px; line-height:1.8; box-shadow:0 5px 14px rgba(0,0,0,.2); }.sector-chat__row--pet .sector-chat__bubble { border-radius:15px 15px 15px 5px; background:rgba(26,52,58,.92); border-color:rgba(86,226,202,.18); }.sector-chat__row--system .sector-chat__bubble { background:rgba(83,39,50,.8); }.sector-chat__bubble small { display:block; margin-bottom:2px; color:rgba(255,255,255,.55); font-size:7px; }
+.sector-chat__typing { display:flex; gap:4px; width:max-content; padding:10px 13px; border-radius:14px; background:rgba(28,54,60,.9); }.sector-chat__typing i { width:5px;height:5px;border-radius:50%;background:#63e6cf;animation:chatDot 1s infinite alternate; }.sector-chat__typing i:nth-child(2){animation-delay:.16s}.sector-chat__typing i:nth-child(3){animation-delay:.32s}@keyframes chatDot{to{opacity:.25;transform:translateY(-3px)}}
+.sector-chat__composer { display:flex; gap:8px; padding:10px; border-top:1px solid rgba(110,203,255,.13); background:rgba(7,13,24,.96); }.sector-chat__composer input { flex:1; min-width:0; border:1px solid rgba(100,205,255,.18); border-radius:15px; background:#111b2b; }.sector-chat__composer button { width:43px; border:0; border-radius:14px; display:grid; place-items:center; color:white; background:linear-gradient(135deg,#3a7cff,#8b45ec); box-shadow:0 7px 18px rgba(75,87,255,.28); }.sector-chat__composer button:disabled { opacity:.4; }
+
+/* ── Memory Circuit game ── */
+.memory-circuit { padding:16px; overflow:hidden; background:radial-gradient(circle at 50% 35%,rgba(62,99,176,.18),transparent 53%),#0b111d; }
+.memory-circuit__header { display:flex; align-items:center; justify-content:space-between; gap:12px; }.memory-circuit__header small { color:#5cddff; font:700 7px monospace; letter-spacing:.12em; }.memory-circuit__header h3 { margin:4px 0 2px; font-size:18px; }.memory-circuit__header p { margin:0;color:var(--muted);font-size:9px; }.memory-circuit__level { width:55px;height:55px;border:1px solid rgba(96,220,255,.25);border-radius:17px;display:grid;place-content:center;text-align:center;background:rgba(35,64,93,.4); }.memory-circuit__level b{font-size:18px;color:#6ce1ff}.memory-circuit__level span{font-size:7px;color:var(--muted)}
+.memory-circuit__hud { display:flex; justify-content:space-between; margin:14px 0 10px; padding:8px 10px; border:1px solid rgba(255,255,255,.06);border-radius:11px;background:rgba(255,255,255,.025);font-size:8px;color:var(--muted); }.memory-circuit__hud b{color:#fff}.memory-circuit__hud span:last-child{color:#ff6c8f;letter-spacing:3px}
+.memory-circuit__grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;direction:ltr }.memory-pad { position:relative;height:105px;border:1px solid rgba(255,255,255,.1);border-radius:22px;overflow:hidden;background:#101827;color:white;transition:transform .12s,filter .12s,box-shadow .12s; }.memory-pad i{position:absolute;inset:12px;border-radius:16px;background:var(--pad);opacity:.18;box-shadow:inset 0 0 22px var(--pad)}.memory-pad span{position:relative;font:800 18px monospace;opacity:.7}.memory-pad--cyan{--pad:#31dfff}.memory-pad--violet{--pad:#8a66ff}.memory-pad--amber{--pad:#ffb64e}.memory-pad--rose{--pad:#ff5588}.memory-pad.is-active,.memory-pad.is-pressed{transform:scale(.96);filter:brightness(1.7);box-shadow:0 0 28px color-mix(in srgb,var(--pad) 60%,transparent),inset 0 0 25px var(--pad)}.memory-pad.is-active i,.memory-pad.is-pressed i{opacity:.92}.memory-pad:disabled{opacity:1}
+.memory-circuit__progress { display:flex;gap:4px;justify-content:center;min-height:5px;margin:12px 0}.memory-circuit__progress i{width:18px;height:4px;border-radius:9px;background:#263041}.memory-circuit__progress i.done{background:#56ddff;box-shadow:0 0 8px #56ddff}.memory-circuit__start{width:100%;min-height:45px}
 
 /* ── FAQ accordion ── */
 .faq-item { overflow: hidden; }

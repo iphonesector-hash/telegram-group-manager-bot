@@ -13,13 +13,9 @@ export function playTone(kind='tap',enabled=true) {
     const AudioCtx=window.AudioContext||window.webkitAudioContext
     if (!AudioCtx) return
     audioContext=audioContext||new AudioCtx()
-    const now=audioContext.currentTime,osc=audioContext.createOscillator(),gain=audioContext.createGain()
-    const notes={tap:[360,.035],success:[620,.09],buy:[440,.12],equip:[520,.08],evolution:[760,.24],error:[180,.1]}
-    const [frequency,duration]=notes[kind]||notes.tap
-    osc.type=kind==='error'?'sawtooth':'sine';osc.frequency.setValueAtTime(frequency,now)
-    if(kind==='evolution')osc.frequency.exponentialRampToValueAtTime(1180,now+duration)
-    gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.045,now+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+duration)
-    osc.connect(gain);gain.connect(audioContext.destination);osc.start(now);osc.stop(now+duration+.02)
+    if(audioContext.state==='suspended')audioContext.resume()
+    const now=audioContext.currentTime,patterns={tap:[[420,0,.035,'sine']],success:[[540,0,.09,'sine'],[760,.055,.12,'sine']],buy:[[330,0,.09,'triangle'],[660,.07,.15,'sine']],equip:[[480,0,.06,'triangle'],[820,.045,.13,'sine']],memory:[[520,0,.08,'sine']],level:[[420,0,.12,'triangle'],[650,.09,.16,'sine'],[980,.2,.3,'sine']],evolution:[[380,0,.18,'triangle'],[720,.12,.24,'sine'],[1180,.28,.38,'sine']],error:[[190,0,.13,'sawtooth'],[145,.08,.16,'sawtooth']]}
+    ;(patterns[kind]||patterns.tap).forEach(([frequency,delay,duration,type])=>{const osc=audioContext.createOscillator(),gain=audioContext.createGain(),start=now+delay;osc.type=type;osc.frequency.setValueAtTime(frequency,start);gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(kind==='tap'?.025:.045,start+.008);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);osc.connect(gain);gain.connect(audioContext.destination);osc.start(start);osc.stop(start+duration+.02)})
   } catch (_) {}
 }
 

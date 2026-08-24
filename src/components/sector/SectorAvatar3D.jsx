@@ -1,9 +1,8 @@
 import {useEffect,useRef,useState} from 'react'
 import SectorIcon from '../ui/SectorIcon'
-import {addEquipment3D,addRoom3D} from './sector3dKit'
+import {addEquipment3D} from './sector3dKit'
 
 const PALETTE={scrap:{panel:0x27333e,accent:0xd9824b},patched:{panel:0x20384b,accent:0x3ccbe8},core:{panel:0x17334b,accent:0x38bde8},advanced:{panel:0x292a4d,accent:0x7775ff},elite:{panel:0x382747,accent:0xac72ff},mythic:{panel:0x43371f,accent:0xe8c75b}}
-const ROOM_SCREEN={workshop_bg:'/assets/sector/missions-v3/craft.webp',neon_city_bg:'/assets/sector/social-v3/duel.webp',orbit_bg:'/assets/sector/story-v3/awakening.webp',command_room_bg:'/assets/sector/missions-v3/boss.webp'}
 function webglAvailable(){try{const c=document.createElement('canvas');return Boolean(c.getContext('webgl2')||c.getContext('webgl'))}catch(_){return false}}
 function autoQuality(){return navigator.connection?.saveData||(navigator.deviceMemory||4)<=2||(navigator.hardwareConcurrency||4)<=2?'low':'high'}
 function initialQuality(){try{return localStorage.getItem('sector-3d-quality')||'auto'}catch(_){return'auto'}}
@@ -27,10 +26,9 @@ export default function SectorAvatar3D({pet,previewItem,compact=false,onReady,on
    const mat=(color,metal=.72,rough=.28,emissive=0)=>new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough,emissive,emissiveIntensity:emissive?.28:0})
    const dark=mat(0x111925,.82,.3),glow=mat(cfg.accent,.28,.2,cfg.accent)
    const add=(geometry,material,parent=avatar,pos=[0,0,0],scale=[1,1,1])=>{const mesh=new THREE.Mesh(geometry,material);mesh.position.set(...pos);mesh.scale.set(...scale);mesh.castShadow=!low;mesh.receiveShadow=!low;parent.add(mesh);return mesh}
-   const roomParts=addRoom3D(THREE,{scene,room,add,mat,dark,glow})
-   if(!low&&ROOM_SCREEN[room])new THREE.TextureLoader().load(ROOM_SCREEN[room],texture=>{if(disposed){texture.dispose();return}texture.colorSpace=THREE.SRGBColorSpace;add(new THREE.PlaneGeometry(1.5,1),new THREE.MeshBasicMaterial({map:texture,toneMapped:false}),roomParts.group,[0,.35,-1.1])})
+   // The room artwork belongs to the CSS layer behind the transparent canvas.
+   // Duplicating it inside WebGL created the opaque black halo seen on mobile.
    scene.add(new THREE.HemisphereLight(0xd9edff,0x10131b,2.5));const key=new THREE.DirectionalLight(0xffffff,4.8);key.position.set(-3,5,5);key.castShadow=!low;scene.add(key);const fill=new THREE.DirectionalLight(0x7199ff,2);fill.position.set(4,1,4);scene.add(fill);const rim=new THREE.PointLight(cfg.accent,11,9);rim.position.set(2,1,-2);scene.add(rim)
-   add(new THREE.CylinderGeometry(1.8,2,.14,low?28:48),mat(0x141d2a,.5,.42),scene,[0,-2.3,0]);const ring=add(new THREE.TorusGeometry(1.55,.025,10,low?36:64),glow,scene,[0,-2.2,0],[1,.45,1]);ring.rotation.x=Math.PI/2
    new GLTFLoader().load('/assets/sector/sector-unit.glb',gltf=>{
     if(disposed)return
     const model=gltf.scene,box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3()),scale=3.75/Math.max(size.y,.001)
