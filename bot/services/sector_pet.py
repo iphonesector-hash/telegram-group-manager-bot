@@ -172,6 +172,27 @@ def care_guidance(pet: SectorPet, coins: int = 0) -> dict:
     return {"status":"needs_attention" if primary["priority"]!="normal" else "stable","message":primary["message"],"primary":primary,"needs":needs[:3],"next_level":next_level,"xp_remaining":remaining,"tip":"هر روز ۳ مراقبت و یک بازی انجام بده تا مأموریت روزانه کامل شود."}
 
 
+def progress_guidance(pet: SectorPet, daily: dict, coins: int = 0) -> dict:
+    """Build an ordered, stateful tutorial loop from today's actual progress."""
+    base=care_guidance(pet,coins);goals={x["id"]:x for x in daily.get("goals",[])}
+    care_done=int(goals.get("care",{}).get("progress",0));needs_done=bool(goals.get("needs",{}).get("complete"));game_done=bool(goals.get("game",{}).get("complete"))
+    steps=[
+        {"id":"check","title":"بررسی وضعیت سکتور","detail":"نیاز فوری را برطرف کن","done":needs_done,"tab":"care"},
+        {"id":"care","title":"مراقبت روزانه","detail":f"{care_done}/۳ فعالیت انجام شده","done":care_done>=3,"tab":"care"},
+        {"id":"game","title":"بازی و دریافت جایزه","detail":"تا ۶۰ سکه + XP","done":game_done,"tab":"games"},
+        {"id":"season","title":"دریافت پاداش مأموریت","detail":"سکه، XP و امتیاز فصل","done":bool(daily.get("complete")),"tab":"season"},
+    ]
+    if not needs_done:
+        primary=base["primary"];message=f"قدم ۱ از ۴: {base['message']} بعد از انجامش، قدم بعدی را بهت می‌گویم."
+    elif care_done<3:
+        action="play" if int(pet.happiness or 0)<75 else "learn";definition=PET_ACTIONS[action];primary={"action":action,"title":definition["title"],"icon":definition["icon"],"cost":int(definition["cost"]),"can_afford":int(coins or 0)>=int(definition["cost"]),"priority":"normal","value":care_done*33};message=f"عالی بود! حالا قدم ۲ از ۴: {3-care_done} مراقبت دیگر انجام بده تا مأموریت مراقبت کامل شود."
+    elif not game_done:
+        primary={"action":"open_games","title":"رفتن به بازی‌ها","icon":"🎮","cost":0,"can_afford":True,"priority":"normal","value":0,"tab":"games"};message="مراقبت امروز کامل شد! حالا قدم ۳ از ۴: یک بازی انجام بده؛ امتیازت مقدار سکه و XP را تعیین می‌کند."
+    else:
+        primary={"action":"open_season","title":"دریافت پاداش‌ها","icon":"🏆","cost":0,"can_afford":True,"priority":"normal","value":100,"tab":"season"};message="هر سه قدم اصلی کامل شد! قدم آخر: وارد فصل شو و پاداش مأموریت‌های آماده را دریافت کن."
+    base.update({"message":message,"primary":primary,"steps":steps,"completed_steps":sum(1 for x in steps if x["done"]),"tip":"هر روز این ۴ قدم را کامل کن؛ زنجیره روزانه، سکه، XP و امتیاز فصل می‌گیری."});return base
+
+
 def serialize_pet(pet: SectorPet, coins: int = 0):
     level = level_from_xp(pet.xp)
     pet.level = level
@@ -348,7 +369,7 @@ def buy_room_item(session,user_id:int,item_key:str):
 
 def finish_minigame(session,user_id:int,game_key:str,score:int,now=None):
     now=now or datetime.datetime.utcnow();start=now.replace(hour=0,minute=0,second=0,microsecond=0)
-    if game_key not in ("circuit","battery"):return {"status":"error","message":"بازی نامعتبر است."}
+    if game_key not in ("circuit","battery","pulse","cipher","balance"):return {"status":"error","message":"بازی نامعتبر است."}
     played=session.query(SectorPetGame).filter(SectorPetGame.user_id==user_id,SectorPetGame.game_key==game_key,SectorPetGame.created_at>=start).count()
     if played>=5:return {"status":"error","message":"سهمیه ۵ جایزه امروز این بازی تمام شده."}
     score=max(0,min(100,int(score or 0)));reward=min(60,10+score//2);user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=get_or_create_pet(session,user_id,lock=True)

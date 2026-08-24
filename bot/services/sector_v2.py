@@ -50,6 +50,24 @@ CATALOG={
  "singularity_core":{"title":"هسته تکینگی","slot":"body","category":"لباس","cost":8500,"rarity":"mythic","min_level":75,"theme":"mythic"},
 }
 
+# A deep collection keeps every store lane useful. art_id intentionally points to
+# the exact product artwork rendered in both the store and owned-assets gallery.
+_COLLECTIONS={
+ "ابزار":("hand",["wrench","data_pad","plasma_tool"],["اسکنر طیفی","آچار یونی","دریل نانو","کالیبراتور هسته","متر لیزری","تحلیل‌گر مدار","پرینتر قطعه","کاوشگر پلاسما","مبدل کوانتومی","ردیاب سیگنال","ابزار جوش سرد","کنترلر رباتیک","پروب ستاره‌ای","تعمیرگر خودکار","کیت مهندسی X"]),
+ "ماژول":("aura",["pulse_aura","quantum_aura","singularity_core","star_aura"],["ماژول سپر","شتاب‌دهنده XP","هسته پالس","پردازنده تاکتیکی","چیپ حافظه","هسته کوانتومی","ماژول استتار","تقویت‌کننده انرژی","هسته ناوبری","ماژول درمان","پردازنده بازی","مولد میدان","هسته فرماندهی","ماژول تکینگی","هسته افسانه‌ای"]),
+ "لباس":("body",["patched_vest","utility_jacket","neon_armor","royal_chassis","blue_shell","gold_shell"],["پوسته کارگاهی","زره اکتشاف","بدنه کربنی","پوسته کبالت","زره نگهبان","بدنه تیتانیوم","پوسته نئون","زره فرمانده","بدنه فضایی","پوسته خورشیدی","زره کوانتومی","بدنه سلطنتی","پوسته شهاب","زره تکینگی","بدنه اسطوره‌ای"]),
+ "صورت":("face",["welder_mask","round_goggles","mono_visor","combat_visor"],["ویزور تعمیر","لنز اپتیک","ماسک طیفی","ویزور شب","لنز حرارتی","ماسک فرمان","ویزور پالس","لنز کوانتومی","ماسک استتار","ویزور رزمی","لنز ستاره‌ای","ماسک یون","ویزور تکینگی","لنز فرمانده","ماسک اسطوره‌ای"]),
+ "پشت":("back",["tool_pack","jetpack","mini_cape","neon_wings","ion_wings"],["پک تعمیر","مخزن انرژی","کوله اکتشاف","بوستر کوتاه","پک پهپاد","جت‌پک صنعتی","بوستر نئون","بال پایدارساز","پک فرماندهی","جت‌پک فضایی","بال یونی","بوستر کوانتومی","پک تکینگی","بال ستاره‌ای","سامانه پرواز X"]),
+ "دست":("hand",["wrench","data_pad","game_pad","plasma_tool"],["بازوی مکانیک","پنجه صنعتی","دست کنترل","بازوی جوش","پنجه مغناطیسی","دست تاکتیکی","بازوی پلاسما","پنجه نئون","دست فرمانده","بازوی تیتانیوم","پنجه کوانتومی","دست یون","بازوی تکینگی","پنجه ستاره‌ای","بازوی اسطوره‌ای"]),
+ "هاله":("aura",["pulse_aura","quantum_aura","star_aura"],["میدان آرام","حلقه پالس","هاله انرژی","میدان آبی","حلقه نئون","هاله فرمان","میدان حفاظتی","حلقه یون","هاله کوانتومی","میدان خورشیدی","حلقه تکینگی","هاله ستاره‌ای","میدان اسطوره‌ای","حلقه کیهانی","هاله ابدی"]),
+ "پس‌زمینه":("background",["workshop_bg","neon_city_bg","orbit_bg","command_room_bg"],["کارگاه پایه","آزمایشگاه مدار","اتاق تعمیر","شهر صنعتی","ایستگاه نئون","مرکز فرمان","مدار ماه","پایگاه مریخ","عرشه ستاره‌ای","آزمایشگاه کوانتوم","شهر آینده","ایستگاه تکینگی","فرماندهی کهکشانی","مدار اسطوره‌ای","پناهگاه ابدی"]),
+}
+_rarities=("common","common","rare","rare","rare","epic","epic","epic","legendary","legendary","legendary","mythic","mythic","mythic","mythic")
+for _category,(_slot,_art,_names) in _COLLECTIONS.items():
+ for _i,_title in enumerate(_names,1):
+  _key=f"collection_{abs(sum(map(ord,_category)))}_{_i}"
+  CATALOG.setdefault(_key,{"title":_title,"slot":_slot,"category":_category,"cost":120+_i*_i*38,"rarity":_rarities[_i-1],"min_level":max(1,(_i-1)*3),"theme":"collection","art_id":_art[(_i-1)%len(_art)]})
+
 def visual_stage_for(pet):
  level=legacy.level_from_xp(int(pet.xp or 0));days=int(pet.total_care_days or 0);selected=VISUAL_STAGES[0]
  for stage in VISUAL_STAGES:

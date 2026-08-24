@@ -58,12 +58,15 @@ def _payload(session, user_id: int):
     legacy.refresh_pet(pet, now)
     legacy.touch_daily_visit(pet, now)
     user = session.query(User).filter(User.id == user_id).first()
-    data = sector_v2.serialize_pet(pet, int(user.coins or 0) if user else 0)
+    coins=int(user.coins or 0) if user else 0
+    daily=legacy.daily_progress(session, user_id, now)
+    data = sector_v2.serialize_pet(pet, coins)
+    data["guidance"]=legacy.progress_guidance(pet,daily,coins)
     membership = session.query(SectorClanMember).filter(SectorClanMember.user_id == user_id).first()
     clan = session.query(SectorClan).filter(SectorClan.id == membership.clan_id).first() if membership else None
     return {
         "pet": data,
-        "daily": legacy.daily_progress(session, user_id, now),
+        "daily": daily,
         "actions": [{"id": key, **value} for key, value in legacy.PET_ACTIONS.items()],
         "memories": legacy.list_memories(session, user_id, limit=50),
         "achievements": legacy.pet_achievements(session, pet),
