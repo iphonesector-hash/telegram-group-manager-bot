@@ -1,6 +1,8 @@
 import datetime
+import hashlib
 import logging
 import os
+import secrets
 import time
 from typing import Optional
 
@@ -8,11 +10,11 @@ from fastapi import Header, HTTPException
 from telegram import Bot
 
 from api.main import app, require_user
-from bot.database.models import SectorClan, SectorClanMember, SectorPet, User
+from bot.database.models import RuntimeState, SectorClan, SectorClanMember, SectorPet, User
 from bot.database.session import get_session
 from bot.modules.ai import get_ai_response, load_ai_history, save_ai_turn
 from bot.services import sector_pet as legacy
-from bot.services import sector_v2
+from bot.services import sector_expansion, sector_v2
 
 log = logging.getLogger(__name__)
 REQUIRED_MEMBERSHIP_CHAT = os.getenv("REQUIRED_MEMBERSHIP_CHAT", "@sectorland")
@@ -61,7 +63,11 @@ def _payload(session, user_id: int):
     coins=int(user.coins or 0) if user else 0
     daily=legacy.daily_progress(session, user_id, now)
     data = sector_v2.serialize_pet(pet, coins)
-    data["guidance"]=legacy.progress_guidance(pet,daily,coins)
+    day_start=now.replace(hour=0,minute=0,second=0,microsecond=0)
+    story_used=session.query(legacy.SectorPetAction).filter(legacy.SectorPetAction.user_id==user_id,legacy.SectorPetAction.action=="story",legacy.SectorPetAction.created_at>=day_start).count()
+    reset_seconds=max(0,int(((day_start+datetime.timedelta(days=1))-now).total_seconds()))
+    data["guidance"]=legacy.progress_guidance(pet,daily,coins,story_used,reset_seconds)
+    data["timers"]={"daily_reset_seconds":reset_seconds,"story_reset_seconds":reset_seconds,"story_daily_used":story_used,"story_daily_limit":3}
     membership = session.query(SectorClanMember).filter(SectorClanMember.user_id == user_id).first()
     clan = session.query(SectorClan).filter(SectorClan.id == membership.clan_id).first() if membership else None
     return {
@@ -74,6 +80,7 @@ def _payload(session, user_id: int):
         "evolution_paths": legacy.EVOLUTION_PATHS,
         "jobs": legacy.JOBS,
         "story": legacy.STORY_CHAPTERS.get(int(pet.story_chapter or 1)),
+        "expansion": sector_expansion.snapshot(session,user_id),
         "clan": {"id": clan.id, "name": clan.name, "xp": int(clan.xp or 0), "contribution": int(membership.contribution or 0)} if clan else None,
     }
 
@@ -134,6 +141,20 @@ async def sector_v2_rename(user_id: int, request: dict, init_data: Optional[str]
     finally:
         session.close()
 
+@app.post("/api/sector-v2/{user_id}/customize")
+async def customize_sector_v2(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    await _guard(user_id,init_data)
+    key=str(request.get("key") or "");value=str(request.get("value") or "")
+    if key not in {"primary_color","secondary_color","core_color","eye_color"} or not value.startswith("#") or len(value) not in {4,7}:
+        raise HTTPException(status_code=400,detail="رنگ انتخابی معتبر نیست.")
+    session=get_session()
+    try:
+        pet=legacy.get_or_create_pet(session,user_id,lock=True);appearance=dict(pet.appearance or {});appearance[key]=value;pet.appearance=appearance;session.commit()
+        return {"status":"success","message":"رنگ سکتور ذخیره شد.","pet":sector_v2.serialize_pet(pet)}
+    except Exception:
+        session.rollback();raise
+    finally:session.close()
+
 
 @app.post("/api/sector-v2/{user_id}/minigame/{game_key}")
 async def sector_v2_minigame(user_id: int, game_key: str, request: dict, init_data: Optional[str] = Header(None, alias="init-data")):
@@ -144,9 +165,18 @@ async def sector_v2_minigame(user_id: int, game_key: str, request: dict, init_da
         raise HTTPException(status_code=400, detail="امتیاز نامعتبر است")
     session = get_session()
     try:
+        token=str(request.get("ticket") or "");state=session.query(RuntimeState).filter_by(scope="sector_game",state_key=f"{user_id}:{game_key}").with_for_update().first();value=dict(state.value or {}) if state else {};issued=value.get("issued_at")
+        try:started=datetime.datetime.fromisoformat(issued) if issued else None
+        except (TypeError,ValueError):started=None
+        valid=bool(state and token and secrets.compare_digest(str(value.get("token_hash") or ""),hashlib.sha256(token.encode()).hexdigest()) and started and 2<=(_naive_utc(datetime.datetime.utcnow())-_naive_utc(started)).total_seconds()<=900 and not value.get("used"))
+        if not valid:return {"status":"error","message":"بلیت بازی معتبر نیست؛ بازی را دوباره شروع کن."}
+        value["used"]=True;state.value=value
         result = legacy.finish_minigame(session, user_id, game_key, score)
         if result.get("status") == "success":
             pet = legacy.get_or_create_pet(session, user_id)
+            lab_level=int((pet.inventory or {}).get("base:lab",0) or 0)
+            if lab_level:
+                bonus=max(1,int(score or 0)*lab_level//100);pet.xp=int(pet.xp or 0)+bonus;result["message"]+=f" آزمایشگاه {bonus} XP اضافه داد."
             result["pet"] = sector_v2.serialize_pet(pet)
             result["daily"] = legacy.daily_progress(session, user_id)
             session.commit()
@@ -158,6 +188,24 @@ async def sector_v2_minigame(user_id: int, game_key: str, request: dict, init_da
         raise
     finally:
         session.close()
+
+
+def _naive_utc(value):
+    return value.replace(tzinfo=None) if value and value.tzinfo else value
+
+
+@app.post("/api/sector-v2/{user_id}/minigame/{game_key}/start")
+async def sector_v2_minigame_start(user_id:int,game_key:str,init_data:Optional[str]=Header(None,alias="init-data")):
+    await _guard(user_id,init_data)
+    if game_key not in {"circuit","battery","pulse","cipher","balance"}:raise HTTPException(status_code=400,detail="بازی نامعتبر است")
+    session=get_session()
+    try:
+        token=secrets.token_urlsafe(24);key=f"{user_id}:{game_key}";state=session.query(RuntimeState).filter_by(scope="sector_game",state_key=key).with_for_update().first();value={"token_hash":hashlib.sha256(token.encode()).hexdigest(),"issued_at":datetime.datetime.utcnow().isoformat(),"used":False}
+        if state:state.value=value
+        else:session.add(RuntimeState(scope="sector_game",state_key=key,value=value))
+        session.commit();return {"status":"success","ticket":token,"expires_seconds":900}
+    except Exception:session.rollback();raise
+    finally:session.close()
 
 
 @app.post("/api/sector-v2/{user_id}/social/{action}")
@@ -247,6 +295,36 @@ async def sector_v2_unequip(user_id: int, slot: str, init_data: Optional[str] = 
         raise
     finally:
         session.close()
+
+
+@app.post("/api/sector-v2/{user_id}/expansion/{action}")
+async def sector_v2_expansion(user_id:int,action:str,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    await _guard(user_id,init_data);session=get_session()
+    try:
+        result=sector_expansion.command(session,user_id,action,request)
+        if result.get("status")=="success":session.commit()
+        else:session.rollback()
+        return result
+    except Exception:
+        session.rollback();log.exception("Sector expansion command failed: %s",action);raise
+    finally:session.close()
+
+
+@app.post("/api/sector-v2/{user_id}/tactical-battle")
+async def sector_v2_tactical_battle(user_id:int,request:dict,init_data:Optional[str]=Header(None,alias="init-data")):
+    await _guard(user_id,init_data);target_raw=str(request.get("target") or "").strip().lstrip("@");move=str(request.get("move") or "")
+    if not target_raw:raise HTTPException(status_code=400,detail="کاربر مقصد را وارد کن")
+    session=get_session()
+    try:
+        target=session.query(User).filter(User.id==int(target_raw)).first() if target_raw.isdigit() else session.query(User).filter(User.username.ilike(target_raw)).first()
+        if not target or int(target.id)==int(user_id):return {"status":"error","message":"حریف معتبر پیدا نشد."}
+        result=sector_expansion.tactical_battle(session,user_id,target,move)
+        if result.get("status")=="success":session.commit()
+        else:session.rollback()
+        return result
+    except Exception:
+        session.rollback();raise
+    finally:session.close()
 
 
 @app.post("/api/sector-v2/{user_id}/talk")

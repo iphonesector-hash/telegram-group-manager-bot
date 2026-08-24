@@ -85,7 +85,7 @@ def mission_snapshot(session,user_id,now=None):
     for key,d in MISSION_DEFS.items():
         start,end,pkey=day_window(now) if d['kind']=='daily' else week_window(now)
         progress=_metric(session,user_id,d['metric'],start,end);claimed=session.query(SectorRewardClaim.id).filter_by(user_id=user_id,claim_key='mission:'+key,period_key=pkey).first() is not None
-        out.append({'id':key,'title':d['title'],'kind':d['kind'],'progress':min(progress,d['target']),'target':d['target'],'complete':progress>=d['target'],'claimed':claimed,'reward':{'coins':d['coins'],'xp':d['xp'],'season':d['season']}})
+        out.append({'id':key,'title':d['title'],'kind':d['kind'],'progress':min(progress,d['target']),'target':d['target'],'complete':progress>=d['target'],'claimed':claimed,'reset_seconds':max(0,int((end-now).total_seconds())),'reward':{'coins':d['coins'],'xp':d['xp'],'season':d['season']}})
     return out
 
 def bond_rows(session,user_id,limit=8):
@@ -169,8 +169,8 @@ def claim_reward(session,user_id,kind,key):
     else:item=next((x for x in quest_snapshot(session,user_id) if x['id']==key),None);period='lifetime'
     if not item or not item['complete']:return {'status':'error','message':'شرط این جایزه هنوز کامل نشده.'}
     if item['claimed']:return {'status':'error','message':'این جایزه قبلاً دریافت شده.'}
-    user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=legacy.get_or_create_pet(session,user_id,lock=True);r=item['reward'];user.coins=int(user.coins or 0)+int(r['coins']);pet.xp=int(pet.xp or 0)+int(r['xp']);session.add(SectorRewardClaim(user_id=user_id,claim_key=kind+':'+key,period_key=period,reward=r));ledger(session,user_id,kind+'_reward',int(r['coins']),int(user.coins or 0),kind,key,r);analytics(session,user_id,kind+'_claim',payload={'key':key});legacy.remember(session,user_id,kind,'جایزه '+item['title'],f"{r['coins']} سکه و {r['xp']} XP دریافت شد.",3)
-    return {'status':'success','message':'جایزه دریافت شد.','coins':int(user.coins or 0),'pet':legacy.serialize_pet(pet)}
+    user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=legacy.get_or_create_pet(session,user_id,lock=True);r=dict(item['reward']);command_level=int((pet.inventory or {}).get('base:command',0) or 0);bonus=command_level*5;r['coins']=int(r['coins'])*(100+bonus)//100;r['xp']=int(r['xp'])*(100+bonus)//100;user.coins=int(user.coins or 0)+int(r['coins']);pet.xp=int(pet.xp or 0)+int(r['xp']);session.add(SectorRewardClaim(user_id=user_id,claim_key=kind+':'+key,period_key=period,reward=r));ledger(session,user_id,kind+'_reward',int(r['coins']),int(user.coins or 0),kind,key,r);analytics(session,user_id,kind+'_claim',payload={'key':key});legacy.remember(session,user_id,kind,'جایزه '+item['title'],f"{r['coins']} سکه و {r['xp']} XP دریافت شد.",3)
+    return {'status':'success','message':f"جایزه دریافت شد{f'؛ اتاق فرمان {bonus}٪ پاداش اضافه داد' if bonus else ''}.",'coins':int(user.coins or 0),'pet':legacy.serialize_pet(pet)}
 
 def unlock_snapshot(session,user_id):
     pet=legacy.get_or_create_pet(session,user_id);level=legacy.level_from_xp(int(pet.xp or 0))
@@ -185,6 +185,7 @@ def sell_item(session,user_id,item_key):
     if legacy.level_from_xp(int(pet.xp or 0))<5:return {'status':'error','message':'فروش مجدد از سطح ۵ آزاد می‌شود.'}
     inv=dict(pet.inventory or {});key='cosmetic:'+item_key
     if not inv.get(key):return {'status':'error','message':'این آیتم را در دارایی‌هایت نداری.'}
+    if inv.get('crafted:'+item_key):return {'status':'error','message':'قطعه ساخته‌شده قابل فروش نیست؛ می‌توانی آن را نصب یا بازیافت کنی.'}
     resale=max(1,int(item.get('cost',0))//2);inv.pop(key,None);pet.inventory=inv;a=dict(pet.appearance or {})
     for slot,value in list(a.items()):
         if value==item_key:a.pop(slot,None)

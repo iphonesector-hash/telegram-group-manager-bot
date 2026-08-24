@@ -1,12 +1,16 @@
 const BASE = import.meta.env?.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
 
 async function request(endpoint, options, initData) {
+  const config=options||{},controller=new AbortController(),timeout=setTimeout(function(){controller.abort()},20000)
   try {
-    const res = await fetch(BASE + endpoint, {...options, headers: {'Content-Type': 'application/json','init-data': initData || '',...(options && options.headers)}})
+    const res = await fetch(BASE + endpoint, {...config, signal:controller.signal, headers: {'Content-Type': 'application/json','init-data': initData || '',...config.headers}})
     const payload = await res.json().catch(function() { return null })
     if (!res.ok) throw new Error((payload && payload.detail) || ('HTTP ' + res.status))
     return { data: payload, error: null }
-  } catch (err) { console.warn('[API]', endpoint, err.message); return { data: null, error: err.message } }
+  } catch (err) {
+    console.warn('[API]', endpoint, err.message)
+    return {data:null,error:err.name==='AbortError'?'پاسخ سرور طول کشید؛ دوباره تلاش کن.':(err.message||'ارتباط با سرور برقرار نشد.')}
+  } finally { clearTimeout(timeout) }
 }
 
 export const api = {
@@ -16,6 +20,7 @@ export const api = {
   dailyClaim: function(userId, initData) { return request('/api/daily-claim/' + userId, { method: 'POST' }, initData) },
   spinWheel: function(userId, initData) { return request('/api/wheel/spin/' + userId, { method: 'POST' }, initData) },
   getWheelHistory: function(userId, initData) { return request('/api/wheel/history/' + userId, {}, initData) },
+  getWheelStatus: function(userId, initData) { return request('/api/wheel/status/' + userId, {}, initData) },
   getShop: function(initData) { return request('/api/shop', {}, initData) },
   buyItem: function(userId, itemId, couponCode, initData) { return request('/api/shop/buy/' + userId + '?item_id=' + itemId + '&coupon_code=' + encodeURIComponent(couponCode || ''), { method: 'POST' }, initData) },
   getLeaderboard: function(initData) { return request('/api/leaderboard', {}, initData) },
@@ -45,8 +50,12 @@ export const api = {
   buySectorShopItem: function(userId, itemKey, initData) { return request('/api/sector-v2/' + userId + '/shop/' + encodeURIComponent(itemKey) + '/buy', { method:'POST', body:'{}' }, initData) },
   equipSectorShopItem: function(userId, itemKey, initData) { return request('/api/sector-v2/' + userId + '/shop/' + encodeURIComponent(itemKey) + '/equip', { method:'POST', body:'{}' }, initData) },
   unequipSectorSlot: function(userId, slot, initData) { return request('/api/sector-v2/' + userId + '/shop/slot/' + encodeURIComponent(slot) + '/unequip', { method:'POST', body:'{}' }, initData) },
+  customizeSectorPet: function(userId, key, value, initData) { return request('/api/sector-v2/' + userId + '/customize', { method:'POST', body:JSON.stringify({key:key,value:value}) }, initData) },
+  sectorExpansion: function(userId, action, payload, initData) { return request('/api/sector-v2/' + userId + '/expansion/' + encodeURIComponent(action), { method:'POST', body:JSON.stringify(payload || {}) }, initData) },
+  sectorTacticalBattle: function(userId, target, move, initData) { return request('/api/sector-v2/' + userId + '/tactical-battle', { method:'POST', body:JSON.stringify({target:target,move:move}) }, initData) },
   renameSectorPet: function(userId, name, initData) { return request('/api/sector-v2/' + userId + '/rename', { method:'POST', body:JSON.stringify({name:name}) }, initData) },
-  finishSectorGame: function(userId, gameKey, score, initData) { return request('/api/sector-v2/' + userId + '/minigame/' + encodeURIComponent(gameKey), { method:'POST', body:JSON.stringify({score:score}) }, initData) },
+  startSectorGame: function(userId, gameKey, initData) { return request('/api/sector-v2/' + userId + '/minigame/' + encodeURIComponent(gameKey) + '/start', { method:'POST', body:'{}' }, initData) },
+  finishSectorGame: function(userId, gameKey, score, ticket, initData) { return request('/api/sector-v2/' + userId + '/minigame/' + encodeURIComponent(gameKey), { method:'POST', body:JSON.stringify({score:score,ticket:ticket}) }, initData) },
   sectorSocial: function(userId, action, target, initData) { return request('/api/sector-v2/' + userId + '/social/' + encodeURIComponent(action), { method:'POST', body:JSON.stringify({target:target}) }, initData) },
   getSectorLeaderboard: function(userId, initData) { return request('/api/sector-v2/leaderboard/me/' + userId, {}, initData) },
   getSectorMeta: function(userId, initData) { return request('/api/sector-meta/' + userId, {}, initData) },

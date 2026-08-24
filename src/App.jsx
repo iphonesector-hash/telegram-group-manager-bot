@@ -41,10 +41,11 @@ var PAGES = {
   tools: ToolsPage,
   missions: MissionsPage,
   sectorpet: SectorPetPage,
+  assets: SectorPetPage,
   whatsnew: WhatsNewPage,
 }
 
-var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو', whatsnew:'چه خبر؟' }
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو', assets:'دارایی‌های من', whatsnew:'چه خبر؟' }
 
 var EMPTY_USER = {
   id: 0,

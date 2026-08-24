@@ -1,6 +1,6 @@
 import datetime
 import random
-from bot.database.models import Purchase, SectorPetAction, User
+from bot.database.models import Purchase, SectorPetAction, SectorPetGame, User
 from bot.services import sector_pet as legacy
 from bot.utils.helpers import OWNER_ID
 
@@ -67,6 +67,9 @@ for _category,(_slot,_art,_names) in _COLLECTIONS.items():
  for _i,_title in enumerate(_names,1):
   _key=f"collection_{abs(sum(map(ord,_category)))}_{_i}"
   CATALOG.setdefault(_key,{"title":_title,"slot":_slot,"category":_category,"cost":120+_i*_i*38,"rarity":_rarities[_i-1],"min_level":max(1,(_i-1)*3),"theme":"collection","art_id":_art[(_i-1)%len(_art)]})
+_power={"common":2,"rare":5,"epic":9,"legendary":15,"mythic":24}
+for _item in CATALOG.values():
+ _base=_power.get(_item.get("rarity"),2);_item.setdefault("power",_base);_item.setdefault("defense",_base*2 if _item.get("slot")=="body" else _base);_item.setdefault("energy_bonus",_base if _item.get("slot") in {"back","aura"} else 0)
 
 def visual_stage_for(pet):
  level=legacy.level_from_xp(int(pet.xp or 0));days=int(pet.total_care_days or 0);selected=VISUAL_STAGES[0]
@@ -84,7 +87,7 @@ def catalog_for(pet):
  return sorted(out,key=lambda r:(order.get(r['rarity'],9),r['cost'],r['title']))
 
 def serialize_pet(pet,coins=0):
- d=legacy.serialize_pet(pet,coins);d['visual_stage']=visual_stage_for(pet);d['owned_cosmetics']=sorted(owned_keys(pet));return d
+ d=legacy.serialize_pet(pet,coins);appearance=dict(pet.appearance or {});inv=dict(pet.inventory or {});equipped=[CATALOG[x] for x in appearance.values() if x in CATALOG];workshop=int(inv.get('base:workshop',0) or 0);charger=int(inv.get('base:charger',0) or 0);power=sum(int(x.get('power',0)) for x in equipped)+workshop*2;defense=sum(int(x.get('defense',0)) for x in equipped)+workshop*3;energy_bonus=sum(int(x.get('energy_bonus',0)) for x in equipped)+charger*5;d['visual_stage']=visual_stage_for(pet);d['owned_cosmetics']=sorted(owned_keys(pet));d['equipment_stats']={'power':power,'defense':defense,'energy_bonus':energy_bonus,'tier':'اسطوره‌ای' if power>=70 else 'نخبه' if power>=40 else 'پیشرفته' if power>=20 else 'پایه'};d['base_perks']={'game_xp_percent':int(inv.get('base:lab',0) or 0)*5,'mission_bonus_percent':int(inv.get('base:command',0) or 0)*5,'material_bonus':int(inv.get('base:storage',0) or 0)};return d
 
 def perform_action(session,user_id,action):
  result=legacy.perform_action(session,user_id,action)
@@ -122,8 +125,11 @@ def unequip_slot(session,user_id,slot):
  pet=legacy.get_or_create_pet(session,user_id,lock=True);a=dict(pet.appearance or {});a.pop(slot,None);pet.appearance=a;pet.updated_at=datetime.datetime.utcnow();return {'status':'success','message':'آیتم از روی سکتور برداشته شد.','pet':serialize_pet(pet),'shop':catalog_for(pet)}
 
 def chat_context(session,user_id,limit=8):
- ms=legacy.list_memories(session,user_id,limit=limit)
- return 'هنوز خاطره مهمی ثبت نشده است.' if not ms else ' | '.join(f"{m['title']}: {m['detail']}" for m in ms[-limit:])[:1800]
+ ms=legacy.list_memories(session,user_id,limit=limit);since=datetime.datetime.utcnow()-datetime.timedelta(days=7);games=session.query(SectorPetGame).filter(SectorPetGame.user_id==user_id,SectorPetGame.created_at>=since).order_by(SectorPetGame.created_at.desc()).limit(12).all();game_note=''
+ if games:
+  best=max(games,key=lambda g:int(g.score or 0));game_note=f"در هفت روز اخیر {len(games)} بازی انجام دادیم؛ بهترین نتیجه {best.score} در بازی {best.game_key} بود."
+ memory_note='هنوز خاطره مهمی ثبت نشده است.' if not ms else ' | '.join(f"{m['title']}: {m['detail']}" for m in ms[-limit:])
+ return (memory_note+' | '+game_note)[:1800]
 
 def remember_chat(session,user_id,user_text,response):legacy.remember(session,user_id,'chat',f'گفت‌وگو: {user_text[:55]}',response[:260],2)
 def local_chat_fallback(pet_data,user_text):

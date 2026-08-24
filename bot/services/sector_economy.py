@@ -89,8 +89,10 @@ def social_action_v2(session, actor_id: int, target_id: int, action: str):
         actor_pet.xp = int(actor_pet.xp or 0) + reward_xp
         message = "🎁 هدیه ۵۰ سکه‌ای فرستاده شد."
     elif action == "battle":
-        attack = sector_pet.level_from_xp(actor_pet.xp) + int(actor_pet.knowledge or 0) // 10 + random.randint(1, 12)
-        defense = sector_pet.level_from_xp(target_pet.xp) + int(target_pet.health or 0) // 10 + random.randint(1, 12)
+        from bot.services import sector_v2
+        actor_gear=sector_v2.serialize_pet(actor_pet).get('equipment_stats',{});target_gear=sector_v2.serialize_pet(target_pet).get('equipment_stats',{})
+        attack = sector_pet.level_from_xp(actor_pet.xp) + int(actor_pet.knowledge or 0) // 10 + int(actor_gear.get('power',0))//4 + random.randint(1, 12)
+        defense = sector_pet.level_from_xp(target_pet.xp) + int(target_pet.health or 0) // 10 + int(target_gear.get('defense',0))//4 + random.randint(1, 12)
         won = attack >= defense
         reward_xp = 45 if won else 12
         reward_coins = 25 if won else 0

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { StickerArt } from './SectorVisuals'
 import SectorFeatureArt from './SectorFeatureArt'
 
@@ -6,6 +6,7 @@ function TinyBar({value,max=100}){
   const pct=Math.max(0,Math.min(100,Number(value||0)/Math.max(1,Number(max||1))*100))
   return <div className="progress-bar"><div className="progress-fill" style={{width:pct+'%'}}/></div>
 }
+function MissionTimer({seconds}){const [left,setLeft]=useState(Number(seconds||0));useEffect(()=>{setLeft(Number(seconds||0));const id=setInterval(()=>setLeft(v=>Math.max(0,v-1)),1000);return()=>clearInterval(id)},[seconds]);const h=Math.floor(left/3600),m=Math.floor(left%3600/60),s=left%60;return <div className="mission-reset">تا بازنشانی: {[h,m,s].map(x=>String(x).padStart(2,'0')).join(':')}</div>}
 
 export default function SectorLongGame({meta,busy,onAttack,onClaim,onStory,onRefresh,onClaimPreviousSeason,seasonBoard,onSeasonBoard}){
   const [refreshing,setRefreshing]=useState(false),[refreshed,setRefreshed]=useState(false)
@@ -40,7 +41,7 @@ export default function SectorLongGame({meta,busy,onAttack,onClaim,onStory,onRef
     </div>
 
     <div className="sec-title">قدم‌های کسب امتیاز فصل</div>
-    <div className="glass" style={{padding:12}}><SectorFeatureArt kind="mission"/><div style={{display:'flex',alignItems:'center',gap:8,margin:'8px 0 6px'}}><StickerArt kind="mission" compact/><div style={{fontSize:9,color:'var(--muted)'}}>ماموریت‌ها با مراقبت، بازی و تعامل اجتماعی جلو می‌روند.</div></div>{missions.map(m=><div key={m.id} style={{padding:'10px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:10}}><b style={{fontSize:10}}>{m.title}</b><span style={{fontSize:9}}>{m.progress}/{m.target}</span></div><TinyBar value={m.progress} max={m.target}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:7}}><span style={{fontSize:8,color:'var(--muted)'}}>+{m.reward?.coins} سکه • +{m.reward?.xp} XP • +{m.reward?.season} SP</span><button className="btn" disabled={!m.complete||m.claimed||!!busy} onClick={()=>onClaim('mission',m.id)}>{m.claimed?'گرفته شد':'دریافت'}</button></div></div>)}</div>
+    <div className="glass" style={{padding:12}}><SectorFeatureArt kind="mission"/><div style={{display:'flex',alignItems:'center',gap:8,margin:'8px 0 6px'}}><StickerArt kind="mission" compact/><div style={{fontSize:9,color:'var(--muted)'}}>ماموریت‌های روزانه عادت می‌سازند؛ هدف‌های هفتگی جایزه بزرگ‌تری دارند.</div></div>{missions.map(m=><div key={m.id} style={{padding:'10px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:10}}><b style={{fontSize:10}}>{m.kind==='weekly'?'📅 هدف هفتگی: ':'☀️ امروز: '}{m.title}</b><span style={{fontSize:9}}>{m.progress}/{m.target}</span></div><TinyBar value={m.progress} max={m.target}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:7}}><span style={{fontSize:8,color:'var(--muted)'}}>+{m.reward?.coins} سکه • +{m.reward?.xp} XP • +{m.reward?.season} SP</span><button className="btn" disabled={!m.complete||m.claimed||!!busy} onClick={()=>onClaim('mission',m.id)}>{m.claimed?'گرفته شد':'دریافت'}</button></div><MissionTimer seconds={m.reset_seconds}/></div>)}</div>
 
     <div className="sec-title">دستاوردهای بلندمدت</div>
     <div className="glass" style={{padding:12}}><SectorFeatureArt kind="story"/><p style={{fontSize:9,color:'var(--muted)',lineHeight:1.8}}>این هدف‌ها تاریخ انقضا ندارند. با رشد، خرید قطعه، دوستی و داستان کامل می‌شوند.</p>{quests.map(q=><div key={q.id} style={{padding:'9px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:8}}><div><b style={{fontSize:10}}>{q.title}</b><div style={{fontSize:8,color:'var(--muted)',marginTop:3}}>{q.hint}</div></div><button className="btn" disabled={!q.complete||q.claimed||!!busy} onClick={()=>onClaim('quest',q.id)}>{q.claimed?'گرفته شد':'جایزه'}</button></div></div>)}</div>

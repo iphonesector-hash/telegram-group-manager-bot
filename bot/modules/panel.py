@@ -71,10 +71,10 @@ def _back(rows=None):
 
 def _main_inline():
     return InlineKeyboardMarkup([
-        [B("حساب کاربری", "gp:nav:profile", "primary"), B("اقتصاد", "gp:nav:economy", "success")],
-        [B("سرگرمی", "gp:nav:fun", "primary"), B("کاربردی", "gp:nav:tools", "primary")],
-        [B("سکتور کوچولو", "gp:nav:sector", "success"), B("مدیریت", "gp:nav:admin", "danger")],
-        [B("Mini App", url=MAIN_APP_LINK, style="primary")],
+        [B("👤 حساب کاربری", "gp:nav:profile", "primary"), B("💰 اقتصاد", "gp:nav:economy", "success")],
+        [B("🎮 سرگرمی", "gp:nav:fun", "primary"), B("🛠 کاربردی", "gp:nav:tools", "primary")],
+        [B("🤖 سکتور کوچولو", "gp:nav:sector", "success"), B("🛡 مدیریت", "gp:nav:admin", "danger")],
+        [B("🚀 Mini App", url=MAIN_APP_LINK, style="primary")],
     ])
 
 

@@ -46,7 +46,7 @@ def pet_keyboard(user_id=None):
         [InlineKeyboardButton("داستان فصلی",callback_data="sector_story",style="success",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("شغل و درآمد",callback_data="sector_jobs",style="primary",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("مسیر تکامل",callback_data="sector_evolution",style="primary",icon_custom_emoji_id=icon(8)),InlineKeyboardButton("گالری سکتور",callback_data="sector_art",style="success",icon_custom_emoji_id=icon(9))],
         [InlineKeyboardButton("حرف‌زدن و تعامل‌ها", callback_data="sector_social",style="primary",icon_custom_emoji_id=icon(10))],
-        [InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL))],
+        [InlineKeyboardButton("🚀 باز کردن سکتور", web_app=WebAppInfo(url=MINI_APP_URL),style="primary",icon_custom_emoji_id=icon(11))],
     ])
 
 

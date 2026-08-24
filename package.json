@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "verify:sector": "node scripts/verify-sector.mjs && node scripts/verify-sector-contracts.mjs"
+    "verify:sector": "node scripts/verify-sector.mjs && node scripts/verify-sector-contracts.mjs && node scripts/verify-sector-hardening.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

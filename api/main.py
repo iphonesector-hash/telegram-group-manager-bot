@@ -691,6 +691,19 @@ async def wheel_history(user_id:int,init_data:Optional[str]=Header(None,alias="i
     finally:session.close()
 
 
+@app.get("/api/wheel/status/{user_id}")
+async def wheel_status(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
+    require_user(init_data,user_id);session=get_session()
+    try:
+        user=session.query(User).filter(User.id==user_id).first();now=datetime.datetime.utcnow();settings=load_settings(session)
+        last=session.query(Purchase).filter(Purchase.user_id==user_id,Purchase.item_id.like("wheel_%")).order_by(Purchase.created_at.desc()).first()
+        vip_until=user.vip_until.replace(tzinfo=None) if user and user.vip_until and user.vip_until.tzinfo else (user.vip_until if user else None);hours=max(1,min(168,int(settings["wheel_cooldown_hours"])))
+        if vip_until and vip_until>now:hours=max(1,hours//2)
+        last_time=last.created_at.replace(tzinfo=None) if last and last.created_at and last.created_at.tzinfo else (last.created_at if last else None)
+        remaining=max(0,int((datetime.timedelta(hours=hours)-(now-last_time)).total_seconds())) if last_time else 0
+        return {"ready":remaining<=0,"remaining_seconds":remaining,"cooldown_hours":hours,"vip":bool(vip_until and vip_until>now)}
+    finally:session.close()
+
 @app.get("/api/bank/{user_id}")
 async def get_bank(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data, user_id)
@@ -823,11 +836,14 @@ async def get_transactions(user_id:int,init_data:Optional[str]=Header(None,alias
     try:
         rows=session.query(Purchase).filter(Purchase.user_id==user_id).order_by(Purchase.created_at.desc()).limit(50).all()
         def tx(p):
-            label_map={"daily_reward":"جایزه روزانه","bank_deposit":"واریز به بانک","bank_withdraw":"برداشت از بانک","loan":"دریافت وام","loan_repay":"تسویه وام"}
-            label=label_map.get(str(p.item_id)) or (SHOP_ITEMS.get(int(p.item_id),{}).get("name") if str(p.item_id).isdigit() else str(p.item_id))
+            item=str(p.item_id);label_map={"daily_reward":"دریافت جایزه روزانه","bank_deposit":"انتقال از کیف پول به بانک","bank_withdraw":"برداشت از بانک به کیف پول","loan":"دریافت وام بانکی","loan_repay":"پرداخت بدهی وام","mission_reward":"پاداش مأموریت","sector_daily_reward":"پاداش روزانه سکتور","sector_commander_gift":"هدیه فرمانده","sector_story":"حرکت داستانی سکتور","wheel_coins":"جایزه سکه گردونه","wheel_config":"جایزه کانفیگ گردونه","wheel_proxy":"جایزه پروکسی گردونه"}
+            if item.startswith("sector_cosmetic:"):label="خرید قطعه سکتور: "+item.split(":",1)[1].replace("_"," ")
+            elif item.startswith("wheel_"):label=label_map.get(item,"جایزه گردونه شانس")
+            elif item.startswith("renew_"):label="تمدید سفارش"
+            else:label=label_map.get(item) or (SHOP_ITEMS.get(int(item),{}).get("name") if item.isdigit() else "فعالیت حساب سکتور")
             is_spend=p.status=="coin_purchase" or str(p.item_id) in ("bank_deposit","loan_repay")
             amount=int(p.amount or 0)
-            return {"id":p.id,"type":"spend" if is_spend else "earn","label":label,"amount":-amount if is_spend else amount,"date":p.created_at.isoformat() if p.created_at else None}
+            return {"id":p.id,"type":"spend" if is_spend else "earn","direction":"خروجی" if is_spend else "ورودی","label":label,"amount":-amount if is_spend else amount,"date":p.created_at.isoformat() if p.created_at else None}
         return [tx(p) for p in rows]
     finally: session.close()
 
