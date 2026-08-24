@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
+const BASE = import.meta.env?.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
 
 async function request(endpoint, options, initData) {
   try {
@@ -48,7 +48,7 @@ export const api = {
   renameSectorPet: function(userId, name, initData) { return request('/api/sector-v2/' + userId + '/rename', { method:'POST', body:JSON.stringify({name:name}) }, initData) },
   finishSectorGame: function(userId, gameKey, score, initData) { return request('/api/sector-v2/' + userId + '/minigame/' + encodeURIComponent(gameKey), { method:'POST', body:JSON.stringify({score:score}) }, initData) },
   sectorSocial: function(userId, action, target, initData) { return request('/api/sector-v2/' + userId + '/social/' + encodeURIComponent(action), { method:'POST', body:JSON.stringify({target:target}) }, initData) },
-  getSectorLeaderboard: function(initData) { return request('/api/sector-v2-leaderboard', {}, initData) },
+  getSectorLeaderboard: function(userId, initData) { return request('/api/sector-v2/leaderboard/me/' + userId, {}, initData) },
   getSectorMeta: function(userId, initData) { return request('/api/sector-meta/' + userId, {}, initData) },
   claimSectorReward: function(userId, kind, key, initData) { return request('/api/sector-meta/' + userId + '/claim/' + encodeURIComponent(kind) + '/' + encodeURIComponent(key), { method:'POST', body:'{}' }, initData) },
   attackSectorBoss: function(userId, initData) { return request('/api/sector-meta/' + userId + '/boss/attack', { method:'POST', body:'{}' }, initData) },

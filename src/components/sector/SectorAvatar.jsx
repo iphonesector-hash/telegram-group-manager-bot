@@ -37,8 +37,8 @@ function Wearable({slot,id,accent}){
  return null
 }
 
-export default function SectorAvatar({pet,previewItem,compact=false}){
- const [threeReady,setThreeReady]=useState(false),handleThreeReady=useCallback(()=>setThreeReady(true),[])
+export default function SectorAvatar({pet,previewItem,compact=false,action=''}){
+ const [threeReady,setThreeReady]=useState(false),handleThreeReady=useCallback(()=>setThreeReady(true),[]),handleThreeFallback=useCallback(()=>setThreeReady(false),[])
  const stage=pet?.visual_stage?.id||'scrap',cfg=STAGE[stage]||STAGE.scrap,appearance={...(pet?.appearance||{})}
  if(previewItem?.slot)appearance[previewItem.slot]=previewItem.id
  const mood=pet?.mood?.id||pet?.mood?.key||'happy', eye=mood.includes('sad')?'sad':mood.includes('angry')?'angry':mood.includes('sleep')?'sleep':mood.includes('love')?'love':'happy'
@@ -46,7 +46,7 @@ export default function SectorAvatar({pet,previewItem,compact=false}){
  const room=appearance.background||'crystal_room'
  return <div className={`sector-room sector-room--${room} sector-stage--${stage}${compact?' sector-room--compact':''}`} style={{backgroundImage:`url(${ROOM_ART[room]||'/assets/sector/companion-room-v3.webp'})`}}>
   <div className="sector-room__light"/>
-  <SectorAvatar3D pet={pet} previewItem={previewItem} compact={compact} onReady={handleThreeReady}/>
+  <SectorAvatar3D pet={pet} previewItem={previewItem} compact={compact} action={action} onReady={handleThreeReady} onFallback={handleThreeFallback}/>
   <svg className={`sector-avatar${threeReady?' sector-avatar--3d-ready':''}`} viewBox="0 0 360 360" role="img" aria-label={`${pet?.name||'سکتور کوچولو'}، مرحله ${stage}`}>
    <defs>
     <linearGradient id="sa-metal" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffffff"/><stop offset=".22" stopColor="#cbd3df"/><stop offset=".55" stopColor={cfg.metal}/><stop offset=".78" stopColor="#f5f7fb"/><stop offset="1" stopColor="#7d8796"/></linearGradient>
