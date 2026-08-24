@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppContext } from '../App'
 import WheelOfFortune from '../components/WheelOfFortune'
 import SectorCelebration from '../components/ui/SectorCelebration'
 import SectorIcon from '../components/ui/SectorIcon'
+import SectorNativeArcade from '../components/games/SectorNativeArcade'
 
 const ARCADE_GAMES = [
   {id:'racer',name:'Neon Racer',icon:'🏎️',desc:'مسابقه سریع در بزرگراه نئونی',type:'اکشن',featured:true,url:'https://sectorland-neon-arcade.vercel.app/games/neon-racer/'},
@@ -12,12 +13,9 @@ const ARCADE_GAMES = [
   {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',type:'آرکید',url:'https://lovehub-games.vercel.app/games/tetris-touch/'},
   {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',type:'فکری',url:'https://lovehub-games.vercel.app/games/memory/src/'},
   {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',type:'فکری',url:'https://lovehub-games.vercel.app/games/minesweeper/'},
-  {id:'hextris',name:'Hextris',icon:'⬡',desc:'معمای سریع شش‌ضلعی، متن‌باز GPLv3',type:'آرکید',url:'https://hextris.github.io/hextris/'},
-  {id:'brickit',name:'BrickIt',icon:'◫',desc:'شکستن آجرها با کنترل لمسی، متن‌باز MIT',type:'آرکید',url:'https://tvanas.nl/brickit/'},
-  {id:'bounceit',name:'BounceIt',icon:'⬆',desc:'پرش بی‌پایان و رکوردشکنی لمسی، متن‌باز MIT',type:'اکشن',url:'https://tvanas.nl/bounceit/'},
-  {id:'floodit',name:'FloodIt',icon:'◉',desc:'معمای رنگی سبک و سریع، متن‌باز MIT',type:'فکری',url:'https://tvanas.nl/floodit/'},
-  {id:'flappy',name:'Flappy Bird',icon:'➤',desc:'پرواز لمسی و ثبت رکورد، متن‌باز MIT',type:'آرکید',url:'https://chandrakant-mane.github.io/JavaScript-Games/Games/flappy-bird-master/'},
-  {id:'tictactoe',name:'دوز دونفره',icon:'╳',desc:'رقابت دونفره روی یک گوشی، متن‌باز MIT',type:'فکری',url:'https://chandrakant-mane.github.io/JavaScript-Games/Games/tic%20tac%20toe/'},
+  {id:'core2048',name:'2048 سکتور',icon:'🔢',desc:'نسخه لمسی داخلی با ثبت امن رکورد',type:'فکری',native:true,featured:true},
+  {id:'sector_snake',name:'مار هسته‌ای',icon:'🐍',desc:'نسخه سریع موبایلی با لیگ هفتگی',type:'اکشن',native:true,featured:true},
+  {id:'sector_memory',name:'حافظه کوانتومی',icon:'◈',desc:'کارت‌های متحرک و امتیاز همگام',type:'فکری',native:true},
 ]
 
 function gameIcon(game){if(game.id==='snake3d')return 'growth';if(game.type==='فکری')return 'knowledge';if(game.type==='شوتر')return 'battle';if(game.type==='اکشن')return 'charge';return 'games'}
@@ -43,6 +41,9 @@ export default function GamesPage() {
   var [leagueGame,setLeagueGame] = useState('racer')
   var [gameLeaders,setGameLeaders] = useState([])
   var [celebration,setCelebration] = useState(null)
+  var [nativeGame,setNativeGame] = useState(null)
+  var [nativeBusy,setNativeBusy] = useState(false)
+  var nativeStarted=useRef(0)
   var [lastGame, setLastGame] = useState(function(){
     try { return window.localStorage.getItem('sectorland_last_game') || '' } catch (_) { return '' }
   })
@@ -110,10 +111,19 @@ export default function GamesPage() {
     try { ctx.tg && ctx.tg.HapticFeedback && ctx.tg.HapticFeedback.impactOccurred('medium') } catch (_) {}
     apiCall('createGameSession',tgUser.id,game.id).then(function(result){
       var token=result&&result.data&&result.data.token
+      if(game.native){if(!token)return showToast('بلیت امن بازی دریافت نشد.','error');nativeStarted.current=Date.now();setNativeGame({...game,token:token});return}
       var separator=game.url.indexOf('?')>=0?'&':'?'
       var launchUrl=game.url+(token?separator+'sl_token='+encodeURIComponent(token)+'&sl_user='+tgUser.id+'&sl_game='+encodeURIComponent(game.id):'')
       try { if (ctx.tg && ctx.tg.openLink) ctx.tg.openLink(launchUrl); else window.location.assign(launchUrl) }
       catch (_) { window.location.assign(launchUrl) }
+    })
+  }
+
+  function finishNative(score){
+    if(!nativeGame||nativeBusy)return;setNativeBusy(true)
+    var duration=Math.max(4,Math.floor((Date.now()-nativeStarted.current)/1000))
+    apiCall('submitGameScore',tgUser.id,{token:nativeGame.token,score:Math.max(0,Math.floor(score)),duration_seconds:duration}).then(function(r){
+      var data=r&&r.data;if(data&&data.status==='success'){showToast('رکورد با موفقیت در لیگ ثبت شد.','success');setCelebration({title:'رکورد تأیید شد ✦',text:Number(data.score||0).toLocaleString('fa-IR')+' امتیاز در حساب SectorLand ثبت شد.'});setNativeGame(null)}else showToast((r&&r.error)||(data&&data.message)||'ثبت رکورد انجام نشد.','error');setNativeBusy(false)
     })
   }
 
@@ -132,6 +142,7 @@ export default function GamesPage() {
 
   return (
     <div className="page fade-up">
+      {nativeGame?<SectorNativeArcade game={nativeGame} busy={nativeBusy} onClose={function(){if(!nativeBusy)setNativeGame(null)}} onFinish={finishNative}/>:null}
       <SectorCelebration open={!!celebration} title={celebration&&celebration.title} text={celebration&&celebration.text} onClose={function(){setCelebration(null)}} />
 
       <div className="glass" style={{padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(96,85,255,.3)'}}>

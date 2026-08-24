@@ -98,6 +98,9 @@ GAME_LIMITS={
     "tetris":{"max_score":2_000_000,"min_seconds":10},"memory":{"max_score":100_000,"min_seconds":4},
     "mines":{"max_score":100_000,"min_seconds":4},"airforce":{"max_score":5_000_000,"min_seconds":8},
     "blockblast":{"max_score":2_000_000,"min_seconds":8},
+    "core2048":{"max_score":1_000_000,"min_seconds":4},
+    "sector_snake":{"max_score":1_000_000,"min_seconds":4},
+    "sector_memory":{"max_score":100_000,"min_seconds":4},
 }
 
 
