@@ -14,6 +14,18 @@ from api.quiz_bank import QUIZ_BANK as CURATED_QUIZ_BANK, _FLAGS
 game_states = {}
 # quiz_states[qid] = question metadata. answered is per-user, so group quizzes can be played by everyone once.
 quiz_states = {}
+from bot.services.runtime_state import delete_state, get_state, set_state
+
+def _save_game(chat_id, state):
+    game_states[chat_id] = state
+    set_state("game", str(chat_id), state)
+
+def _load_game(chat_id):
+    return game_states.get(chat_id) or get_state("game", str(chat_id))
+
+def _delete_game(chat_id):
+    game_states.pop(chat_id, None)
+    delete_state("game", str(chat_id))
 
 QUIZ_BANK = {
     kind: [
@@ -132,7 +144,7 @@ async def coin_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_number_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     target = random.randint(1, 100)
-    game_states[chat_id] = {"type": "number_guess", "target": target, "attempts": 0, "max_attempts": 7, "user_id": update.effective_user.id}
+    _save_game(chat_id, {"type": "number_guess", "target": target, "attempts": 0, "max_attempts": 7, "user_id": update.effective_user.id})
     await update.effective_message.reply_text("🎯 بازی حدس عدد شروع شد!\nمن یک عدد بین ۱ تا ۱۰۰ انتخاب کردم. ۷ فرصت داری.\n\nعدد مورد نظرت رو بفرست:")
     raise ApplicationHandlerStop()
 
@@ -146,13 +158,15 @@ async def handle_number_guess(update, context, state):
     chat_id = update.effective_chat.id
     if guess == state["target"]:
         await update.effective_message.reply_text(f"🎉 درست بود! عدد {guess} بود. ✅")
-        del game_states[chat_id]
+        _delete_game(chat_id)
     elif state["attempts"] >= state["max_attempts"]:
         await update.effective_message.reply_text(f"💀 فرصت‌ها تموم شد. عدد {state['target']} بود.")
-        del game_states[chat_id]
+        _delete_game(chat_id)
     elif guess < state["target"]:
+        _save_game(chat_id, state)
         await update.effective_message.reply_text("📈 بزرگتر!")
     else:
+        _save_game(chat_id, state)
         await update.effective_message.reply_text("📉 کوچکتر!")
     raise ApplicationHandlerStop()
 
@@ -163,7 +177,7 @@ async def start_word_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     scrambled = list(word)
     random.shuffle(scrambled)
     scrambled = "".join(scrambled)
-    game_states[update.effective_chat.id] = {"type": "word_guess", "word": word, "user_id": update.effective_user.id}
+    _save_game(update.effective_chat.id, {"type": "word_guess", "word": word, "user_id": update.effective_user.id})
     await update.effective_message.reply_text(f"📝 بازی حدس کلمه!\n\n`{scrambled}`\n\nکلمه درست چیه؟", parse_mode="Markdown")
     raise ApplicationHandlerStop()
 
@@ -171,7 +185,7 @@ async def start_word_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_word_guess(update, context, state):
     if update.effective_message.text.strip() == state["word"]:
         await update.effective_message.reply_text(f"✅ آفرین! '{state['word']}' درست بود. 🏆")
-        del game_states[update.effective_chat.id]
+        _delete_game(update.effective_chat.id)
     raise ApplicationHandlerStop()
 
 
@@ -180,7 +194,7 @@ async def start_flag_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fresh = [item for item in _FLAGS if item[0] not in recent] or _FLAGS
     code, flag, country, _ = random.choice(fresh)
     context.user_data["recent_flags"] = (recent + [code])[-12:]
-    game_states[update.effective_chat.id] = {"type": "flag_guess", "country": country, "user_id": update.effective_user.id}
+    _save_game(update.effective_chat.id, {"type": "flag_guess", "country": country, "user_id": update.effective_user.id})
     await update.effective_message.reply_text(f"🚩 این پرچم کدوم کشوره؟\n\n{flag}")
     raise ApplicationHandlerStop()
 
@@ -188,7 +202,7 @@ async def start_flag_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_flag_guess(update, context, state):
     if update.effective_message.text.strip() == state["country"]:
         await update.effective_message.reply_text(f"✅ درسته! {state['country']} 🌟")
-        del game_states[update.effective_chat.id]
+        _delete_game(update.effective_chat.id)
     raise ApplicationHandlerStop()
 
 
@@ -247,16 +261,21 @@ async def daily_lucky_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def speed_contest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text_to_type = random.choice(["سکتور بهترین ربات تلگرامه", "من عاشق بازی‌های سکتورلند هستم", "برنامه‌نویسی با پایتون خیلی خوبه"])
     await update.effective_message.reply_text(f"🏆 مسابقه سرعت پاسخ\n\nهرکی زودتر این جمله رو دقیق بفرسته برنده است:\n\n`{text_to_type}`", parse_mode="Markdown")
-    game_states[update.effective_chat.id] = {"type": "speed_contest", "text": text_to_type, "start_time": time.time()}
+    _save_game(update.effective_chat.id, {"type": "speed_contest", "text": text_to_type, "start_time": time.time()})
     raise ApplicationHandlerStop()
 
 
 async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    if chat_id not in game_states:
+    state = _load_game(chat_id)
+    if not state:
         return
-    state = game_states[chat_id]
     text = update.effective_message.text.strip()
+    # Solo games belong to the user who started them. Other group members must
+    # not consume attempts, solve, or cancel somebody else's round.
+    owner_id = state.get("user_id")
+    if owner_id and owner_id != update.effective_user.id:
+        return
     if state["type"] == "number_guess":
         await handle_number_guess(update, context, state)
     elif state["type"] == "word_guess":
@@ -266,10 +285,10 @@ async def game_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif state["type"] == "speed_contest" and text == state["text"]:
         elapsed = round(time.time() - state["start_time"], 2)
         await update.effective_message.reply_text(f"🎉 {update.effective_user.mention_html()} برنده شد!\n⏱ {elapsed} ثانیه", parse_mode="HTML")
-        del game_states[chat_id]
+        _delete_game(chat_id)
         raise ApplicationHandlerStop()
     elif text == "انصراف از بازی":
-        del game_states[chat_id]
+        _delete_game(chat_id)
         await update.effective_message.reply_text("❌ بازی متوقف شد.")
         raise ApplicationHandlerStop()
     raise ApplicationHandlerStop()

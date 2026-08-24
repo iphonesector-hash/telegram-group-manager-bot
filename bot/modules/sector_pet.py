@@ -3,7 +3,7 @@ import datetime
 import random
 import html
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardButtonRequestUsers, ReplyKeyboardMarkup, Update, WebAppInfo
+from telegram import ForceReply, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardButtonRequestUsers, ReplyKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, ApplicationHandlerStop, filters
 
 from bot.database.session import get_session
@@ -210,8 +210,10 @@ async def sector_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             action=query.data.split(":",1)[1];await query.answer()
             if action in ("rename","talk"):
                 context.user_data["sector_pending"]=action
-                prompt="اسم جدید سکتورت را بفرست:" if action=="rename" else "پیامت را برای سکتور بنویس:"
-                await query.message.reply_text(prompt,reply_markup=ReplyKeyboardMarkup([[KeyboardButton("لغو عملیات",style="danger")]],resize_keyboard=True,one_time_keyboard=True))
+                # ForceReply keeps the operation encoded in Telegram's replied
+                # message, so it also survives a serverless cold start.
+                prompt="[SECTOR_RENAME] اسم جدید سکتورت را بفرست:" if action=="rename" else "[SECTOR_TALK] پیامت را برای سکتور بنویس:"
+                await query.message.reply_text(prompt,reply_markup=ForceReply(selective=True,input_field_placeholder="لغو برای انصراف"))
             else:
                 context.user_data["sector_pending"]=action
                 title,markup=user_picker(action);await query.message.reply_text(title,reply_markup=markup)
@@ -330,7 +332,7 @@ async def sector_rob(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def set_sector_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != 5147526780:
+    if update.effective_user.id != int(os.getenv("OWNER_ID", "5147526780")):
         raise ApplicationHandlerStop()
     source=update.effective_message.reply_to_message or update.effective_message
     entities=list(source.entities or [])+list(source.caption_entities or [])
@@ -358,6 +360,9 @@ async def capture_sector_emoji(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def pending_text(update:Update,context:ContextTypes.DEFAULT_TYPE):
     action=context.user_data.get("sector_pending")
+    replied=(getattr(update.effective_message,"reply_to_message",None) and update.effective_message.reply_to_message.text) or ""
+    if not action and "[SECTOR_RENAME]" in replied:action="rename"
+    if not action and "[SECTOR_TALK]" in replied:action="talk"
     if not action:return
     text=(update.effective_message.text or "").strip()
     if text=="لغو عملیات":
@@ -371,6 +376,8 @@ async def pending_text(update:Update,context:ContextTypes.DEFAULT_TYPE):
 async def selected_user(update:Update,context:ContextTypes.DEFAULT_TYPE):
     shared=update.effective_message.users_shared
     action=context.user_data.pop("sector_pending",None)
+    if not action and shared:
+        action={9101:"play",9102:"rob"}.get(shared.request_id)
     if not shared or action not in ("play","rob") or not shared.users:return
     target_id=shared.users[0].user_id
     if target_id==update.effective_user.id:
@@ -420,4 +427,5 @@ async def execute_robbery(update,attacker_id,target_id,target_name):
 
 
 def get_handlers():
-    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(5147526780)&filters.Entity("custom_emoji"),capture_sector_emoji),MessageHandler(filters.StatusUpdate.USERS_SHARED,selected_user),MessageHandler(filters.TEXT&~filters.COMMAND,pending_text),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social|ui:|quests|skills|evolution|art|claim_daily|story|jobs|job:|path:)")]
+    owner_id=int(os.getenv("OWNER_ID", "5147526780"))
+    return [CommandHandler("sector", sector_command),CommandHandler("sectorname",sector_name),CommandHandler("sectortalk",sector_talk),CommandHandler("sectorplay",sector_play),CommandHandler("sectorrob",sector_rob),CommandHandler("setsectoremoji",set_sector_emoji),MessageHandler(filters.User(owner_id)&filters.Entity("custom_emoji"),capture_sector_emoji),MessageHandler(filters.StatusUpdate.USERS_SHARED,selected_user),MessageHandler(filters.TEXT&~filters.COMMAND,pending_text),CallbackQueryHandler(sector_callback, pattern=r"^sector_(pet|action:|social|ui:|quests|skills|evolution|art|claim_daily|story|jobs|job:|path:)")]

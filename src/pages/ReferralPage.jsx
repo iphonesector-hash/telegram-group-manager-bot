@@ -5,7 +5,7 @@ export default function ReferralPage() {
   var tgUser = ctx.tgUser
   var dbUser = ctx.dbUser
   var showToast = ctx.showToast
-  var refLink = 'https://t.me/SectorLandBot?start=ref_' + (tgUser ? tgUser.id : '00000')
+  var refLink = 'https://t.me/iSectorlandbot?start=ref_' + (tgUser ? tgUser.id : '00000')
 
   function copyLink() {
     if (navigator.clipboard) {

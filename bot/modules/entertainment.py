@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 from bot.modules.ai import get_ai_response, get_sector_prompt, get_new_joke as get_ai_joke, get_new_riddle as get_ai_riddle, get_new_fact, get_motivation, hafez_fortune
 from bot.utils.keyboards import get_games_menu, get_tod_menu, get_joke_categories_menu, get_entertainment_menu
+from bot.services.runtime_state import delete_state, get_state, set_state
 
 riddle_answers = {}
 
@@ -40,6 +41,7 @@ async def get_riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = parts[1].replace("پاسخ:", "").strip()
         context.user_data["recent_riddles"] = (recent + [riddle])[-12:]
         riddle_answers[update.effective_chat.id] = answer
+        set_state("riddle", str(update.effective_chat.id), {"answer": answer})
         await update.effective_message.reply_text(f"❓ {riddle}\n\n💡 برای دیدن جواب بنویسید: جواب معما یا جوابش؟", parse_mode=None)
     else:
         await get_ai_riddle(update, context)
@@ -47,9 +49,12 @@ async def get_riddle_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def reveal_riddle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    if chat_id in riddle_answers:
-        await update.effective_message.reply_text(f"✅ پاسخ معما:\n\n{riddle_answers[chat_id]}", parse_mode=None)
-        del riddle_answers[chat_id]
+    durable = get_state("riddle", str(chat_id)) or {}
+    answer = riddle_answers.get(chat_id) or durable.get("answer")
+    if answer:
+        await update.effective_message.reply_text(f"✅ پاسخ معما:\n\n{answer}", parse_mode=None)
+        riddle_answers.pop(chat_id, None)
+        delete_state("riddle", str(chat_id))
     else:
         await update.effective_message.reply_text("❌ معمایی فعال نیست. ابتدا یک معما بگیرید.")
     raise ApplicationHandlerStop()
@@ -82,9 +87,6 @@ async def rps_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
-    # use repr to show invisible characters in logs
-    print(f"[TRACE] ent:ent_button_handler | text: {repr(text)}")
-
     if text == "😂 جوک":
         await update.effective_message.reply_text("🤣 دسته جوک:", reply_markup=get_joke_categories_menu())
     elif text in ["😂 خنده‌دار", "😈 شیطنتی", "🧠 هوشمندانه", "🤣 کوتاه"]:
@@ -107,34 +109,39 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif text == "🎲 تصادفی":
         await get_tod_action(update, "random")
     elif text == "🤝 پیوستن به بازی":
-        players = context.chat_data.setdefault("tod_players", [])
+        saved=get_state("tod",str(update.effective_chat.id)) or {}
+        players = context.chat_data.setdefault("tod_players", saved.get("players",[]))
         user = update.effective_user
         if not any(item["id"] == user.id for item in players):
             players.append({"id": user.id, "name": user.first_name})
             message = f"✅ {user.first_name} به بازی پیوست. تعداد بازیکنان: {len(players)}"
         else:
             message = "ℹ️ قبلاً به بازی پیوسته‌ای."
+        set_state("tod",str(update.effective_chat.id),{"players":players,"turn":saved.get("turn",-1)})
         await update.effective_message.reply_text(message, reply_markup=get_tod_menu())
     elif text == "🏁 شروع بازی":
-        players = context.chat_data.get("tod_players", [])
+        saved=get_state("tod",str(update.effective_chat.id)) or {};players = context.chat_data.get("tod_players") or saved.get("players", [])
         if not players:
             await update.effective_message.reply_text("اول با دکمه «پیوستن به بازی» بازیکن‌ها را اضافه کنید.", reply_markup=get_tod_menu())
         else:
             context.chat_data["tod_turn"] = 0
+            set_state("tod",str(update.effective_chat.id),{"players":players,"turn":0})
             await update.effective_message.reply_text(f"🏁 بازی شروع شد؛ نوبت {players[0]['name']} است.", reply_markup=get_tod_menu())
             await get_tod_action(update, "random")
     elif text == "🔄 نوبت بعدی":
-        players = context.chat_data.get("tod_players", [])
+        saved=get_state("tod",str(update.effective_chat.id)) or {};players = context.chat_data.get("tod_players") or saved.get("players", [])
         if not players:
             await update.effective_message.reply_text("بازی فعالی وجود ندارد.", reply_markup=get_tod_menu())
         else:
-            turn = (int(context.chat_data.get("tod_turn", -1)) + 1) % len(players)
+            turn = (int(context.chat_data.get("tod_turn", saved.get("turn",-1))) + 1) % len(players)
             context.chat_data["tod_turn"] = turn
+            set_state("tod",str(update.effective_chat.id),{"players":players,"turn":turn})
             await update.effective_message.reply_text(f"🔄 نوبت {players[turn]['name']} است.", reply_markup=get_tod_menu())
             await get_tod_action(update, "random")
     elif text == "🛑 توقف":
         context.chat_data.pop("tod_players", None)
         context.chat_data.pop("tod_turn", None)
+        delete_state("tod",str(update.effective_chat.id))
         await update.effective_message.reply_text("🛑 بازی متوقف شد.", reply_markup=get_entertainment_menu())
     elif text == "💡 دانستنی":
         await get_new_fact(update, context)
@@ -161,7 +168,6 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         return
 
-    print(f"[TRACE] ent:ent_button_handler | handled | ApplicationHandlerStop")
     raise ApplicationHandlerStop()
 
 def get_handlers():

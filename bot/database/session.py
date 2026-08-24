@@ -74,10 +74,23 @@ def _require_database():
 
 def init_db():
     _require_database()
-    Base.metadata.create_all(engine)
-    # create_all does not add columns to an existing table. Keep this migration
-    # additive and idempotent so old Sector companions remain intact.
-    if engine.url.get_backend_name() == "postgresql":
+    if engine.url.get_backend_name() != "postgresql":
+        Base.metadata.create_all(engine)
+        print(f"✅ iSectorLand database ready ({engine.url.get_backend_name()}).")
+        return
+
+    # All cold starts share this transaction-level lock. Only the first one
+    # runs DDL; later instances perform one cheap version lookup and continue.
+    schema_version = "2026-08-24-runtime-state-v1"
+    with engine.begin() as connection:
+        connection.execute(text("SELECT pg_advisory_xact_lock(73190420260824)"))
+        connection.execute(text("CREATE TABLE IF NOT EXISTS isectorbot_schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"))
+        current = connection.execute(text("SELECT value FROM isectorbot_schema_meta WHERE key='schema_version'")).scalar()
+        if current == schema_version:
+            print("✅ iSectorLand database schema already current.")
+            return
+
+        Base.metadata.create_all(connection)
         statements = (
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS hunger INTEGER NOT NULL DEFAULT 80",
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS cleanliness INTEGER NOT NULL DEFAULT 80",
@@ -93,14 +106,21 @@ def init_db():
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS job TEXT",
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS job_started_at TIMESTAMPTZ",
             "ALTER TABLE isectorbot_sector_pets ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE",
-            "ALTER TABLE isectorbot_sector_pet_memories ENABLE ROW LEVEL SECURITY",
-            "ALTER TABLE isectorbot_sector_pet_social ENABLE ROW LEVEL SECURITY",
-            "ALTER TABLE isectorbot_sector_clans ENABLE ROW LEVEL SECURITY",
-            "ALTER TABLE isectorbot_sector_clan_members ENABLE ROW LEVEL SECURITY",
+            # Older deployments created a restrictive action CHECK which did
+            # not contain the newer care actions (notably sleep).  The service
+            # validates action names itself, so remove the stale DB constraint.
+            "ALTER TABLE isectorbot_sector_pet_actions DROP CONSTRAINT IF EXISTS isectorbot_sector_pet_actions_action_check",
         )
-        with engine.begin() as connection:
-            for statement in statements:
-                connection.execute(text(statement))
+        for statement in statements:
+            connection.execute(text(statement))
+        for table in (
+            "isectorbot_sector_pet_memories",
+            "isectorbot_sector_pet_social",
+            "isectorbot_sector_clans",
+            "isectorbot_sector_clan_members",
+        ):
+            connection.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))
+        connection.execute(text("INSERT INTO isectorbot_schema_meta(key,value) VALUES ('schema_version',:version) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value"),{"version":schema_version})
     print(f"✅ iSectorLand database ready ({engine.url.get_backend_name()}).")
 
 

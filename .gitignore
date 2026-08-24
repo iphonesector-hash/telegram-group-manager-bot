@@ -2,6 +2,8 @@ node_modules
 dist
 .env
 .env.local
+.vercel/
+generated_images/
 
 __pycache__/
 *.pyc

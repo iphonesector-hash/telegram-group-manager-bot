@@ -2,6 +2,7 @@ import os
 import hmac
 import logging
 import base64
+import asyncio
 import psycopg2
 from fastapi import Request, HTTPException, Header
 from telegram import Update, Bot, WebAppInfo, MenuButtonWebApp
@@ -18,7 +19,7 @@ logging.getLogger("telegram.request").setLevel(logging.WARNING)
 
 from api.main import app, require_user, serialize_purchase, serialize_order
 from bot.main import build_application
-from bot.database.session import engine, get_session
+from bot.database.session import engine, get_session, init_db
 from bot.database.models import Purchase, Order
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
@@ -26,6 +27,10 @@ BOT_BUILD = "2026.08.24-fast-keyboard"
 REQUIRED_MEMBERSHIP_CHAT = os.getenv("REQUIRED_MEMBERSHIP_CHAT", "@sectorland")
 REQUIRED_MEMBERSHIP_URL = os.getenv("REQUIRED_MEMBERSHIP_URL", "https://t.me/sectorland")
 _menu_registered = False
+_telegram_app = None
+_telegram_app_lock = asyncio.Lock()
+_database_ready = False
+OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
 
 
 async def _register_default_menu(bot: Bot) -> bool:
@@ -33,7 +38,7 @@ async def _register_default_menu(bot: Bot) -> bool:
     await bot.set_chat_menu_button(menu_button=button)
     # The owner had an older per-chat override. Per-chat values take priority
     # over the default menu, so keep the commander's launcher in sync too.
-    await bot.set_chat_menu_button(chat_id=5147526780, menu_button=button)
+    await bot.set_chat_menu_button(chat_id=OWNER_ID, menu_button=button)
     return True
 
 
@@ -79,14 +84,17 @@ async def miniapp_membership(user_id: int, init_data: Optional[str] = Header(Non
 
 
 @app.get("/api/miniapp-status")
-async def miniapp_status():
+async def miniapp_status(init_data: Optional[str] = Header(None, alias="init-data")):
     """Read the launcher configuration currently stored by Telegram."""
+    user = require_user(init_data)
+    if int(user.get("id", 0)) != OWNER_ID:
+        raise HTTPException(status_code=403, detail="admin access required")
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token:
         raise HTTPException(status_code=503, detail="bot token not configured")
     async with Bot(token=token) as bot:
         default_button = await bot.get_chat_menu_button()
-        owner_button = await bot.get_chat_menu_button(chat_id=5147526780)
+        owner_button = await bot.get_chat_menu_button(chat_id=OWNER_ID)
         def info(button):
             web_app = getattr(button, "web_app", None)
             return {"type": button.type, "text": getattr(button, "text", None), "url": getattr(web_app, "url", None)}
@@ -94,7 +102,8 @@ async def miniapp_status():
 
 
 @app.post("/api/miniapp-diagnostic")
-async def miniapp_diagnostic(request: Request):
+async def miniapp_diagnostic(request: Request, init_data: Optional[str] = Header(None, alias="init-data")):
+    require_user(init_data)
     data = await request.json()
     # No Telegram initData or personal information is logged here.
     safe = {key: data.get(key) for key in ("bridge", "user", "init", "version", "platform", "phase")}
@@ -124,7 +133,6 @@ async def user_photo(user_id: int, init_data: Optional[str] = Header(None, alias
         return {"photo_url": None}
 
 
-@app.get("/api/orders/{user_id}")
 async def miniapp_orders(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data, user_id)
     session = get_session()
@@ -141,7 +149,6 @@ async def miniapp_orders(user_id: int, init_data: Optional[str] = Header(None, a
         session.close()
 
 
-@app.get("/api/transactions/{user_id}")
 async def miniapp_transactions(user_id: int, init_data: Optional[str] = Header(None, alias="init-data")):
     require_user(init_data, user_id)
     session = get_session()
@@ -189,7 +196,7 @@ async def _application_self_test():
     test = {"ok": False}
     telegram_app = None
     try:
-        telegram_app = build_application()
+        telegram_app = build_application(initialize_database=False)
         await telegram_app.initialize()
         test["initialized"] = True
         fake = Update.de_json({"update_id": 999999999}, telegram_app.bot)
@@ -207,10 +214,10 @@ async def _application_self_test():
     return test
 
 
-@app.get("/api/setup-webhook")
+@app.post("/api/setup-webhook")
 async def setup_webhook(request: Request):
     configured = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
-    supplied = request.query_params.get("key", "")
+    supplied = request.headers.get("x-setup-secret", "")
     if not configured or not hmac.compare_digest(supplied, configured):
         raise HTTPException(status_code=401, detail="unauthorized")
 
@@ -222,6 +229,9 @@ async def setup_webhook(request: Request):
     result = {"ok": False, "database_ok": False, "telegram_ok": False, "menu_registered": False}
 
     try:
+        # Explicit maintenance operation: schema changes happen here, never in
+        # the user-facing webhook request path.
+        await asyncio.to_thread(init_db)
         with engine.connect() as conn:
             result["database_ok"] = conn.execute(text("select 1")).scalar() == 1
     except Exception as exc:
@@ -260,7 +270,7 @@ async def setup_webhook(request: Request):
     result["application_self_test"] = await _application_self_test()
 
     try:
-        webhook_url = "https://telegram-group-manager-bot-iota.vercel.app/api/telegram"
+        webhook_url = f"{MINI_APP_URL.rstrip('/')}/api/telegram"
         bot = Bot(token=token)
         me = await bot.get_me()
         result["menu_registered"] = await _register_default_menu(bot)
@@ -286,6 +296,23 @@ async def setup_webhook(request: Request):
     return result
 
 
+async def _get_telegram_application():
+    """Return one initialized PTB application per warm serverless instance."""
+    global _telegram_app, _database_ready
+    if _telegram_app is not None:
+        return _telegram_app
+    async with _telegram_app_lock:
+        if _telegram_app is not None:
+            return _telegram_app
+        if not _database_ready:
+            await asyncio.to_thread(init_db)
+            _database_ready = True
+        app_instance = build_application(initialize_database=False)
+        await app_instance.initialize()
+        _telegram_app = app_instance
+        return _telegram_app
+
+
 @app.post("/api/telegram")
 async def telegram_webhook(request: Request):
     global _menu_registered
@@ -302,18 +329,14 @@ async def telegram_webhook(request: Request):
         raise HTTPException(status_code=503, detail="bot runtime not fully configured")
 
     payload = await request.json()
-    telegram_app = build_application()
-    await telegram_app.initialize()
-    try:
-        if not _menu_registered:
-            try:
-                _menu_registered = await _register_default_menu(telegram_app.bot)
-            except Exception as exc:
-                print(f"Default Mini App menu registration failed: {exc}")
+    telegram_app = await _get_telegram_application()
+    if not _menu_registered:
+        try:
+            _menu_registered = await _register_default_menu(telegram_app.bot)
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Default menu registration failed: %s", type(exc).__name__)
 
-        update = Update.de_json(payload, telegram_app.bot)
-        await telegram_app.process_update(update)
-    finally:
-        await telegram_app.shutdown()
+    update = Update.de_json(payload, telegram_app.bot)
+    await telegram_app.process_update(update)
 
     return {"ok": True}

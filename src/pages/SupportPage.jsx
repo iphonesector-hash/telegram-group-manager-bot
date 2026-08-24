@@ -5,8 +5,8 @@ export default function SupportPage() {
   var [openIdx, setOpenIdx] = useState(null)
 
   var channels = [
-    { icon: '📢', label: 'کانال اصلی',   link: 'https://t.me/Vaslchannel' },
-    { icon: '👥', label: 'گروه سکتور',   link: 'https://t.me/Vaslgroupp' },
+    { icon: '📢', label: 'کانال اصلی',   link: 'https://t.me/sectorland' },
+    { icon: '👥', label: 'گروه سکتور',   link: 'https://t.me/sectorland' },
     { icon: '🌐', label: 'سکتورلند',     link: 'https://t.me/sectorland' },
     { icon: '📩', label: 'تماس ادمین',   link: 'https://t.me/sector_ad' },
   ]

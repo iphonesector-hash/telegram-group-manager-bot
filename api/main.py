@@ -22,7 +22,11 @@ from bot.modules.ai import get_ai_response, get_sector_prompt, load_ai_history, 
 from bot.services import sector_pet as sector_service
 
 app = FastAPI(title="iSectorLand Unified API", version="3.2")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
+_allowed_origins = [item.strip().rstrip("/") for item in os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://telegram-group-manager-bot-iota.vercel.app,https://telegram-group-manager-bot-i-sector.vercel.app",
+).split(",") if item.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_allowed_origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type", "init-data"])
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
@@ -954,8 +958,23 @@ async def game_leaderboard(game_key:str,period:str="weekly",init_data:Optional[s
 async def get_user_groups(user_id:int,init_data:Optional[str]=Header(None,alias="init-data")):
     require_user(init_data,user_id); session=get_session()
     try:
-        groups=session.query(Group).filter(Group.is_active.is_(True)).limit(10).all()
-        return [{"id":g.id,"title":g.title,"settings":{"welcome":g.welcome_enabled,"ai":g.ai_enabled,"antispam":g.antispam_enabled}} for g in groups]
+        groups=session.query(Group).filter(Group.is_active.is_(True)).limit(25).all()
+        visible=[]
+        # Group membership is owned by Telegram, not this database. Verify it
+        # before disclosing group names/settings; never return unrelated rows.
+        async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
+            for group in groups:
+                try:
+                    response=await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",params={"chat_id":group.id,"user_id":user_id})
+                    payload=response.json();member=(payload.get("result") or {}) if payload.get("ok") else {}
+                    status=member.get("status","")
+                    if status not in {"creator","administrator","member","restricted"}:continue
+                    if status=="restricted" and not member.get("is_member",False):continue
+                    visible.append({"id":group.id,"title":group.title,"settings":{"welcome":group.welcome_enabled,"ai":group.ai_enabled,"antispam":group.antispam_enabled}})
+                    if len(visible)>=10:break
+                except (httpx.HTTPError, ValueError):
+                    continue
+        return visible
     finally: session.close()
 
 

@@ -97,6 +97,15 @@ class AppSetting(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 
+class RuntimeState(Base):
+    """Small durable state for serverless multi-step Telegram interactions."""
+    __tablename__ = "isectorbot_runtime_state"
+    scope = Column(String, primary_key=True)
+    state_key = Column(String, primary_key=True)
+    value = Column(JSON, nullable=False, default=dict)
+    updated_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
 class Order(Base):
     __tablename__ = "isectorbot_orders"
 

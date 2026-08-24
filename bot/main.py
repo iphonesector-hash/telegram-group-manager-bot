@@ -43,11 +43,14 @@ async def setup_telegram_ui(app: Application):
         print(f"⚠️ Could not register default Mini App menu button: {exc}")
 
 
-def build_application() -> Application:
+def build_application(*, initialize_database: bool = True) -> Application:
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is not configured")
 
-    init_db()
+    # Schema creation/migrations must never run for every Telegram update.  The
+    # webhook runtime initializes it once; CLI polling keeps the old behaviour.
+    if initialize_database:
+        init_db()
     app = Application.builder().token(BOT_TOKEN).post_init(setup_telegram_ui).build()
 
     for h in get_release_announcement_handlers(): app.add_handler(h, group=-20)
