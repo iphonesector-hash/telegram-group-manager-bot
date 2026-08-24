@@ -107,6 +107,7 @@ for(const marker of ['mission-hub','mission-next','MissionTimer','SectorRankTrac
 expect(gamesPage.includes('arcade-card__icon'), 'arcade games must use the graphical Sector icon system')
 for(const chapter of ['بیداری در مه آهنی','پایگاه خاموش','معادن کریستالی','شهر ربات‌های خاموش','مهاجمان نِبولا','اتحاد سکتورها','حافظه گمشده','هسته تاریک'])expect(narrativeEngine.includes(chapter),`missing narrative chapter: ${chapter}`)
 for(const marker of ['WORLDS','CHAPTERS','objective_state','story:world','story:scene_started_at'])expect(narrativeEngine.includes(marker),`missing narrative engine capability: ${marker}`)
+expect(narrativeEngine.includes('if action=="material" and target:'), 'story objectives must not parse a missing material target')
 for(const marker of ['sector-narrative__chapters','sector-narrative__alert','sector-narrative__rename','گفت‌وگو'])expect(narrativeHub.includes(marker),`missing one-page narrative UI: ${marker}`)
 expect(sectorRoutes.includes('sector_story.snapshot'), 'Sector v2 payload must expose live narrative state')
 expect(sectorRoutes.includes('inventory["story:chat_seen"]=datetime.datetime.utcnow().isoformat()'), 'Sector chat must timestamp story-aware objectives')

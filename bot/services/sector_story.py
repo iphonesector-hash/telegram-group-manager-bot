@@ -108,6 +108,11 @@ def _counts(session,user_id,pet):
 def objective_state(session,user_id,pet,item):
     d=_counts(session,user_id,pet);action=item["action"];target=item.get("target");actions=d["actions"];games=d["games"];purchases=d["purchases"];inv=d["inv"]
     care_count=sum(1 for x in actions if x.action!="story");today_care=sum(1 for x in d["today_actions"] if x.action!="story")
+    material_key="";material_goal=0
+    if action=="material" and target:
+        material_parts=str(target).split(":",1);material_key=material_parts[0]
+        try:material_goal=max(1,int(material_parts[1] if len(material_parts)>1 else 1))
+        except (TypeError,ValueError):material_goal=1
     def happened_after(key):
         try:
             stamp=datetime.datetime.fromisoformat(str(inv.get(key) or "").replace("Z","+00:00"))
@@ -122,7 +127,7 @@ def objective_state(session,user_id,pet,item):
       "continue":True,"rename":str(pet.name or "").strip() not in {"","سکتور","سکتور کوچولو"},
       "care":any(x.action==target for x in actions),"daily_care":today_care>=int(target or 3),"game":len(games)>=1,
       "games_total":len(games)>=int(target or 1),"game_score":max([int(x.score or 0) for x in games] or [0])>=int(target or 0),
-      "base":int(inv.get("base:"+str(target),0) or 0)>=1,"material":int(inv.get("material:"+str(target).split(":")[0],0) or 0)>=int(str(target).split(":")[-1]),
+      "base":int(inv.get("base:"+str(target),0) or 0)>=1,"material":bool(material_key) and int(inv.get("material:"+material_key,0) or 0)>=material_goal,
       "equip":any(x.get("slot")==target for x in d["equipped"]),"rarity":any(x.get("rarity") in {"rare","epic","legendary","mythic"} for x in d["owned"]),
       "rarity_equipped":any(x.get("rarity") in {"legendary","mythic"} for x in d["equipped"]),"gear_level":max([int(inv.get("gear_level:"+str(k),1) or 1) for k in d["appearance"].values()] or [0])>=int(target or 2),
       "shop":any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":any(x.action=="train" for x in actions) and int(pet.health or 0)>=60,
