@@ -1,21 +1,13 @@
 import { useEffect, useState } from 'react'
 import Avatar from '../components/ui/Avatar'
 import { useAppContext } from '../App'
+import SectorRankTrack, {rankFor} from '../components/ui/SectorRankTrack'
 
 function memberSince(value) {
   if (!value) return '—'
   try {
     return new Date(value).toLocaleDateString('fa-IR', { year:'numeric', month:'long' })
   } catch (_) { return '—' }
-}
-
-function rankName(level) {
-  if (level >= 30) return 'Legend Sector'
-  if (level >= 24) return 'Galaxy Elite'
-  if (level >= 18) return 'Diamond Master'
-  if (level >= 12) return 'Gold Champion'
-  if (level >= 6) return 'Silver Explorer'
-  return 'Bronze Newbie'
 }
 
 export default function ProfilePage() {
@@ -31,7 +23,7 @@ export default function ProfilePage() {
   }, [refreshUser])
 
   var level = Number(dbUser.level || 1)
-  var rank = rankName(level)
+  var rank = rankFor(level).title
   var menuItems = [
     { icon: '📦', label: 'سفارش‌هام', fn: function() { navigate('orders') } },
     { icon: '👥', label: 'معرفی دوستان', fn: function() { navigate('referral') } },
@@ -40,6 +32,7 @@ export default function ProfilePage() {
     { icon: '🌐', label: 'سایر امکانات ربات', fn: function() { navigate('features') } },
     { icon: '🎯', label: 'ماموریت‌های من', fn: function() { navigate('missions') } },
     { icon: '🤖', label: 'سکتور کوچولوی من', fn: function() { navigate('sectorpet') } },
+    { icon: '⚙️', label: 'تنظیمات کامل مینی‌اپ', fn: function() { navigate('settings') } },
   ]
   if (dbUser.is_admin) menuItems.unshift({ icon:'👑', label:'پنل مدیریت SectorLand', fn:function(){navigate('admin')} })
 
@@ -73,10 +66,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="glass" style={{padding:'11px 11px 9px',marginBottom:14,overflow:'hidden'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><b style={{fontSize:12}}>🏆 مسیر رتبه تو</b><span style={{fontSize:10,color:'var(--gold)'}}>{rank}</span></div>
-        <img src="/assets/sector/rank-badges.webp" alt="Sector rank badges" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
-      </div>
+      <SectorRankTrack level={level}/>
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:16}}>
         {profileStats.map(function(s,i){return <div key={i} className="stat-pill"><div style={{fontSize:20}}>{s.icon}</div><div style={{fontWeight:800,fontSize:16,marginTop:2}}>{s.val}</div><div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{s.label}</div></div>})}

@@ -23,6 +23,7 @@ import ToolsPage from './pages/ToolsPage'
 import MissionsPage from './pages/MissionsPage'
 import SectorPetPage from './pages/SectorPetPage'
 import WhatsNewPage from './pages/WhatsNewPage'
+import SettingsPage from './pages/SettingsPage'
 
 var AppContext = createContext(null)
 export function useAppContext() { return useContext(AppContext) }
@@ -43,9 +44,10 @@ var PAGES = {
   sectorpet: SectorPetPage,
   assets: SectorPetPage,
   whatsnew: WhatsNewPage,
+  settings: SettingsPage,
 }
 
-var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو', assets:'دارایی‌های من', whatsnew:'چه خبر؟' }
+var PAGE_TITLES = { shop:'فروشگاه', wallet:'کیف پول و بانک', games:'بازی‌ها و جوایز', profile:'پروفایل', orders:'سفارش‌ها', referral:'دعوت دوستان', support:'پشتیبانی', features:'سایر امکانات', admin:'پنل مدیریت', tools:'ابزارها و دستیار', missions:'ماموریت‌ها', sectorpet:'سکتور کوچولو', assets:'دارایی‌های من', whatsnew:'چه خبر؟', settings:'تنظیمات' }
 
 var EMPTY_USER = {
   id: 0,
@@ -104,6 +106,10 @@ export default function App() {
   var [membershipAllowed, setMembershipAllowed] = useState(null)
   var [membershipError, setMembershipError] = useState('')
   var [membershipChecking, setMembershipChecking] = useState(false)
+
+  useEffect(function(){
+    try{var saved=JSON.parse(localStorage.getItem('sector-ui-settings')||'{}'),root=document.documentElement;root.dataset.motion=saved.motion===false?'off':'on';root.dataset.compact=saved.compact?'on':'off';root.dataset.text=saved.largeText?'large':'normal';root.dataset.dataSaver=saved.dataSaver?'on':'off'}catch(_){}
+  },[])
 
   var navigate = useCallback(function(to) {
     if (to === page) return

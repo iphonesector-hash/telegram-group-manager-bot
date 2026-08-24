@@ -11,6 +11,12 @@ const ARCADE_GAMES = [
   {id:'tetris',name:'تتریس لمسی',icon:'🧱',desc:'چیدن بلوک‌ها با کنترل موبایل',type:'آرکید',url:'https://lovehub-games.vercel.app/games/tetris-touch/'},
   {id:'memory',name:'بازی حافظه',icon:'🧠',desc:'پیداکردن کارت‌های مشابه',type:'فکری',url:'https://lovehub-games.vercel.app/games/memory/src/'},
   {id:'mines',name:'مین‌یاب',icon:'💣',desc:'معمای کلاسیک و منطقی مین‌ها',type:'فکری',url:'https://lovehub-games.vercel.app/games/minesweeper/'},
+  {id:'hextris',name:'Hextris',icon:'⬡',desc:'معمای سریع شش‌ضلعی، متن‌باز GPLv3',type:'آرکید',url:'https://hextris.github.io/hextris/'},
+  {id:'brickit',name:'BrickIt',icon:'◫',desc:'شکستن آجرها با کنترل لمسی، متن‌باز MIT',type:'آرکید',url:'https://tvanas.nl/brickit/'},
+  {id:'bounceit',name:'BounceIt',icon:'⬆',desc:'پرش بی‌پایان و رکوردشکنی لمسی، متن‌باز MIT',type:'اکشن',url:'https://tvanas.nl/bounceit/'},
+  {id:'floodit',name:'FloodIt',icon:'◉',desc:'معمای رنگی سبک و سریع، متن‌باز MIT',type:'فکری',url:'https://tvanas.nl/floodit/'},
+  {id:'flappy',name:'Flappy Bird',icon:'➤',desc:'پرواز لمسی و ثبت رکورد، متن‌باز MIT',type:'آرکید',url:'https://chandrakant-mane.github.io/JavaScript-Games/Games/flappy-bird-master/'},
+  {id:'tictactoe',name:'دوز دونفره',icon:'╳',desc:'رقابت دونفره روی یک گوشی، متن‌باز MIT',type:'فکری',url:'https://chandrakant-mane.github.io/JavaScript-Games/Games/tic%20tac%20toe/'},
 ]
 
 export default function GamesPage() {

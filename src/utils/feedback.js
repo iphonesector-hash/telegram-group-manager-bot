@@ -2,6 +2,8 @@ let audioContext
 
 export function haptic(tg,kind='light') {
   try {
+    const settings=JSON.parse(localStorage.getItem('sector-ui-settings')||'{}')
+    if(settings.haptics===false)return
     if (kind==='success'||kind==='error') tg?.HapticFeedback?.notificationOccurred(kind)
     else tg?.HapticFeedback?.impactOccurred(kind)
   } catch (_) {}
@@ -10,6 +12,8 @@ export function haptic(tg,kind='light') {
 export function playTone(kind='tap',enabled=true) {
   if (!enabled||typeof window==='undefined') return
   try {
+    const settings=JSON.parse(localStorage.getItem('sector-ui-settings')||'{}')
+    if(settings.sound===false)return
     const AudioCtx=window.AudioContext||window.webkitAudioContext
     if (!AudioCtx) return
     audioContext=audioContext||new AudioCtx()

@@ -2,20 +2,14 @@ import { useEffect, useState } from 'react'
 import Avatar from '../components/ui/Avatar'
 import SectorCelebration from '../components/ui/SectorCelebration'
 import { useAppContext } from '../App'
+import SectorRankTrack, {rankFor} from '../components/ui/SectorRankTrack'
 
 function formatDate(value) {
   if (!value) return '—'
   try { return new Date(value).toLocaleString('fa-IR') } catch (_) { return '—' }
 }
 
-function rankName(level) {
-  if (level >= 30) return 'Legend Sector'
-  if (level >= 24) return 'Galaxy Elite'
-  if (level >= 18) return 'Diamond Master'
-  if (level >= 12) return 'Gold Champion'
-  if (level >= 6) return 'Silver Explorer'
-  return 'Bronze Newbie'
-}
+function rankName(level) { return rankFor(level).title }
 
 export default function HomePage() {
   var ctx = useAppContext()
@@ -123,10 +117,7 @@ export default function HomePage() {
         <img src="/assets/sector/koochooloo-moods-v2.webp" alt="حالت‌های سکتور کوچولو" loading="lazy" style={{display:'block',width:'100%',aspectRatio:'3/1',objectFit:'cover'}} />
       </div>
 
-      <div className="glass" style={{padding:'12px 12px 9px',marginBottom:8,overflow:'hidden'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><b style={{fontSize:12}}>🏆 مسیر رتبه‌های Sector</b><span style={{fontSize:10,color:'var(--gold)'}}>{rankName(level)}</span></div>
-        <img src="/assets/sector/rank-badges.webp" alt="نشان‌های رتبه Sector" loading="lazy" style={{display:'block',width:'100%',borderRadius:10}} />
-      </div>
+      <SectorRankTrack level={level}/>
 
       <div className="glass" style={{padding:'12px 16px',marginBottom:8,display:'flex',alignItems:'center',gap:10,borderColor:'rgba(34,216,122,.2)'}}><span style={{fontSize:22}}>🔄</span><span style={{fontSize:13}}>این صفحه مستقیماً با حساب ربات SectorLand همگام است.</span></div>
 
