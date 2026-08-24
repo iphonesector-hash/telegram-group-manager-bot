@@ -14,20 +14,20 @@ VISUAL_STAGES=[
 ]
 
 CATALOG={
- "scrap_cap":{"title":"کلاه تعمیرگاه","slot":"head","category":"کلاه","cost":180,"rarity":"common","min_level":1,"theme":"scrap"},
+ "scrap_cap":{"title":"اسکنر عیب‌یاب","slot":"head","category":"ابزار","cost":180,"rarity":"common","min_level":1,"theme":"scrap"},
  "welder_mask":{"title":"ماسک جوشکاری","slot":"face","category":"صورت","cost":240,"rarity":"common","min_level":1,"theme":"industrial"},
  "patched_vest":{"title":"جلیقه وصله‌دار","slot":"body","category":"لباس","cost":300,"rarity":"common","min_level":1,"theme":"scrap"},
  "blue_shell":{"title":"بدنه آبی کلاسیک","slot":"body","category":"لباس","cost":700,"rarity":"rare","min_level":1,"theme":"legacy"},
  "gold_shell":{"title":"بدنه طلایی کلاسیک","slot":"body","category":"لباس","cost":2500,"rarity":"legendary","min_level":1,"theme":"legacy"},
  "tool_pack":{"title":"کوله ابزار","slot":"back","category":"پشت","cost":360,"rarity":"common","min_level":2,"theme":"industrial"},
  "wrench":{"title":"آچار مکانیک","slot":"hand","category":"دست","cost":420,"rarity":"common","min_level":2,"theme":"industrial"},
- "engineer_cap":{"title":"کلاه مهندس","slot":"head","category":"کلاه","cost":550,"rarity":"rare","min_level":5,"theme":"tech"},
+ "engineer_cap":{"title":"بازوی تعمیر نانو","slot":"head","category":"ابزار","cost":550,"rarity":"rare","min_level":5,"theme":"tech"},
  "round_goggles":{"title":"عینک اپتیک","slot":"face","category":"صورت","cost":620,"rarity":"rare","min_level":5,"theme":"tech"},
  "utility_jacket":{"title":"ژاکت فنی","slot":"body","category":"لباس","cost":760,"rarity":"rare","min_level":6,"theme":"tech"},
  "data_pad":{"title":"دیتاپد","slot":"hand","category":"دست","cost":850,"rarity":"rare","min_level":7,"theme":"tech"},
  "pulse_aura":{"title":"هاله پالس","slot":"aura","category":"هاله","cost":900,"rarity":"rare","min_level":8,"theme":"energy"},
- "commander_cap":{"title":"کلاه فرماندهی","slot":"head","category":"کلاه","cost":1200,"rarity":"epic","min_level":12,"theme":"command"},
- "captain_hat":{"title":"کلاه فرمانده کلاسیک","slot":"head","category":"کلاه","cost":1200,"rarity":"epic","min_level":1,"theme":"legacy"},
+ "commander_cap":{"title":"کنسول فرماندهی","slot":"head","category":"ماژول","cost":1200,"rarity":"epic","min_level":12,"theme":"command"},
+ "captain_hat":{"title":"مولد سپر تاکتیکی","slot":"head","category":"ماژول","cost":1200,"rarity":"epic","min_level":1,"theme":"legacy"},
  "mono_visor":{"title":"ویزور مونو","slot":"face","category":"صورت","cost":1350,"rarity":"epic","min_level":12,"theme":"command"},
  "officer_coat":{"title":"کت فرماندهی","slot":"body","category":"لباس","cost":1600,"rarity":"epic","min_level":14,"theme":"command"},
  "mini_cape":{"title":"شنل کوتاه","slot":"back","category":"پشت","cost":1500,"rarity":"epic","min_level":1,"theme":"command"},
@@ -42,11 +42,11 @@ CATALOG={
  "quantum_aura":{"title":"هاله کوانتومی","slot":"aura","category":"هاله","cost":3300,"rarity":"legendary","min_level":30,"theme":"quantum"},
  "star_aura":{"title":"هاله ستاره‌ای","slot":"aura","category":"هاله","cost":4900,"rarity":"mythic","min_level":1,"theme":"elite"},
  "orbit_bg":{"title":"مدار زمین","slot":"background","category":"پس‌زمینه","cost":3200,"rarity":"legendary","min_level":30,"theme":"space"},
- "elite_crown":{"title":"تاج سکتور","slot":"head","category":"کلاه","cost":4200,"rarity":"mythic","min_level":45,"theme":"elite"},
+ "elite_crown":{"title":"هسته کریستالی","slot":"head","category":"ماژول","cost":4200,"rarity":"mythic","min_level":45,"theme":"elite"},
  "royal_chassis":{"title":"بدنه رویال","slot":"body","category":"لباس","cost":5200,"rarity":"mythic","min_level":50,"theme":"elite"},
  "ion_wings":{"title":"بال یونی","slot":"back","category":"پشت","cost":5600,"rarity":"mythic","min_level":52,"theme":"elite"},
  "command_room_bg":{"title":"اتاق فرمان","slot":"background","category":"پس‌زمینه","cost":4600,"rarity":"mythic","min_level":45,"theme":"command"},
- "halo_core":{"title":"حلقه Core","slot":"head","category":"کلاه","cost":6800,"rarity":"mythic","min_level":70,"theme":"mythic"},
+ "halo_core":{"title":"میدان کوانتومی","slot":"head","category":"ماژول","cost":6800,"rarity":"mythic","min_level":70,"theme":"mythic"},
  "singularity_core":{"title":"هسته تکینگی","slot":"body","category":"لباس","cost":8500,"rarity":"mythic","min_level":75,"theme":"mythic"},
 }
 
@@ -90,7 +90,7 @@ def buy_item(session,user_id,item_key):
   if user_id!=OWNER_ID and int(user.coins or 0)<cost:return {'status':'error','message':'سکه کافی برای خرید این آیتم نداری.'}
   if user_id!=OWNER_ID:user.coins=int(user.coins or 0)-cost
   inv[ik]=True;pet.inventory=inv;session.add(Purchase(user_id=user_id,item_id=f'sector_cosmetic:{item_key}',amount=cost,status='coin_purchase'));legacy.remember(session,user_id,'shop',f"خرید {item['title']}",f"یک آیتم {item['rarity']} به مجموعه اضافه شد.",2)
- appearance=dict(pet.appearance or {});appearance[item['slot']]=item_key;pet.appearance=appearance;pet.updated_at=datetime.datetime.utcnow();return {'status':'success','message':f"{item['title']} خریداری و روی سکتور تجهیز شد.",'coins':int(user.coins or 0),'pet':serialize_pet(pet,int(user.coins or 0)),'shop':catalog_for(pet)}
+ pet.updated_at=datetime.datetime.utcnow();return {'status':'success','message':f"{item['title']} به دارایی‌های سکتور اضافه شد.",'coins':int(user.coins or 0),'pet':serialize_pet(pet,int(user.coins or 0)),'shop':catalog_for(pet)}
 
 def equip_item(session,user_id,item_key):
  item=CATALOG.get(item_key)
