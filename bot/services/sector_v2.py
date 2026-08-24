@@ -71,6 +71,10 @@ _power={"common":2,"rare":5,"epic":9,"legendary":15,"mythic":24}
 for _item in CATALOG.values():
  _base=_power.get(_item.get("rarity"),2);_item.setdefault("power",_base);_item.setdefault("defense",_base*2 if _item.get("slot")=="body" else _base);_item.setdefault("energy_bonus",_base if _item.get("slot") in {"back","aura"} else 0)
 
+# Normalize the old cosmetic lanes into explicit robot component slots.
+_slot_by_category={"ماژول":"core","لباس":"armor","دست":"arm","صورت":"visor","پشت":"back","هاله":"defense_module","ابزار":"tool","پس‌زمینه":"badge"}
+for _item in CATALOG.values():_item["slot"]=_slot_by_category.get(_item.get("category"),_item.get("slot"));_item.setdefault("accuracy",_item["power"] if _item["slot"] in {"visor","tool"} else 0);_item.setdefault("speed",_item["power"] if _item["slot"] in {"arm","back"} else 0);_item.setdefault("resistance",_item["defense"] if _item["slot"] in {"armor","defense_module"} else 0);_item.setdefault("tech",_item["power"] if _item["slot"] in {"core","tool"} else 0)
+
 def visual_stage_for(pet):
  level=legacy.level_from_xp(int(pet.xp or 0));days=int(pet.total_care_days or 0);selected=VISUAL_STAGES[0]
  for stage in VISUAL_STAGES:
@@ -83,11 +87,19 @@ def owned_keys(pet):
 def catalog_for(pet):
  owned=owned_keys(pet);appearance=dict(pet.appearance or {});equipped=set(appearance.values());level=legacy.level_from_xp(int(pet.xp or 0));order={'common':0,'rare':1,'epic':2,'legendary':3,'mythic':4};out=[]
  for key,item in CATALOG.items():
-  row={'id':key,**item,'owned':key in owned,'equipped':key in equipped,'locked':level<int(item.get('min_level',1))};out.append(row)
+  gear_level=max(1,min(10,int((pet.inventory or {}).get('gear_level:'+key,1) or 1)));wear=max(0,min(100,int((pet.inventory or {}).get('gear_wear:'+key,100) or 0)));timer=(pet.inventory or {}).get('gear_upgrade_timer:'+key);remaining=0
+  if timer:
+   try:remaining=max(0,int((datetime.datetime.fromisoformat(str(timer).replace('Z','+00:00')).replace(tzinfo=None)-datetime.datetime.utcnow()).total_seconds()))
+   except (TypeError,ValueError):remaining=0
+  scale=(100+(gear_level-1)*18)*max(35,wear);row={'id':key,**item,'owned':key in owned,'equipped':key in equipped,'locked':level<int(item.get('min_level',1)),'gear_level':gear_level,'wear':wear,'upgrading':remaining>0,'upgrade_remaining_seconds':remaining,'upgrade_cost':int(item['cost']*.35*gear_level),'upgrade_materials':max(1,gear_level//2),'upgrade_seconds':gear_level*1800,'effective_power':max(1,int(item['power']*scale//10000)),'effective_defense':max(0,int(item['defense']*scale//10000))};out.append(row)
  return sorted(out,key=lambda r:(order.get(r['rarity'],9),r['cost'],r['title']))
 
 def serialize_pet(pet,coins=0):
- d=legacy.serialize_pet(pet,coins);appearance=dict(pet.appearance or {});inv=dict(pet.inventory or {});equipped=[CATALOG[x] for x in appearance.values() if x in CATALOG];workshop=int(inv.get('base:workshop',0) or 0);charger=int(inv.get('base:charger',0) or 0);power=sum(int(x.get('power',0)) for x in equipped)+workshop*2;defense=sum(int(x.get('defense',0)) for x in equipped)+workshop*3;energy_bonus=sum(int(x.get('energy_bonus',0)) for x in equipped)+charger*5;d['visual_stage']=visual_stage_for(pet);d['owned_cosmetics']=sorted(owned_keys(pet));d['equipment_stats']={'power':power,'defense':defense,'energy_bonus':energy_bonus,'tier':'اسطوره‌ای' if power>=70 else 'نخبه' if power>=40 else 'پیشرفته' if power>=20 else 'پایه'};d['base_perks']={'game_xp_percent':int(inv.get('base:lab',0) or 0)*5,'mission_bonus_percent':int(inv.get('base:command',0) or 0)*5,'material_bonus':int(inv.get('base:storage',0) or 0)};return d
+ d=legacy.serialize_pet(pet,coins);appearance=dict(pet.appearance or {});inv=dict(pet.inventory or {});rows={x['id']:x for x in catalog_for(pet)};equipped=[rows[x] for x in appearance.values() if x in rows];workshop=int(inv.get('base:workshop',0) or 0);charger=int(inv.get('base:charger',0) or 0);power=sum(x['effective_power'] for x in equipped)+workshop*2;defense=sum(x['effective_defense'] for x in equipped)+workshop*3;energy_bonus=sum(int(x.get('energy_bonus',0))*(100+(x['gear_level']-1)*12)//100 for x in equipped)+charger*5;accuracy=sum(int(x.get('accuracy',0)) for x in equipped);speed=sum(int(x.get('speed',0)) for x in equipped);resistance=sum(int(x.get('resistance',0)) for x in equipped);tech=sum(int(x.get('tech',0)) for x in equipped);themes={}
+ for x in equipped:themes[x.get('theme','standard')]=themes.get(x.get('theme','standard'),0)+1
+ set_bonus=next(({'theme':k,'count':v,'title':f'ست {k}','bonus_percent':15 if v>=4 else 5} for k,v in themes.items() if v>=2),None)
+ if set_bonus:power=power*(100+set_bonus['bonus_percent'])//100;defense=defense*(100+set_bonus['bonus_percent'])//100
+ score=power*3+defense*2+energy_bonus+accuracy+speed+resistance+tech;d['visual_stage']=visual_stage_for(pet);d['owned_cosmetics']=sorted(owned_keys(pet));d['equipment_stats']={'power':power,'defense':defense,'energy_bonus':energy_bonus,'accuracy':accuracy,'speed':speed,'resistance':resistance,'tech':tech,'power_score':score,'set_bonus':set_bonus,'tier':'اسطوره‌ای' if score>=550 else 'نخبه' if score>=300 else 'پیشرفته' if score>=120 else 'پایه'};d['base_perks']={'game_xp_percent':int(inv.get('base:lab',0) or 0)*5,'mission_bonus_percent':int(inv.get('base:command',0) or 0)*5,'material_bonus':int(inv.get('base:storage',0) or 0)};return d
 
 def perform_action(session,user_id,action):
  result=legacy.perform_action(session,user_id,action)

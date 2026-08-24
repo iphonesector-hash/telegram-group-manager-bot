@@ -243,8 +243,11 @@ async def sector_v2_leaderboard(user_id: int, init_data: Optional[str] = Header(
     await _guard(user_id, init_data)
     session = get_session()
     try:
-        rows = session.query(SectorPet, User).join(User, User.id == SectorPet.user_id).order_by(SectorPet.xp.desc()).limit(30).all()
-        return [{"rank":i+1,"name":pet.name,"owner":user.first_name,"level":legacy.level_from_xp(pet.xp),"xp":int(pet.xp or 0),"path":pet.evolution_path} for i,(pet,user) in enumerate(rows)]
+        rows = session.query(SectorPet, User).join(User, User.id == SectorPet.user_id).limit(100).all();result=[]
+        for pet,user in rows:result.append({"name":pet.name,"owner":user.first_name,"level":legacy.level_from_xp(pet.xp),"xp":int(pet.xp or 0),"path":pet.evolution_path,"power_score":int(sector_v2.serialize_pet(pet).get("equipment_stats",{}).get("power_score",0))})
+        result.sort(key=lambda x:(x["power_score"],x["xp"]),reverse=True)
+        for i,row in enumerate(result[:30]):row["rank"]=i+1
+        return result[:30]
     finally:
         session.close()
 

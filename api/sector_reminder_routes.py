@@ -11,7 +11,7 @@ from telegram.error import Forbidden
 from api.main import app
 from bot.database.models import RuntimeState, SectorPet, User
 from bot.database.session import get_session
-from bot.services import sector_pet
+from bot.services import sector_expansion, sector_pet
 
 log=logging.getLogger(__name__)
 
@@ -33,6 +33,18 @@ async def sector_reminders(request:Request):
         rows=(session.query(SectorPet,User).join(User,User.id==SectorPet.user_id).filter(SectorPet.notifications_enabled.is_(True)).order_by(SectorPet.last_interaction.asc()).limit(250).all())
         states={row.state_key:row for row in session.query(RuntimeState).filter(RuntimeState.scope=='sector_reminder').all()}
         for pet,user in rows:
+            before=dict(pet.inventory or {})
+            completed=[]
+            for key,value in before.items():
+                if not key.startswith('gear_upgrade_timer:') or sector_expansion._remaining(value,now)>0:continue
+                item_key=key.split(':',1)[1]
+                if before.get('gear_pending:'+item_key):completed.append(item_key)
+            if completed:
+                sector_expansion.normalize_pet(pet)
+                titles=[sector_expansion.sector_v2.CATALOG.get(key,{}).get('title',key) for key in completed]
+                text=f"✅ <b>ارتقای تجهیزات تمام شد</b>\n\n{pet.name} آماده است: «{'، '.join(titles)}» به سطح جدید رسید."
+                candidates.append((pet,user,None,text,'open_shop'))
+                continue
             inactive=max(0,(now-(_naive(pet.last_interaction) or now)).total_seconds()/3600)
             if inactive<18:continue
             state=states.get(str(pet.user_id));sent_raw=(state.value or {}).get('sent_at') if state else None

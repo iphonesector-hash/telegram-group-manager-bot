@@ -38,11 +38,21 @@ def normalize_pet(pet):
   try:level=max(0,min(5,int(inv.get(base_key,0) or 0)))
   except (TypeError,ValueError):level=0;changed=True
   if inv.get(base_key,0)!=level:inv[base_key]=level;changed=True
+ now=_now()
+ for key in list(inv):
+  if not key.startswith('gear_upgrade_timer:'):continue
+  item_key=key.split(':',1)[1]
+  if _remaining(inv.get(key),now)==0:
+   inv['gear_level:'+item_key]=max(1,min(10,_int(inv.get('gear_pending:'+item_key),_int(inv.get('gear_level:'+item_key),1))));inv.pop('gear_pending:'+item_key,None);inv.pop(key,None);changed=True
  valid_appearance={}
  for key,value in appearance.items():
   if key in {"primary_color","secondary_color","core_color","eye_color"} and isinstance(value,str) and value.startswith("#") and len(value) in {4,7}:valid_appearance[key]=value
   elif key=="story_branch" and value in {"guardian","explorer","engineer"}:valid_appearance[key]=value
-  elif value in sector_v2.CATALOG and sector_v2.CATALOG[value].get("slot")==key and inv.get("cosmetic:"+value):valid_appearance[key]=value
+  elif value in sector_v2.CATALOG and inv.get("cosmetic:"+value):
+   # Migrate legacy head/body/hand keys to the explicit component slot.
+   slot=sector_v2.CATALOG[value].get("slot")
+   if slot:valid_appearance[slot]=value
+   if slot!=key:changed=True
   else:changed=True
  inv["system:schema_version"]=SCHEMA_VERSION
  for field in ("energy","happiness","health","hunger","cleanliness"):
@@ -124,11 +134,42 @@ def command(session,user_id,action,payload=None):
   event=_event_snapshot(session,user_id,pet,now);claim_key="event_claim:"+event["id"]+":"+(now+datetime.timedelta(days=(6-now.weekday()))).strftime("%Y%W")
   if not event["complete"]:return {"status":"error","message":"هدف رویداد هنوز کامل نشده است."}
   if inv.get(claim_key):return {"status":"error","message":"جایزه رویداد قبلاً دریافت شده است."}
-  inv[claim_key]=True;inv["material:crystal"]=int(inv.get("material:crystal",0))+event["material"];user.coins=int(user.coins or 0)+event["coins"];message=f"{event['coins']} سکه و {event['material']} کریستال دریافت شد."
+  inv[claim_key]=True;inv["material:crystal"]=int(inv.get("material:crystal",0))+event["material"];user.coins=int(user.coins or 0)+event["coins"]
+  reward_pool=[k for k,v in sector_v2.CATALOG.items() if not inv.get("cosmetic:"+k) and v.get("rarity") in {"rare","epic","legendary"}]
+  reward_key=random.choice(reward_pool) if reward_pool else None
+  if reward_key:inv["cosmetic:"+reward_key]=True
+  gear_text=f" و قطعه {sector_v2.CATALOG[reward_key]['title']}" if reward_key else ""
+  message=f"{event['coins']} سکه، {event['material']} کریستال{gear_text} دریافت شد."
  elif action=="story_branch":
   key=str(payload.get("key") or "")
   if key not in {"guardian","explorer","engineer"}:return {"status":"error","message":"مسیر داستانی نامعتبر است."}
   appearance=dict(pet.appearance or {});appearance["story_branch"]=key;pet.appearance=appearance;message={"guardian":"مسیر نگهبان فعال شد.","explorer":"مسیر کاوشگر فعال شد.","engineer":"مسیر مهندس فعال شد."}[key]
+ elif action=="upgrade_gear":
+  key=str(payload.get('key') or '');item=sector_v2.CATALOG.get(key)
+  if not item or not inv.get('cosmetic:'+key):return {'status':'error','message':'این قطعه در دارایی‌های تو نیست.'}
+  level=max(1,min(10,_int(inv.get('gear_level:'+key),1)))
+  if level>=10:return {'status':'error','message':'این قطعه به حداکثر سطح رسیده است.'}
+  if _remaining(inv.get('gear_upgrade_timer:'+key),now)>0:return {'status':'error','message':'ارتقای این قطعه هنوز در حال انجام است.'}
+  cost=int(item['cost']*.35*level);materials=max(1,level//2)
+  if int(user.coins or 0)<cost:return {'status':'error','message':f'برای ارتقا {cost} سکه لازم است.'}
+  if _int(inv.get('material:scrap'))<materials:return {'status':'error','message':f'برای ارتقا {materials} ماده اولیه لازم است.'}
+  user.coins=int(user.coins or 0)-cost;inv['material:scrap']=_int(inv.get('material:scrap'))-materials;inv['gear_pending:'+key]=level+1;inv['gear_upgrade_timer:'+key]=(now+datetime.timedelta(seconds=level*1800)).isoformat();session.add(Purchase(user_id=user_id,item_id='sector_gear_upgrade:'+key,amount=cost,status='coin_purchase'));message=f"ارتقای {item['title']} به سطح {level+1} شروع شد."
+ elif action=="repair_gear":
+  key=str(payload.get('key') or '');item=sector_v2.CATALOG.get(key)
+  if not item or not inv.get('cosmetic:'+key):return {'status':'error','message':'قطعه معتبر پیدا نشد.'}
+  wear=max(0,min(100,_int(inv.get('gear_wear:'+key),100)));cost=max(10,(100-wear)*3)
+  if wear>=100:return {'status':'error','message':'این قطعه کاملاً سالم است.'}
+  if int(user.coins or 0)<cost:return {'status':'error','message':f'برای تعمیر {cost} سکه لازم است.'}
+  user.coins=int(user.coins or 0)-cost;inv['gear_wear:'+key]=100;session.add(Purchase(user_id=user_id,item_id='sector_gear_repair:'+key,amount=cost,status='coin_purchase'));message=f"{item['title']} کاملاً تعمیر شد."
+ elif action=="save_loadout":
+  slot=max(1,min(3,_int(payload.get('slot'),1)));inv['loadout:'+str(slot)]={k:v for k,v in dict(pet.appearance or {}).items() if v in sector_v2.CATALOG};message=f'چینش شماره {slot} ذخیره شد.'
+ elif action=="apply_loadout":
+  slot=max(1,min(3,_int(payload.get('slot'),1)));saved=inv.get('loadout:'+str(slot))
+  if not isinstance(saved,dict):return {'status':'error','message':'این چینش هنوز ذخیره نشده است.'}
+  appearance=dict(pet.appearance or {});appearance={k:v for k,v in appearance.items() if v not in sector_v2.CATALOG}
+  for gear_slot,key in saved.items():
+   if inv.get('cosmetic:'+str(key)) and key in sector_v2.CATALOG and sector_v2.CATALOG[key]['slot']==gear_slot:appearance[gear_slot]=key
+  pet.appearance=appearance;message=f'چینش شماره {slot} فعال شد.'
  else:return {"status":"error","message":"فرمان توسعه نامعتبر است."}
  pet.inventory=inv;pet.updated_at=now;legacy.remember(session,user_id,"progress","ارتقای سکتور",message,3)
  return {"status":"success","message":message,"coins":int(user.coins or 0),"pet":sector_v2.serialize_pet(pet,int(user.coins or 0)),"shop":sector_v2.catalog_for(pet),"expansion":snapshot(session,user_id)}
@@ -142,4 +183,7 @@ def tactical_battle(session,user_id,target_user,move):
  pet=legacy.get_or_create_pet(session,user_id,lock=True);target=legacy.get_or_create_pet(session,target_user.id);stats=sector_v2.serialize_pet(pet).get("equipment_stats",{});enemy=sector_v2.serialize_pet(target).get("equipment_stats",{});level=legacy.level_from_xp(pet.xp);enemy_level=legacy.level_from_xp(target.xp);branch=dict(pet.appearance or {}).get("story_branch")
  move_bonus={"attack":18,"defend":12,"overcharge":25}[move];cost={"attack":5,"defend":3,"overcharge":10}[move]
  if int(pet.energy or 0)<cost:return {"status":"error","message":f"برای این حرکت {cost} انرژی لازم است."}
- pet.energy=max(0,int(pet.energy or 0)-cost);branch_bonus={"guardian":int(stats.get("defense",0))//4,"explorer":random.randint(4,14),"engineer":int(stats.get("power",0))//4}.get(branch,0);score=level*4+int(stats.get("power",0))+int(stats.get("defense",0))//2+move_bonus+branch_bonus+random.randint(1,18);enemy_score=enemy_level*4+int(enemy.get("power",0))+int(enemy.get("defense",0))+random.randint(5,25);won=score>=enemy_score;reward=45 if won else 10;user=session.query(User).filter(User.id==user_id).with_for_update().first();user.coins=int(user.coins or 0)+reward;pet.xp=int(pet.xp or 0)+(25 if won else 8);session.add(Purchase(user_id=user_id,item_id="sector_tactical_battle",amount=reward,status="reward",created_at=now));return {"status":"success","message":"پیروزی تاکتیکی!" if won else "این دور را باختی؛ تجهیزاتت را تقویت کن.","won":won,"cooldown_seconds":600,"rounds":[{"title":"قدرت تو","value":score},{"title":"قدرت حریف","value":enemy_score},{"title":"پاداش","value":reward}],"coins":int(user.coins or 0),"pet":sector_v2.serialize_pet(pet,int(user.coins or 0))}
+ pet.energy=max(0,int(pet.energy or 0)-cost);branch_bonus={"guardian":int(stats.get("defense",0))//4,"explorer":random.randint(4,14),"engineer":int(stats.get("power",0))//4}.get(branch,0);score=level*4+int(stats.get("power",0))+int(stats.get("defense",0))//2+move_bonus+branch_bonus+random.randint(1,18);enemy_score=enemy_level*4+int(enemy.get("power",0))+int(enemy.get("defense",0))+random.randint(5,25);won=score>=enemy_score;reward=45 if won else 10;user=session.query(User).filter(User.id==user_id).with_for_update().first();user.coins=int(user.coins or 0)+reward;pet.xp=int(pet.xp or 0)+(25 if won else 8);inv=_inv(pet)
+ for key in dict(pet.appearance or {}).values():
+  if key in sector_v2.CATALOG:inv['gear_wear:'+key]=max(0,_int(inv.get('gear_wear:'+key),100)-random.randint(1,3))
+ pet.inventory=inv;session.add(Purchase(user_id=user_id,item_id="sector_tactical_battle",amount=reward,status="reward",created_at=now));return {"status":"success","message":"پیروزی تاکتیکی!" if won else "این دور را باختی؛ تجهیزاتت را تقویت کن.","won":won,"cooldown_seconds":600,"rounds":[{"title":"قدرت تو","value":score},{"title":"قدرت حریف","value":enemy_score},{"title":"پاداش","value":reward}],"coins":int(user.coins or 0),"pet":sector_v2.serialize_pet(pet,int(user.coins or 0))}

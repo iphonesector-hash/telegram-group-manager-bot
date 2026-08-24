@@ -126,7 +126,8 @@ def attack_boss(session,user_id):
         if now-last_at<datetime.timedelta(minutes=30):return {'status':'error','message':'سامانه حمله هنوز در حال خنک شدن است.'}
     user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=legacy.get_or_create_pet(session,user_id,lock=True)
     if int(pet.energy or 0)<10:return {'status':'error','message':'برای حمله حداقل ۱۰ انرژی لازم داری.'}
-    level=legacy.level_from_xp(int(pet.xp or 0));damage=min(int(boss.hp),80+level*12+int(pet.knowledge or 0)*2);pet.energy=max(0,int(pet.energy or 0)-10);pet.xp=int(pet.xp or 0)+10;boss.hp=max(0,int(boss.hp)-damage);session.add(SectorBossHit(boss_id=boss.id,user_id=user_id,damage=damage,created_at=now))
+    from bot.services import sector_v2
+    level=legacy.level_from_xp(int(pet.xp or 0));power_score=int(sector_v2.serialize_pet(pet).get('equipment_stats',{}).get('power_score',0));damage=min(int(boss.hp),80+level*12+int(pet.knowledge or 0)*2+power_score//8);pet.energy=max(0,int(pet.energy or 0)-10);pet.xp=int(pet.xp or 0)+10;boss.hp=max(0,int(boss.hp)-damage);session.add(SectorBossHit(boss_id=boss.id,user_id=user_id,damage=damage,created_at=now))
     reward=5
     if user_id!=legacy.OWNER_ID:user.coins=int(user.coins or 0)+reward
     if boss.hp<=0:boss.active=False;boss.defeated_at=now;reward+=100
