@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/global.css'
+import './styles/sector-v6.css'
 
 class AppErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={error:null}}

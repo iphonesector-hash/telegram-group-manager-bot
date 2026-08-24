@@ -119,25 +119,30 @@ def objective_state(session,user_id,pet,item):
             if getattr(stamp,"tzinfo",None):stamp=stamp.replace(tzinfo=None)
             return stamp>=d["scene_start"]
         except (TypeError,ValueError):return False
-    try:
-        from bot.database.sector_meta_models import SectorBossHit
-        boss_hit=session.query(SectorBossHit.id).filter(SectorBossHit.user_id==user_id,SectorBossHit.created_at>=d["scene_start"]).first() is not None
-    except Exception:boss_hit=False
-    checks={
-      "continue":True,"rename":str(pet.name or "").strip() not in {"","سکتور","سکتور کوچولو"},
-      "care":any(x.action==target for x in actions),"daily_care":today_care>=int(target or 3),"game":len(games)>=1,
-      "games_total":len(games)>=int(target or 1),"game_score":max([int(x.score or 0) for x in games] or [0])>=int(target or 0),
-      "base":int(inv.get("base:"+str(target),0) or 0)>=1,"material":bool(material_key) and int(inv.get("material:"+material_key,0) or 0)>=material_goal,
-      "equip":any(x.get("slot")==target for x in d["equipped"]),"rarity":any(x.get("rarity") in {"rare","epic","legendary","mythic"} for x in d["owned"]),
-      "rarity_equipped":any(x.get("rarity") in {"legendary","mythic"} for x in d["equipped"]),"gear_level":max([int(inv.get("gear_level:"+str(k),1) or 1) for k in d["appearance"].values()] or [0])>=int(target or 2),
-      "shop":any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":any(x.action=="train" for x in actions) and int(pet.health or 0)>=60,
-      "defense_ready":bool(d["equipped"]) and int(pet.health or 0)>=70,"core_ready":int(pet.health or 0)>=70 and int(pet.energy or 0)>=70,
-      "event_progress":len(games)+care_count>=int(target or 1),"boss_hit":boss_hit,"boss_ready":boss_hit and int(pet.energy or 0)>=20,
-      "battle":any(str(x.item_id)=="sector_tactical_battle" for x in purchases),"social":happened_after("story:social_done"),
-      "branch":bool(d["appearance"].get("story_branch") or pet.evolution_path),"chat":happened_after("story:chat_seen"),
-      "mission_complete":int(inv.get("story:mission_completions",0) or 0)-int(inv.get("story:scene_mission_baseline",0) or 0)>=int(target or 1),"power":d["power"]>=int(target or 0),"activity_total":len(games)+care_count>=int(target or 1),
+    def number(default=0):
+        try:return int(target if target is not None else default)
+        except (TypeError,ValueError):return int(default)
+    def boss_hit():
+        try:
+            from bot.database.sector_meta_models import SectorBossHit
+            return session.query(SectorBossHit.id).filter(SectorBossHit.user_id==user_id,SectorBossHit.created_at>=d["scene_start"]).first() is not None
+        except Exception:return False
+    validators={
+      "continue":lambda:True,"rename":lambda:str(pet.name or "").strip() not in {"","سکتور","سکتور کوچولو"},
+      "care":lambda:any(x.action==target for x in actions),"daily_care":lambda:today_care>=number(3),"game":lambda:len(games)>=1,
+      "games_total":lambda:len(games)>=number(1),"game_score":lambda:max([int(x.score or 0) for x in games] or [0])>=number(0),
+      "base":lambda:int(inv.get("base:"+str(target),0) or 0)>=1,"material":lambda:bool(material_key) and int(inv.get("material:"+material_key,0) or 0)>=material_goal,
+      "equip":lambda:any(x.get("slot")==target for x in d["equipped"]),"rarity":lambda:any(x.get("rarity") in {"rare","epic","legendary","mythic"} for x in d["owned"]),
+      "rarity_equipped":lambda:any(x.get("rarity") in {"legendary","mythic"} for x in d["equipped"]),"gear_level":lambda:max([int(inv.get("gear_level:"+str(k),1) or 1) for k in d["appearance"].values()] or [0])>=number(2),
+      "shop":lambda:any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":lambda:any(x.action=="train" for x in actions) and int(pet.health or 0)>=60,
+      "defense_ready":lambda:bool(d["equipped"]) and int(pet.health or 0)>=70,"core_ready":lambda:int(pet.health or 0)>=70 and int(pet.energy or 0)>=70,
+      "event_progress":lambda:len(games)+care_count>=number(1),"boss_hit":boss_hit,"boss_ready":lambda:boss_hit() and int(pet.energy or 0)>=20,
+      "battle":lambda:any(str(x.item_id)=="sector_tactical_battle" for x in purchases),"social":lambda:happened_after("story:social_done"),
+      "branch":lambda:bool(d["appearance"].get("story_branch") or pet.evolution_path),"chat":lambda:happened_after("story:chat_seen"),
+      "mission_complete":lambda:int(inv.get("story:mission_completions",0) or 0)-int(inv.get("story:scene_mission_baseline",0) or 0)>=number(1),"power":lambda:d["power"]>=number(0),"activity_total":lambda:len(games)+care_count>=number(1),
     }
-    ready=bool(checks.get(action,False));return {"ready":ready,"route":ACTION_ROUTES.get(action,"home"),"action":action}
+    validator=validators.get(action);ready=bool(validator()) if validator else False
+    return {"ready":ready,"route":ACTION_ROUTES.get(action,"home"),"action":action}
 
 
 def snapshot(session,user_id,pet=None):

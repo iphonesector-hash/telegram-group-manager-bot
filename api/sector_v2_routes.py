@@ -19,7 +19,32 @@ from bot.services import sector_expansion, sector_story, sector_v2
 log = logging.getLogger(__name__)
 REQUIRED_MEMBERSHIP_CHAT = os.getenv("REQUIRED_MEMBERSHIP_CHAT", "@sectorland")
 _membership_cache = {}
-_MEMBERSHIP_TTL = 75
+_MEMBERSHIP_TTL = 600
+_MEMBERSHIP_STALE_SECONDS = 86400
+
+
+def _stored_membership(user_id: int):
+    session=get_session()
+    try:
+        row=session.query(RuntimeState).filter_by(scope="miniapp_membership",state_key=str(user_id)).first()
+        if not row or not isinstance(row.value,dict):return None
+        checked=row.updated_at.replace(tzinfo=None) if row.updated_at and row.updated_at.tzinfo else row.updated_at
+        age=(datetime.datetime.utcnow()-(checked or datetime.datetime.min)).total_seconds()
+        return bool(row.value.get("allowed")),age
+    except Exception:return None
+    finally:session.close()
+
+
+def _save_membership(user_id: int, allowed: bool, status: str):
+    session=get_session()
+    try:
+        row=session.query(RuntimeState).filter_by(scope="miniapp_membership",state_key=str(user_id)).first()
+        value={"allowed":bool(allowed),"status":status,"checked_at":datetime.datetime.utcnow().isoformat()}
+        if row:row.value=value;row.updated_at=datetime.datetime.utcnow()
+        else:session.add(RuntimeState(scope="miniapp_membership",state_key=str(user_id),value=value,updated_at=datetime.datetime.utcnow()))
+        session.commit()
+    except Exception:session.rollback()
+    finally:session.close()
 
 
 async def _require_member(user_id: int):
@@ -29,6 +54,9 @@ async def _require_member(user_id: int):
         if cached[1]:
             return
         raise HTTPException(status_code=403, detail="عضویت در SectorLand الزامی است")
+    stored=_stored_membership(user_id)
+    if stored and stored[0] and stored[1]<_MEMBERSHIP_TTL:
+        _membership_cache[user_id]=(now,True);return
     token = (os.getenv("BOT_TOKEN") or "").strip()
     if not token:
         raise HTTPException(status_code=503, detail="Membership check unavailable")
@@ -40,12 +68,15 @@ async def _require_member(user_id: int):
         if status == "restricted":
             allowed = bool(getattr(member, "is_member", False))
         _membership_cache[user_id] = (now, bool(allowed))
+        _save_membership(user_id,bool(allowed),status)
         if not allowed:
             raise HTTPException(status_code=403, detail="عضویت در SectorLand الزامی است")
     except HTTPException:
         raise
     except Exception as exc:
         log.warning("Sector v2 membership check failed: %s", type(exc).__name__)
+        if stored and stored[0] and stored[1]<_MEMBERSHIP_STALE_SECONDS:
+            log.info("Using stale successful membership for user %s",user_id);_membership_cache[user_id]=(now,True);return
         raise HTTPException(status_code=503, detail="Membership check temporarily unavailable")
 
 

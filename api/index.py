@@ -3,6 +3,7 @@ import hmac
 import logging
 import base64
 import asyncio
+import datetime
 import psycopg2
 from fastapi import Request, HTTPException, Header
 from telegram import Update, Bot, WebAppInfo, MenuButtonWebApp
@@ -20,7 +21,7 @@ logging.getLogger("telegram.request").setLevel(logging.WARNING)
 from api.main import app, require_user, serialize_purchase, serialize_order
 from bot.main import build_application
 from bot.database.session import engine, get_session, init_db
-from bot.database.models import Purchase, Order
+from bot.database.models import Purchase, Order, RuntimeState
 
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app")
 BOT_BUILD = "2026.08.24-fast-keyboard"
@@ -31,6 +32,43 @@ _telegram_app = None
 _telegram_app_lock = asyncio.Lock()
 _database_ready = False
 OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
+_MEMBERSHIP_STALE_SECONDS = 86400
+_MEMBERSHIP_FRESH_SECONDS = 600
+
+
+def _membership_state(user_id: int):
+    session = get_session()
+    try:
+        row = session.query(RuntimeState).filter_by(
+            scope="miniapp_membership", state_key=str(user_id)
+        ).first()
+        if not row or not isinstance(row.value, dict):
+            return None
+        updated = row.updated_at.replace(tzinfo=None) if row.updated_at and row.updated_at.tzinfo else row.updated_at
+        age = (datetime.datetime.utcnow() - (updated or datetime.datetime.min)).total_seconds()
+        return row, bool(row.value.get("allowed")), age
+    finally:
+        session.close()
+
+
+def _remember_membership(user_id: int, allowed: bool, status: str):
+    session = get_session()
+    try:
+        row = session.query(RuntimeState).filter_by(
+            scope="miniapp_membership", state_key=str(user_id)
+        ).first()
+        value = {"allowed": bool(allowed), "status": status, "checked_at": datetime.datetime.utcnow().isoformat()}
+        if row:
+            row.value = value
+            row.updated_at = datetime.datetime.utcnow()
+        else:
+            session.add(RuntimeState(scope="miniapp_membership", state_key=str(user_id), value=value))
+        session.commit()
+    except Exception:
+        session.rollback()
+        logging.getLogger(__name__).warning("Unable to persist membership state for user %s", user_id)
+    finally:
+        session.close()
 
 
 async def _register_default_menu(bot: Bot) -> bool:
@@ -62,6 +100,15 @@ async def miniapp_membership(user_id: int, init_data: Optional[str] = Header(Non
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token:
         raise HTTPException(status_code=503, detail="Membership check unavailable")
+    stored = _membership_state(user_id)
+    if stored and stored[1] and stored[2] < _MEMBERSHIP_FRESH_SECONDS:
+        return {
+            "required": True,
+            "member": True,
+            "chat": REQUIRED_MEMBERSHIP_CHAT,
+            "url": REQUIRED_MEMBERSHIP_URL,
+            "status": "cached",
+        }
     try:
         async with Bot(token=token) as bot:
             member = await bot.get_chat_member(REQUIRED_MEMBERSHIP_CHAT, user_id)
@@ -69,6 +116,7 @@ async def miniapp_membership(user_id: int, init_data: Optional[str] = Header(Non
         allowed = status in {"creator", "owner", "administrator", "member"}
         if status == "restricted":
             allowed = bool(getattr(member, "is_member", False))
+        _remember_membership(user_id, allowed, status)
         return {
             "required": True,
             "member": bool(allowed),
@@ -80,6 +128,15 @@ async def miniapp_membership(user_id: int, init_data: Optional[str] = Header(Non
         raise
     except Exception as exc:
         logging.getLogger(__name__).warning("Mini App membership check failed: %s", type(exc).__name__)
+        if stored and stored[1] and stored[2] < _MEMBERSHIP_STALE_SECONDS:
+            return {
+                "required": True,
+                "member": True,
+                "chat": REQUIRED_MEMBERSHIP_CHAT,
+                "url": REQUIRED_MEMBERSHIP_URL,
+                "status": "cached",
+                "degraded": True,
+            }
         raise HTTPException(status_code=503, detail="Membership check temporarily unavailable")
 
 

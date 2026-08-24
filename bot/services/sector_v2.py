@@ -50,8 +50,8 @@ CATALOG={
  "singularity_core":{"title":"هسته تکینگی","slot":"body","category":"لباس","cost":8500,"rarity":"mythic","min_level":75,"theme":"mythic"},
 }
 
-# A deep collection keeps every store lane useful. art_id intentionally points to
-# the exact product artwork rendered in both the store and owned-assets gallery.
+# A deep collection keeps every store lane useful. Generated parts receive a
+# stable visual seed so no two products are presented as the same artwork.
 _COLLECTIONS={
  "ابزار":("hand",["wrench","data_pad","plasma_tool"],["اسکنر طیفی","آچار یونی","دریل نانو","کالیبراتور هسته","متر لیزری","تحلیل‌گر مدار","پرینتر قطعه","کاوشگر پلاسما","مبدل کوانتومی","ردیاب سیگنال","ابزار جوش سرد","کنترلر رباتیک","پروب ستاره‌ای","تعمیرگر خودکار","کیت مهندسی X"]),
  "ماژول":("aura",["pulse_aura","quantum_aura","singularity_core","star_aura"],["ماژول سپر","شتاب‌دهنده XP","هسته پالس","پردازنده تاکتیکی","چیپ حافظه","هسته کوانتومی","ماژول استتار","تقویت‌کننده انرژی","هسته ناوبری","ماژول درمان","پردازنده بازی","مولد میدان","هسته فرماندهی","ماژول تکینگی","هسته افسانه‌ای"]),
@@ -66,7 +66,7 @@ _rarities=("common","common","rare","rare","rare","epic","epic","epic","legendar
 for _category,(_slot,_art,_names) in _COLLECTIONS.items():
  for _i,_title in enumerate(_names,1):
   _key=f"collection_{abs(sum(map(ord,_category)))}_{_i}"
-  CATALOG.setdefault(_key,{"title":_title,"slot":_slot,"category":_category,"cost":120+_i*_i*38,"rarity":_rarities[_i-1],"min_level":max(1,(_i-1)*3),"theme":"collection","art_id":_art[(_i-1)%len(_art)]})
+  CATALOG.setdefault(_key,{"title":_title,"slot":_slot,"category":_category,"cost":120+_i*_i*38,"rarity":_rarities[_i-1],"min_level":max(1,(_i-1)*3),"theme":"collection","visual_seed":_i,"visual_family":_category})
 _power={"common":2,"rare":5,"epic":9,"legendary":15,"mythic":24}
 for _item in CATALOG.values():
  _base=_power.get(_item.get("rarity"),2);_item.setdefault("power",_base);_item.setdefault("defense",_base*2 if _item.get("slot")=="body" else _base);_item.setdefault("energy_bonus",_base if _item.get("slot") in {"back","aura"} else 0)
