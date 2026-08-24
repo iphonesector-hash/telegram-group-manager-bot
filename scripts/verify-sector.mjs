@@ -82,6 +82,7 @@ for(const feature of ['upgrade_base','salvage','forge','claim_event','story_bran
 for(const feature of ['upgrade_gear','repair_gear','save_loadout','apply_loadout'])expect(expansion.includes(feature),`missing equipment progression logic: ${feature}`)
 for(const marker of ['sector-id-card','sector-parts','power_score','onEquip','loadout'])expect(workshop.includes(marker),`missing component workshop UI: ${marker}`)
 expect(!workshop.includes('sector-layerbot'), 'legacy CSS robot must be removed from the workshop')
+expect(workshop.includes('Array.isArray(shop)'), 'component workshop must tolerate delayed or malformed shop data')
 expect(styles.includes('object-fit:contain'), 'shop and equipment artwork must stay inside its frame')
 for (const item of ['scrap_cap','engineer_cap','commander_cap','captain_hat','elite_crown','welder_mask','round_goggles','mono_visor','combat_visor','patched_vest','utility_jacket','neon_armor','royal_chassis','singularity_core','blue_shell','gold_shell','tool_pack','jetpack','mini_cape','neon_wings','ion_wings','wrench','data_pad','game_pad','plasma_tool','pulse_aura','quantum_aura','star_aura']) expect(fs.existsSync(path.join(root,'public/assets/sector/equipment-v3',`${item}.webp`)), `missing equipment artwork: ${item}`)
 for (const room of ['workshop_bg','neon_city_bg','orbit_bg','command_room_bg']) expect(fs.existsSync(path.join(root,'public/assets/sector/rooms-v3',`${room}.webp`)), `missing room artwork: ${room}`)
