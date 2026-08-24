@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/sector-reminders", "schedule": "0 14 * * *" }
+  ],
   "rewrites": [
     { "source": "/assets/sector/brand-hero.webp", "destination": "/assets/sector/brand-hero.svg" },
     { "source": "/assets/sector/mascot-emotions.webp", "destination": "/assets/sector/mascot-emotions.svg" },

@@ -148,7 +148,31 @@ def pet_mood(pet: SectorPet) -> dict:
     return {"id":"calm","title":"آرام","emoji":"🤖","line":"خوشحالم که برگشتی؛ امروز چه کار کنیم؟"}
 
 
-def serialize_pet(pet: SectorPet):
+def care_guidance(pet: SectorPet, coins: int = 0) -> dict:
+    """Turn raw stats into one clear next action and a short ordered queue."""
+    stats={"energy":int(pet.energy or 0),"happiness":int(pet.happiness or 0),"health":int(pet.health or 0),"hunger":int(pet.hunger or 0),"cleanliness":int(pet.cleanliness or 0)}
+    rules=(
+        ("health","repair",45,"🔧","یکی از مدارهایم آسیب دیده؛ اول من را تعمیر کن."),
+        ("hunger","feed",40,"🍪","گرسنه‌ام و سوختم کم شده؛ به من غذا بده."),
+        ("energy","charge",35,"⚡","انرژی‌ام پایین است؛ قبل از بازی یا تمرین شارژم کن."),
+        ("cleanliness","clean",40,"🫧","حسگرهایم کثیف شده‌اند؛ وقت تمیزکاری است."),
+        ("happiness","play",40,"🎮","دلم گرفته؛ چند دقیقه با من بازی کن."),
+    )
+    needs=[]
+    for stat,action,threshold,icon,message in rules:
+        value=stats[stat]
+        if value<threshold:
+            definition=PET_ACTIONS[action];cost=int(definition["cost"])
+            needs.append({"stat":stat,"value":value,"action":action,"title":definition["title"],"icon":icon,"message":message,"cost":cost,"can_afford":int(coins or 0)>=cost,"priority":"critical" if value<20 else "warning"})
+    if not needs:
+        stat=min(stats,key=stats.get);action={"health":"repair","hunger":"feed","energy":"charge","cleanliness":"clean","happiness":"play"}[stat];definition=PET_ACTIONS[action];cost=int(definition["cost"])
+        needs=[{"stat":stat,"value":stats[stat],"action":action,"title":definition["title"],"icon":definition["icon"],"message":"وضعیتم پایدار است. برای ادامه رشد، این کار بهترین انتخاب بعدی است.","cost":cost,"can_afford":int(coins or 0)>=cost,"priority":"normal"}]
+    level=level_from_xp(pet.xp);next_level=min(100,level+1);remaining=max(0,xp_for_level(next_level)-int(pet.xp or 0))
+    primary=needs[0]
+    return {"status":"needs_attention" if primary["priority"]!="normal" else "stable","message":primary["message"],"primary":primary,"needs":needs[:3],"next_level":next_level,"xp_remaining":remaining,"tip":"هر روز ۳ مراقبت و یک بازی انجام بده تا مأموریت روزانه کامل شود."}
+
+
+def serialize_pet(pet: SectorPet, coins: int = 0):
     level = level_from_xp(pet.xp)
     pet.level = level
     floor = xp_for_level(level)
@@ -173,6 +197,7 @@ def serialize_pet(pet: SectorPet):
         "story_chapter": int(pet.story_chapter or 1), "story_progress": int(pet.story_progress or 0),
         "job": pet.job, "job_started_at": pet.job_started_at.isoformat() if pet.job_started_at else None,
         "notifications_enabled": bool(pet.notifications_enabled),
+        "guidance": care_guidance(pet, coins),
     }
 
 

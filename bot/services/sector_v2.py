@@ -65,8 +65,8 @@ def catalog_for(pet):
   row={'id':key,**item,'owned':key in owned,'equipped':key in equipped,'locked':level<int(item.get('min_level',1))};out.append(row)
  return sorted(out,key=lambda r:(order.get(r['rarity'],9),r['cost'],r['title']))
 
-def serialize_pet(pet):
- d=legacy.serialize_pet(pet);d['visual_stage']=visual_stage_for(pet);d['owned_cosmetics']=sorted(owned_keys(pet));return d
+def serialize_pet(pet,coins=0):
+ d=legacy.serialize_pet(pet,coins);d['visual_stage']=visual_stage_for(pet);d['owned_cosmetics']=sorted(owned_keys(pet));return d
 
 def perform_action(session,user_id,action):
  result=legacy.perform_action(session,user_id,action)
@@ -76,7 +76,7 @@ def perform_action(session,user_id,action):
  if action in important:
   start=datetime.datetime.utcnow().replace(hour=0,minute=0,second=0,microsecond=0);already=session.query(SectorPetAction.id).filter(SectorPetAction.user_id==user_id,SectorPetAction.action==action,SectorPetAction.created_at>=start).count()
   if already<=1:legacy.remember(session,user_id,*important[action],importance=2)
- result['pet']=serialize_pet(pet);return result
+ user=session.query(User).filter(User.id==user_id).first();result['pet']=serialize_pet(pet,int(user.coins or 0) if user else 0);return result
 
 def buy_item(session,user_id,item_key):
  item=CATALOG.get(item_key)
@@ -90,7 +90,7 @@ def buy_item(session,user_id,item_key):
   if user_id!=OWNER_ID and int(user.coins or 0)<cost:return {'status':'error','message':'سکه کافی برای خرید این آیتم نداری.'}
   if user_id!=OWNER_ID:user.coins=int(user.coins or 0)-cost
   inv[ik]=True;pet.inventory=inv;session.add(Purchase(user_id=user_id,item_id=f'sector_cosmetic:{item_key}',amount=cost,status='coin_purchase'));legacy.remember(session,user_id,'shop',f"خرید {item['title']}",f"یک آیتم {item['rarity']} به مجموعه اضافه شد.",2)
- appearance=dict(pet.appearance or {});appearance[item['slot']]=item_key;pet.appearance=appearance;pet.updated_at=datetime.datetime.utcnow();return {'status':'success','message':f"{item['title']} خریداری و روی سکتور تجهیز شد.",'coins':int(user.coins or 0),'pet':serialize_pet(pet),'shop':catalog_for(pet)}
+ appearance=dict(pet.appearance or {});appearance[item['slot']]=item_key;pet.appearance=appearance;pet.updated_at=datetime.datetime.utcnow();return {'status':'success','message':f"{item['title']} خریداری و روی سکتور تجهیز شد.",'coins':int(user.coins or 0),'pet':serialize_pet(pet,int(user.coins or 0)),'shop':catalog_for(pet)}
 
 def equip_item(session,user_id,item_key):
  item=CATALOG.get(item_key)

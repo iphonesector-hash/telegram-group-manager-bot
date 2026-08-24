@@ -57,7 +57,8 @@ def _payload(session, user_id: int):
     pet = legacy.get_or_create_pet(session, user_id, now)
     legacy.refresh_pet(pet, now)
     legacy.touch_daily_visit(pet, now)
-    data = sector_v2.serialize_pet(pet)
+    user = session.query(User).filter(User.id == user_id).first()
+    data = sector_v2.serialize_pet(pet, int(user.coins or 0) if user else 0)
     membership = session.query(SectorClanMember).filter(SectorClanMember.user_id == user_id).first()
     clan = session.query(SectorClan).filter(SectorClan.id == membership.clan_id).first() if membership else None
     return {
