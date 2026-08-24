@@ -170,7 +170,7 @@ def claim_reward(session,user_id,kind,key):
     else:item=next((x for x in quest_snapshot(session,user_id) if x['id']==key),None);period='lifetime'
     if not item or not item['complete']:return {'status':'error','message':'شرط این جایزه هنوز کامل نشده.'}
     if item['claimed']:return {'status':'error','message':'این جایزه قبلاً دریافت شده.'}
-    user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=legacy.get_or_create_pet(session,user_id,lock=True);r=dict(item['reward']);command_level=int((pet.inventory or {}).get('base:command',0) or 0);bonus=command_level*5;r['coins']=int(r['coins'])*(100+bonus)//100;r['xp']=int(r['xp'])*(100+bonus)//100;user.coins=int(user.coins or 0)+int(r['coins']);pet.xp=int(pet.xp or 0)+int(r['xp']);session.add(SectorRewardClaim(user_id=user_id,claim_key=kind+':'+key,period_key=period,reward=r));ledger(session,user_id,kind+'_reward',int(r['coins']),int(user.coins or 0),kind,key,r);analytics(session,user_id,kind+'_claim',payload={'key':key});legacy.remember(session,user_id,kind,'جایزه '+item['title'],f"{r['coins']} سکه و {r['xp']} XP دریافت شد.",3)
+    user=session.query(User).filter(User.id==user_id).with_for_update().first();pet=legacy.get_or_create_pet(session,user_id,lock=True);r=dict(item['reward']);command_level=int((pet.inventory or {}).get('base:command',0) or 0);bonus=command_level*5;r['coins']=int(r['coins'])*(100+bonus)//100;r['xp']=int(r['xp'])*(100+bonus)//100;user.coins=int(user.coins or 0)+int(r['coins']);pet.xp=int(pet.xp or 0)+int(r['xp']);inv=dict(pet.inventory or {});inv['story:mission_completions']=int(inv.get('story:mission_completions',0) or 0)+1;pet.inventory=inv;session.add(SectorRewardClaim(user_id=user_id,claim_key=kind+':'+key,period_key=period,reward=r));ledger(session,user_id,kind+'_reward',int(r['coins']),int(user.coins or 0),kind,key,r);analytics(session,user_id,kind+'_claim',payload={'key':key});legacy.remember(session,user_id,kind,'جایزه '+item['title'],f"{r['coins']} سکه و {r['xp']} XP دریافت شد.",3)
     return {'status':'success','message':f"جایزه دریافت شد{f'؛ اتاق فرمان {bonus}٪ پاداش اضافه داد' if bonus else ''}.",'coins':int(user.coins or 0),'pet':legacy.serialize_pet(pet)}
 
 def unlock_snapshot(session,user_id):
@@ -224,6 +224,10 @@ def claim_previous_season_reward(session,user_id):
 
 def notices(session,user_id):
     pet=legacy.get_or_create_pet(session,user_id);notes=[]
+    from bot.services import sector_story
+    narrative=sector_story.snapshot(session,user_id,pet);scene=narrative.get('scene') or {}
+    if scene.get('threat'):notes.append({'kind':'alert','text':scene['threat'],'action':scene.get('route'),'objective':scene.get('objective')})
+    elif scene.get('objective'):notes.append({'kind':'story','text':f"حرکت بعدی داستان: {scene['objective']}",'action':scene.get('route')})
     if int(pet.energy or 0)<25:notes.append({'kind':'care','text':'انرژی سکتور پایینه؛ بهتره استراحت یا شارژش کنی.'})
     if int(pet.hunger or 0)<30:notes.append({'kind':'care','text':'سطح سوخت غذایی سکتور پایینه.'})
     if int(pet.cleanliness or 0)<30:notes.append({'kind':'care','text':'بدنه و حسگرها نیاز به تمیزکاری دارن.'})

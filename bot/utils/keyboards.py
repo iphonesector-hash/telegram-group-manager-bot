@@ -8,7 +8,16 @@ def get_main_menu():
         [KeyboardButton("🤖 سکتور کوچولو")],
         [KeyboardButton("⚙️ تنظیمات"), KeyboardButton("🤝 پشتیبانی")]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    # Keep the private control panel attached to Telegram's composer.  Temporary
+    # flows (ForceReply/user picker) may replace it, but every exit path can
+    # safely restore this same persistent keyboard.
+    return ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        is_persistent=True,
+        one_time_keyboard=False,
+        input_field_placeholder="یک بخش از SectorLand را انتخاب کن…",
+    )
 
 def get_admin_menu():
     keyboard = [

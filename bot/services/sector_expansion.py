@@ -59,7 +59,7 @@ def normalize_pet(pet):
   try:value=max(0,min(100,int(getattr(pet,field) or 0)))
   except (TypeError,ValueError):value=80;changed=True
   if getattr(pet,field)!=value:setattr(pet,field,value);changed=True
- pet.story_chapter=max(1,min(4,_int(pet.story_chapter,1)));pet.story_progress=max(0,_int(pet.story_progress));pet.inventory=inv;pet.appearance=valid_appearance
+ pet.story_chapter=max(1,min(8,_int(pet.story_chapter,1)));pet.story_progress=max(0,_int(pet.story_progress));pet.inventory=inv;pet.appearance=valid_appearance
  return {"schema_version":SCHEMA_VERSION,"repaired":changed}
 def _remaining(value,now=None):
  now=now or _now()

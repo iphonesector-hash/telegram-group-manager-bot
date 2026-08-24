@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppContext } from '../App'
 import WheelOfFortune from '../components/WheelOfFortune'
 import SectorCelebration from '../components/ui/SectorCelebration'
+import SectorIcon from '../components/ui/SectorIcon'
 
 const ARCADE_GAMES = [
   {id:'racer',name:'Neon Racer',icon:'🏎️',desc:'مسابقه سریع در بزرگراه نئونی',type:'اکشن',featured:true,url:'https://sectorland-neon-arcade.vercel.app/games/neon-racer/'},
@@ -18,6 +19,8 @@ const ARCADE_GAMES = [
   {id:'flappy',name:'Flappy Bird',icon:'➤',desc:'پرواز لمسی و ثبت رکورد، متن‌باز MIT',type:'آرکید',url:'https://chandrakant-mane.github.io/JavaScript-Games/Games/flappy-bird-master/'},
   {id:'tictactoe',name:'دوز دونفره',icon:'╳',desc:'رقابت دونفره روی یک گوشی، متن‌باز MIT',type:'فکری',url:'https://chandrakant-mane.github.io/JavaScript-Games/Games/tic%20tac%20toe/'},
 ]
+
+function gameIcon(game){if(game.id==='snake3d')return 'growth';if(game.type==='فکری')return 'knowledge';if(game.type==='شوتر')return 'battle';if(game.type==='اکشن')return 'charge';return 'games'}
 
 export default function GamesPage() {
   var ctx = useAppContext()
@@ -153,7 +156,7 @@ export default function GamesPage() {
           <div style={{display:'flex',gap:7,overflowX:'auto',paddingBottom:10}}>{['همه','اکشن','شوتر','سه‌بعدی','فکری','آرکید'].map(function(f){return <button key={f} className="btn btn-sm" onClick={function(){setGameFilter(f)}} style={{flex:'0 0 auto',background:gameFilter===f?'linear-gradient(135deg,#04bfe8,#714cff)':'var(--card)',color:gameFilter===f?'#fff':'var(--muted)',border:'1px solid var(--border)'}}>{f}</button>})}</div>
           <div style={{fontWeight:800,fontSize:14,margin:'2px 0 10px'}}>🕹 بازی‌های کامل</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-            {ARCADE_GAMES.filter(function(game){return gameFilter==='همه'||game.type===gameFilter}).map(function(game){return <button key={game.id} onClick={function(){openArcade(game)}} className="glass" style={{padding:14,border:game.featured?'1px solid rgba(69,227,255,.35)':'1px solid var(--border)',background:game.featured?'linear-gradient(145deg,rgba(25,201,255,.1),rgba(119,57,255,.1))':'var(--card)',color:'inherit',textAlign:'right',cursor:'pointer',minHeight:145,position:'relative'}}>{game.featured&&<span style={{position:'absolute',top:9,left:9,fontSize:9,color:'#06131c',fontWeight:900,padding:'4px 7px',borderRadius:10,background:'#66f2ff'}}>ویژه</span>}<div style={{fontSize:34}}>{game.icon}</div><div style={{fontWeight:800,fontSize:14,marginTop:7}}>{game.name}</div><div style={{fontSize:10,color:'var(--muted)',lineHeight:1.6,marginTop:3}}>{game.desc}</div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:9}}><span className="badge badge-blue">بازی کن</span><span style={{fontSize:9,color:'var(--muted)'}}>{game.type}</span></div></button>})}
+            {ARCADE_GAMES.filter(function(game){return gameFilter==='همه'||game.type===gameFilter}).map(function(game){return <button key={game.id} onClick={function(){openArcade(game)}} className={'glass arcade-card'+(game.featured?' featured':'')}>{game.featured&&<span className="arcade-card__featured">ویژه</span>}<span className="arcade-card__icon"><SectorIcon name={gameIcon(game)} size={29}/><i/></span><b>{game.name}</b><small>{game.desc}</small><footer><span>شروع بازی</span><em>{game.type}</em></footer></button>})}
           </div>
           <div style={{fontWeight:800,fontSize:14,margin:'2px 0 10px'}}>🧩 مسابقه‌های سکه‌ای ربات</div>
           {games.map(function(g){

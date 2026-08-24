@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { useTelegram } from './hooks/useTelegram'
 import { useToast } from './hooks/useToast'
 import { api } from './services/api'
-import { haptic } from './utils/feedback'
+import { haptic, playTone } from './utils/feedback'
 
 import BottomNav from './components/ui/BottomNav'
 import Toast from './components/ui/Toast'
@@ -274,7 +274,7 @@ export default function App() {
   var PageComponent = PAGES[page] || PAGES.home
   return (
     <AppContext.Provider value={ctx}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }} onPointerDownCapture={function(event){var button=event.target.closest&&event.target.closest('button,a');if(button&&!button.disabled)playTone('tap')}}>
         {page !== 'home' && <PageHeader title={PAGE_TITLES[page]} onBack={goBack} />}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} key={page}>
           <PageComponent />

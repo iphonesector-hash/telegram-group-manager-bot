@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Avatar from '../components/ui/Avatar'
 import { useAppContext } from '../App'
 import SectorRankTrack, {rankFor} from '../components/ui/SectorRankTrack'
+import SectorIcon from '../components/ui/SectorIcon'
 
 function memberSince(value) {
   if (!value) return '—'
@@ -25,16 +26,16 @@ export default function ProfilePage() {
   var level = Number(dbUser.level || 1)
   var rank = rankFor(level).title
   var menuItems = [
-    { icon: '📦', label: 'سفارش‌هام', fn: function() { navigate('orders') } },
-    { icon: '👥', label: 'معرفی دوستان', fn: function() { navigate('referral') } },
-    { icon: '🏆', label: 'برترین‌ها', fn: function() { navigate('games') } },
-    { icon: '❓', label: 'پشتیبانی', fn: function() { navigate('support') } },
-    { icon: '🌐', label: 'سایر امکانات ربات', fn: function() { navigate('features') } },
-    { icon: '🎯', label: 'ماموریت‌های من', fn: function() { navigate('missions') } },
-    { icon: '🤖', label: 'سکتور کوچولوی من', fn: function() { navigate('sectorpet') } },
-    { icon: '⚙️', label: 'تنظیمات کامل مینی‌اپ', fn: function() { navigate('settings') } },
+    { icon: 'orders', label: 'سفارش‌هام', fn: function() { navigate('orders') } },
+    { icon: 'referral', label: 'معرفی دوستان', fn: function() { navigate('referral') } },
+    { icon: 'trophy', label: 'برترین‌ها', fn: function() { navigate('games') } },
+    { icon: 'support', label: 'پشتیبانی', fn: function() { navigate('support') } },
+    { icon: 'features', label: 'سایر امکانات ربات', fn: function() { navigate('features') } },
+    { icon: 'missions', label: 'ماموریت‌های من', fn: function() { navigate('missions') } },
+    { icon: 'sectorpet', label: 'سکتور کوچولوی من', fn: function() { navigate('sectorpet') } },
+    { icon: 'settings', label: 'تنظیمات کامل مینی‌اپ', fn: function() { navigate('settings') } },
   ]
-  if (dbUser.is_admin) menuItems.unshift({ icon:'👑', label:'پنل مدیریت SectorLand', fn:function(){navigate('admin')} })
+  if (dbUser.is_admin) menuItems.unshift({ icon:'admin', label:'پنل مدیریت SectorLand', fn:function(){navigate('admin')} })
 
   var profileStats = [
     { icon: '🪙', label: 'سکه', val: dbUser.unlimited_wallet ? '∞' : Number(dbUser.coins || 0).toLocaleString() },
@@ -91,7 +92,7 @@ export default function ProfilePage() {
       </button>
 
       <div className="glass" style={{overflow:'hidden',marginBottom:12}}>
-        {menuItems.map(function(item,i){return <button key={i} onClick={item.fn} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 16px',width:'100%',background:'transparent',border:'none',borderBottom:i<menuItems.length-1?'1px solid var(--border)':'none',color:'var(--text)',cursor:'pointer',textAlign:'right',fontFamily:'Vazirmatn, sans-serif'}}><span style={{fontSize:20}}>{item.icon}</span><span style={{flex:1,fontSize:14,fontWeight:500}}>{item.label}</span><span style={{color:'var(--muted)',fontSize:18}}>‹</span></button>})}
+        {menuItems.map(function(item,i){return <button key={i} onClick={item.fn} className="profile-system-row" style={{borderBottom:i<menuItems.length-1?'1px solid var(--border)':'none'}}><i><SectorIcon name={item.icon} size={20}/></i><span>{item.label}</span><b>‹</b></button>})}
       </div>
 
       <div className="glass" style={{overflow:'hidden'}}>

@@ -45,12 +45,9 @@ JOBS={
     "astronaut":{"title":"فضانورد","icon":"🚀","hours":8,"reward":320,"xp":45},
     "repairer":{"title":"تعمیرکار","icon":"🔧","hours":3,"reward":100,"xp":18},
 }
-STORY_CHAPTERS={
-    1:{"title":"سیگنال گمشده","target":5,"text":"یک پیام ضعیف از رباتی گمشده در مدار دریافت شده."},
-    2:{"title":"تعمیر سفینه","target":8,"text":"برای رسیدن به منبع پیام باید سفینه را تعمیر کنیم."},
-    3:{"title":"ویروس تاریکی","target":12,"text":"یک ویروس ناشناس به هسته شهر ربات‌ها حمله کرده است."},
-    4:{"title":"آزمایشگاه ستاره‌ای","target":15,"text":"وقت ساخت پایگاه دائمی سکتور فرا رسیده است."},
-}
+from bot.services.sector_story import CHAPTERS as NARRATIVE_CHAPTERS
+
+STORY_CHAPTERS={key:{"title":value["title"],"target":len(value["scenes"]),"text":value["scenes"][0]["text"],"region":value["region"],"boss":value["boss"]} for key,value in NARRATIVE_CHAPTERS.items()}
 
 
 def xp_for_level(level: int) -> int:
@@ -182,7 +179,7 @@ def progress_guidance(pet: SectorPet, daily: dict, coins: int = 0, story_used: i
         {"id":"care","title":"مراقبت روزانه","detail":f"{care_done}/۳ فعالیت انجام شده","done":care_done>=3,"tab":"care"},
         {"id":"game","title":"بازی و دریافت جایزه","detail":"تا ۶۰ سکه + XP","done":game_done,"tab":"games"},
         {"id":"season","title":"بررسی پاداش‌های فصل","detail":"سکه، XP و امتیاز فصل","done":bool(daily.get("complete")),"tab":"season"},
-        {"id":"story","title":"حرکت داستانی","detail":f"{story_used}/۳ حرکت امروز","done":story_used>=3 or story_done,"tab":"growth"},
+        {"id":"story","title":"هدف داستانی","detail":"مرکز فرمان حرکت واقعی بعدی را مشخص می‌کند","done":story_done,"tab":"command"},
         {"id":"free","title":"هدف آزاد","detail":"رکورد، دارایی یا تعامل","done":False,"tab":"games"},
     ]
     if not needs_done:
@@ -191,11 +188,11 @@ def progress_guidance(pet: SectorPet, daily: dict, coins: int = 0, story_used: i
         action="play" if int(pet.happiness or 0)<75 else "learn";definition=PET_ACTIONS[action];primary={"action":action,"title":definition["title"],"icon":definition["icon"],"cost":int(definition["cost"]),"can_afford":int(coins or 0)>=int(definition["cost"]),"priority":"normal","value":care_done*33};message=f"عالی بود! حالا قدم ۲ از ۴: {3-care_done} مراقبت دیگر انجام بده تا مأموریت مراقبت کامل شود."
     elif not game_done:
         primary={"action":"open_games","title":"رفتن به بازی‌ها","icon":"🎮","cost":0,"can_afford":True,"priority":"normal","value":0,"tab":"games"};message="مراقبت امروز کامل شد! حالا قدم ۳ از ۴: یک بازی انجام بده؛ امتیازت مقدار سکه و XP را تعیین می‌کند."
-    elif story_used<3 and not story_done:
-        primary={"action":"open_growth","title":"انجام حرکت داستانی","icon":"📖","cost":0,"can_afford":True,"priority":"normal","value":story_used*33,"tab":"growth"};message=f"پاداش‌های اصلی آماده‌اند. حالا {3-story_used} حرکت داستانی امروز باقی مانده؛ هر حرکت ۵ انرژی و ۲۰ XP دارد."
+    elif not story_done:
+        primary={"action":"open_command","title":"دیدن هدف داستانی","icon":"📖","cost":0,"can_afford":True,"priority":"normal","value":int(pet.story_progress or 0),"tab":"command"};message="برنامه روزانه کامل شد. حالا مرکز فرمان هدف واقعی صحنه بعد را نشان می‌دهد؛ با انجام همان هدف داستان جلو می‌رود."
     else:
         primary={"action":"open_games","title":"ثبت رکورد بهتر","icon":"⭐","cost":0,"can_afford":True,"priority":"normal","value":100,"tab":"games"};message="برنامه محدود امروز کامل شد! حالا رکورد بازی را بهتر کن، دارایی جمع کن یا تعامل اجتماعی انجام بده."
-    base.update({"message":message,"primary":primary,"steps":steps,"completed_steps":sum(1 for x in steps if x["done"]),"reset_seconds":int(reset_seconds),"story_daily_used":int(story_used),"story_daily_limit":3,"tip":"زمان دقیق بازشدن کارهای محدود با شمارش‌معکوس نمایش داده می‌شود."});return base
+    base.update({"message":message,"primary":primary,"steps":steps,"completed_steps":sum(1 for x in steps if x["done"]),"reset_seconds":int(reset_seconds),"story_daily_used":int(story_used),"story_daily_limit":None,"tip":"داستان سهمیه مصنوعی ندارد؛ هر صحنه با انجام هدف واقعی خودش باز می‌شود."});return base
 
 
 def serialize_pet(pet: SectorPet, coins: int = 0):
@@ -312,19 +309,8 @@ def buy_cosmetic(session,user_id:int,item_key:str):
 
 
 def story_action(session,user_id:int):
-    now=datetime.datetime.utcnow();start=now.replace(hour=0,minute=0,second=0,microsecond=0)
-    used=session.query(SectorPetAction).filter(SectorPetAction.user_id==user_id,SectorPetAction.action=="story",SectorPetAction.created_at>=start).count()
-    if used>=3:
-        tomorrow=(start+datetime.timedelta(days=1));remaining=max(0,int((tomorrow-now).total_seconds()))
-        return {"status":"error","message":"سهمیه ۳ حرکت داستانی امروز کامل شده است.","remaining_seconds":remaining,"story_daily_used":used,"story_daily_limit":3,"pet":serialize_pet(get_or_create_pet(session,user_id)),"story":None}
-    pet=get_or_create_pet(session,user_id,lock=True);chapter=max(1,min(4,int(pet.story_chapter or 1)));story=STORY_CHAPTERS[chapter]
-    branch=dict(pet.appearance or {}).get("story_branch");branch_bonus={"guardian":4,"explorer":6,"engineer":5}.get(branch,0);pet.story_progress=int(pet.story_progress or 0)+1;pet.energy=max(0,int(pet.energy or 0)-5);pet.xp=int(pet.xp or 0)+20+branch_bonus
-    completed=pet.story_progress>=story["target"]
-    if completed:
-        remember(session,user_id,"story",f"پایان فصل: {story['title']}",story["text"],4);pet.story_chapter=1 if chapter>=4 else chapter+1;pet.story_progress=0;pet.evolution_tokens=int(pet.evolution_tokens or 0)+1
-    session.add(SectorPetAction(user_id=user_id,action="story",coin_cost=0,xp_gained=20,created_at=now))
-    remaining=max(0,int(((start+datetime.timedelta(days=1))-now).total_seconds()))
-    branch_title={"guardian":"نگهبان","explorer":"کاوشگر","engineer":"مهندس"}.get(branch);return {"status":"success","message":("فصل کامل شد و یک توکن تکامل گرفتی!" if completed else f"حرکت {used+1} از ۳ امروز ثبت شد.")+(f" مسیر {branch_title} {branch_bonus} XP اضافه داد." if branch_title else ""),"pet":serialize_pet(pet),"story":STORY_CHAPTERS.get(int(pet.story_chapter or 1)),"story_daily_used":used+1,"story_daily_limit":3,"remaining_seconds":remaining}
+    from bot.services import sector_story
+    return sector_story.advance(session,user_id)
 
 
 def job_action(session,user_id:int,job_key=None,now=None):
@@ -357,6 +343,7 @@ def social_action(session,actor_id:int,target_id:int,action:str):
         attack=int(ap.level or 1)+int(ap.knowledge or 0)//10+random.randint(1,12);defense=int(tp.level or 1)+int(tp.health or 0)//10+random.randint(1,12);won=attack>=defense
         reward=45 if won else 10;ap.xp=int(ap.xp or 0)+reward;ap.happiness=min(100,int(ap.happiness or 0)+(7 if won else 2))
     else:ap.happiness=min(100,int(ap.happiness or 0)+5);ap.xp=int(ap.xp or 0)+reward
+    inventory=dict(ap.inventory or {});inventory["story:social_done"]=datetime.datetime.utcnow().isoformat();ap.inventory=inventory
     session.add(SectorPetSocial(actor_id=actor_id,target_id=target_id,action=action,day_key=day,payload={"reward":reward}))
     message="هدیه فرستاده شد!" if action=="gift" else (("نبرد را بردی!" if won else "این نبرد را باختی؛ اما XP گرفتی.") if action=="battle" else f"به اتاق {tp.name} سر زدی!")
     return {"status":"success","message":message,"coins":int(actor.coins or 0),"pet":serialize_pet(ap)}

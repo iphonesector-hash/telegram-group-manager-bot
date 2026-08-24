@@ -11,7 +11,7 @@ from telegram.error import Forbidden
 from api.main import app
 from bot.database.models import RuntimeState, SectorPet, User
 from bot.database.session import get_session
-from bot.services import sector_expansion, sector_pet
+from bot.services import sector_expansion, sector_pet, sector_story
 
 log=logging.getLogger(__name__)
 
@@ -46,10 +46,15 @@ async def sector_reminders(request:Request):
                 candidates.append((pet,user,None,text,'open_shop'))
                 continue
             inactive=max(0,(now-(_naive(pet.last_interaction) or now)).total_seconds()/3600)
-            if inactive<18:continue
             state=states.get(str(pet.user_id));sent_raw=(state.value or {}).get('sent_at') if state else None
             try:sent_at=datetime.datetime.fromisoformat(sent_raw) if sent_raw else None
             except (TypeError,ValueError):sent_at=None
+            narrative=sector_story.snapshot(session,int(user.id),pet);scene=narrative.get('scene') or {};scene_key=f"{narrative.get('world')}:{narrative.get('chapter')}:{scene.get('index')}"
+            previous_scene=(state.value or {}).get('story_scene') if state else None
+            if scene.get('threat') and previous_scene!=scene_key and (not sent_at or (now-_naive(sent_at)).total_seconds()>=6*3600):
+                text=f"🚨 <b>هشدار مرکز فرمان {pet.name}</b>\n\n{scene['threat']}\n\n🎯 ماموریت دفاعی: {scene['objective']}\n🪙 پاداش: {int((scene.get('reward') or {}).get('coins',0))} سکه + {int((scene.get('reward') or {}).get('xp',0))} XP\n\n{pet.name}: «برگرد؛ این یکی رو باید با هم انجام بدیم.»"
+                candidates.append((pet,user,state,text,'story:'+scene_key));continue
+            if inactive<18:continue
             if sent_at and (now-_naive(sent_at)).total_seconds()<22*3600:continue
             sector_pet.refresh_pet(pet,now);guide=sector_pet.care_guidance(pet,int(user.coins or 0));primary=guide['primary']
             if primary['priority']=='normal' and inactive<72:continue
@@ -76,7 +81,8 @@ async def sector_reminders(request:Request):
         for (pet,user,state,_text,action),status in results:
             if status=='blocked':pet.notifications_enabled=False;blocked+=1;continue
             if status!='sent':failed+=1;continue
-            value={'sent_at':now.isoformat(),'action':action}
+            value={**((state.value or {}) if state else {}),'sent_at':now.isoformat(),'action':action}
+            if str(action).startswith('story:'):value['story_scene']=str(action).split(':',1)[1]
             if state:state.value=value
             else:session.add(RuntimeState(scope='sector_reminder',state_key=str(user.id),value=value))
             sent+=1

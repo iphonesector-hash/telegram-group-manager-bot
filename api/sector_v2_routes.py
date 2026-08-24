@@ -14,7 +14,7 @@ from bot.database.models import RuntimeState, SectorClan, SectorClanMember, Sect
 from bot.database.session import get_session
 from bot.modules.ai import get_ai_response, load_ai_history, save_ai_turn
 from bot.services import sector_pet as legacy
-from bot.services import sector_expansion, sector_v2
+from bot.services import sector_expansion, sector_story, sector_v2
 
 log = logging.getLogger(__name__)
 REQUIRED_MEMBERSHIP_CHAT = os.getenv("REQUIRED_MEMBERSHIP_CHAT", "@sectorland")
@@ -67,7 +67,7 @@ def _payload(session, user_id: int):
     story_used=session.query(legacy.SectorPetAction).filter(legacy.SectorPetAction.user_id==user_id,legacy.SectorPetAction.action=="story",legacy.SectorPetAction.created_at>=day_start).count()
     reset_seconds=max(0,int(((day_start+datetime.timedelta(days=1))-now).total_seconds()))
     data["guidance"]=legacy.progress_guidance(pet,daily,coins,story_used,reset_seconds)
-    data["timers"]={"daily_reset_seconds":reset_seconds,"story_reset_seconds":reset_seconds,"story_daily_used":story_used,"story_daily_limit":3}
+    data["timers"]={"daily_reset_seconds":reset_seconds,"story_reset_seconds":0,"story_daily_used":story_used,"story_daily_limit":None}
     membership = session.query(SectorClanMember).filter(SectorClanMember.user_id == user_id).first()
     clan = session.query(SectorClan).filter(SectorClan.id == membership.clan_id).first() if membership else None
     return {
@@ -80,6 +80,7 @@ def _payload(session, user_id: int):
         "evolution_paths": legacy.EVOLUTION_PATHS,
         "jobs": legacy.JOBS,
         "story": legacy.STORY_CHAPTERS.get(int(pet.story_chapter or 1)),
+        "narrative": sector_story.snapshot(session,user_id,pet),
         "expansion": sector_expansion.snapshot(session,user_id),
         "clan": {"id": clan.id, "name": clan.name, "xp": int(clan.xp or 0), "contribution": int(membership.contribution or 0)} if clan else None,
     }
@@ -130,6 +131,9 @@ async def sector_v2_rename(user_id: int, request: dict, init_data: Optional[str]
         pet = legacy.get_or_create_pet(session, user_id, lock=True)
         old = pet.name
         pet.name = name
+        inventory=dict(pet.inventory or {})
+        if old != name:inventory["story:named_at"]=datetime.datetime.utcnow().isoformat()
+        pet.inventory=inventory
         pet.updated_at = datetime.datetime.utcnow()
         if old != name:
             legacy.remember(session, user_id, "identity", "تغییر نام", f"نام سکتور از {old} به {name} تغییر کرد.", 2)
@@ -341,6 +345,8 @@ async def sector_v2_talk(user_id: int, request: dict, init_data: Optional[str] =
         pet = legacy.get_or_create_pet(session, user_id)
         legacy.refresh_pet(pet)
         legacy.touch_daily_visit(pet)
+        inventory=dict(pet.inventory or {});inventory["story:chat_seen"]=datetime.datetime.utcnow().isoformat();pet.inventory=inventory
+        narrative=sector_story.snapshot(session,user_id,pet)
         pet_data = sector_v2.serialize_pet(pet)
         memory_context = sector_v2.chat_context(session, user_id)
         session.commit()
@@ -357,6 +363,9 @@ async def sector_v2_talk(user_id: int, request: dict, init_data: Optional[str] =
         f"فرم فعلی بدنه‌ات {stage}، سطح {pet_data['level']} و حالتت {mood} است. "
         "در مراحل پایین کمی ساده، فرسوده و خام حرف بزن و با رشد سطح، دقیق‌تر و باهوش‌تر شو. "
         "پاسخ فارسی، طبیعی، کوتاه و شخصیت‌دار باشد. از لحن بچگانه و ایموجی‌باران دوری کن. "
+        f"اکنون در دنیای «{narrative['world_info']['title']}»، فصل «{narrative['chapter_info']['title']}» هستید. "
+        f"هدف جاری کاربر: {narrative['scene']['objective']} حرکت پیشنهادی: {narrative['scene'].get('route')}. "
+        "اگر کاربر پرسید حالا چه کند، دقیقاً همین هدف، مسیر انجام، هزینه و پاداش موجود را توضیح بده؛ اطلاعات ساختگی نساز. "
         f"خاطرات مهم تو: {memory_context}"
     )
     try:
@@ -383,4 +392,4 @@ async def sector_v2_talk(user_id: int, request: dict, init_data: Optional[str] =
         log.exception("Unable to save Sector v2 chat memory")
     finally:
         memory_session.close()
-    return {"status": "success", "response": response, "pet": pet_data}
+    return {"status": "success", "response": response, "pet": pet_data, "narrative":narrative}

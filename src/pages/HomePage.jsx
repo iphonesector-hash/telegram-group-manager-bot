@@ -89,10 +89,11 @@ export default function HomePage() {
 
   return (
     <div className="page fade-up">
-      <button onClick={function(){navigate('sectorpet')}} className="glass" style={{display:'block',width:'100%',padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(125,92,255,.35)',cursor:'pointer',textAlign:'inherit',color:'inherit',background:'#090c27'}}>
+      <button onClick={function(){navigate('sectorpet')}} className="glass sector-game-entry" style={{display:'block',width:'100%',padding:0,marginBottom:12,overflow:'hidden',border:'1px solid rgba(125,92,255,.35)',cursor:'pointer',textAlign:'inherit',color:'inherit',background:'#090c27'}}>
         <img src="/assets/sector/koochooloo-hero-v2.webp" alt="Sector Koochooloo" fetchPriority="high" style={{display:'block',width:'100%',aspectRatio:'1.32',objectFit:'cover',objectPosition:'center 42%'}} />
+        <span className="sector-game-entry__badge">بازی مستقل · ماجراجویی SectorLand</span>
         <div style={{padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
-          <div><b style={{fontSize:13}}>💙 سکتور کوچولو، همراه همیشگی تو</b><div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>بازی کن • رشد کن • جایزه بگیر</div></div>
+          <div><b style={{fontSize:13}}>سکتور کوچولو؛ رفیق تو در یک دنیای داستانی</b><div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>این بخش از مدیریت گروه جداست · نجات بده، ارتقا بده و بجنگ</div></div>
           <span style={{fontSize:18}}>‹</span>
         </div>
       </button>

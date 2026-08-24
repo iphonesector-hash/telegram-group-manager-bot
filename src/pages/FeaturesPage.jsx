@@ -1,14 +1,15 @@
 import { useAppContext } from '../App'
+import SectorIcon from '../components/ui/SectorIcon'
 
 var FEATURES = [
-  {icon:'🤖',title:'دستیار هوشمند',desc:'پرسش و پاسخ فارسی با Sector AI',action:'tools'},
-  {icon:'🛡️',title:'مدیریت گروه',desc:'اخطار، بن، میوت و مدیریت اعضا',action:'group'},
-  {icon:'🔒',title:'قفل‌های گروه',desc:'لینک، رسانه، فوروارد، منشن و ضداسپم',action:'group'},
-  {icon:'👋',title:'خوش‌آمد و قوانین',desc:'تنظیم پیام ورود و قوانین هر گروه',action:'group'},
-  {icon:'🌤️',title:'آب‌وهوا و ابزارها',desc:'هواشناسی، ترجمه، ماشین‌حساب و تبدیل واحد',action:'tools'},
-  {icon:'🎭',title:'سرگرمی و مسابقه',desc:'چیستان، حدس پرچم، جوایز و بازی‌ها',action:'games'},
-  {icon:'🏦',title:'بانک SectorLand',desc:'واریز، برداشت، وام و تراکنش‌ها',action:'wallet'},
-  {icon:'🎫',title:'پشتیبانی و جوایز',desc:'دریافت جایزه‌های کانفیگ و پروکسی',action:'support'},
+  {icon:'sectorpet',tone:'cyan',title:'دستیار هوشمند',desc:'پرسش و پاسخ فارسی با Sector AI',action:'tools'},
+  {icon:'shield',tone:'red',title:'مدیریت گروه',desc:'اخطار، بن، میوت و مدیریت اعضا',action:'group'},
+  {icon:'lock',tone:'violet',title:'قفل‌های گروه',desc:'لینک، رسانه، فوروارد، منشن و ضداسپم',action:'group'},
+  {icon:'group',tone:'green',title:'خوش‌آمد و قوانین',desc:'تنظیم پیام ورود و قوانین هر گروه',action:'group'},
+  {icon:'weather',tone:'cyan',title:'آب‌وهوا و ابزارها',desc:'هواشناسی، ترجمه، ماشین‌حساب و تبدیل واحد',action:'tools'},
+  {icon:'games',tone:'violet',title:'سرگرمی و مسابقه',desc:'چیستان، حدس پرچم، جوایز و بازی‌ها',action:'games'},
+  {icon:'wallet',tone:'gold',title:'بانک SectorLand',desc:'واریز، برداشت، وام و تراکنش‌ها',action:'wallet'},
+  {icon:'support',tone:'green',title:'پشتیبانی و جوایز',desc:'دریافت جایزه‌های کانفیگ و پروکسی',action:'support'},
 ]
 
 export default function FeaturesPage() {
@@ -26,9 +27,9 @@ export default function FeaturesPage() {
   }
   return (
     <div className="page fade-up">
-      <div className="glass" style={{padding:16,marginBottom:16,lineHeight:1.8,fontSize:12,color:'var(--muted)'}}>امکانات شخصی داخل Mini App اجرا می‌شوند؛ ابزارهای مدیریتی با حفظ دسترسی ادمین مستقیماً در گروه باز می‌شوند.</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-        {FEATURES.map(function(item){return <button key={item.title} onClick={function(){run(item)}} className="glass" style={{padding:15,minHeight:145,border:'1px solid var(--border)',color:'inherit',textAlign:'right',cursor:'pointer'}}><div style={{fontSize:30}}>{item.icon}</div><div style={{fontWeight:800,fontSize:14,marginTop:8}}>{item.title}</div><div style={{fontSize:10,color:'var(--muted)',lineHeight:1.7,marginTop:4}}>{item.desc}</div></button>})}
+      <section className="glass visual-hero"><div className="visual-hero__core"><SectorIcon name="features" size={34}/></div><div><small>SECTOR SYSTEMS</small><h2>مرکز امکانات</h2><p>ابزارهای شخصی همین‌جا اجرا می‌شوند؛ فرمان‌های مدیریتی با دسترسی امن داخل گروه باز می‌شوند.</p></div></section>
+      <div className="visual-grid">
+        {FEATURES.map(function(item){return <button key={item.title} onClick={function(){run(item)}} className={'glass visual-card visual-card--'+item.tone}><span className="visual-card__icon"><SectorIcon name={item.icon} size={29}/><i/></span><b>{item.title}</b><small>{item.desc}</small><em>ورود به سامانه ‹</em></button>})}
       </div>
     </div>
   )
