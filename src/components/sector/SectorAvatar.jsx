@@ -1,4 +1,5 @@
-import React from 'react'
+import React, {useCallback,useState} from 'react'
+import SectorAvatar3D from './SectorAvatar3D'
 
 const STAGE={
  scrap:{metal:'#756a62',panel:'#403833',accent:'#c1784c',rust:true},patched:{metal:'#b8c1ca',panel:'#354250',accent:'#55d8ff'},core:{metal:'#cbd5e1',panel:'#243850',accent:'#4fc7ff'},advanced:{metal:'#c9d0e8',panel:'#303457',accent:'#7c7bff'},elite:{metal:'#ded2ee',panel:'#432e5b',accent:'#b779ff'},mythic:{metal:'#fff0c5',panel:'#4a3b22',accent:'#ffe16b'}
@@ -37,6 +38,7 @@ function Wearable({slot,id,accent}){
 }
 
 export default function SectorAvatar({pet,previewItem,compact=false}){
+ const [threeReady,setThreeReady]=useState(false),handleThreeReady=useCallback(()=>setThreeReady(true),[])
  const stage=pet?.visual_stage?.id||'scrap',cfg=STAGE[stage]||STAGE.scrap,appearance={...(pet?.appearance||{})}
  if(previewItem?.slot)appearance[previewItem.slot]=previewItem.id
  const mood=pet?.mood?.id||pet?.mood?.key||'happy', eye=mood.includes('sad')?'sad':mood.includes('angry')?'angry':mood.includes('sleep')?'sleep':mood.includes('love')?'love':'happy'
@@ -44,7 +46,8 @@ export default function SectorAvatar({pet,previewItem,compact=false}){
  const room=appearance.background||'crystal_room'
  return <div className={`sector-room sector-room--${room} sector-stage--${stage}${compact?' sector-room--compact':''}`} style={{backgroundImage:`url(${ROOM_ART[room]||'/assets/sector/companion-room-v3.webp'})`}}>
   <div className="sector-room__light"/>
-  <svg className="sector-avatar" viewBox="0 0 360 360" role="img" aria-label={`${pet?.name||'سکتور کوچولو'}، مرحله ${stage}`}>
+  <SectorAvatar3D pet={pet} previewItem={previewItem} compact={compact} onReady={handleThreeReady}/>
+  <svg className={`sector-avatar${threeReady?' sector-avatar--3d-ready':''}`} viewBox="0 0 360 360" role="img" aria-label={`${pet?.name||'سکتور کوچولو'}، مرحله ${stage}`}>
    <defs>
     <linearGradient id="sa-metal" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffffff"/><stop offset=".22" stopColor="#cbd3df"/><stop offset=".55" stopColor={cfg.metal}/><stop offset=".78" stopColor="#f5f7fb"/><stop offset="1" stopColor="#7d8796"/></linearGradient>
     <linearGradient id="sa-dark-metal" x1="0" x2="1"><stop stopColor="#111722"/><stop offset=".55" stopColor="#313b4a"/><stop offset="1" stopColor="#080b11"/></linearGradient>
