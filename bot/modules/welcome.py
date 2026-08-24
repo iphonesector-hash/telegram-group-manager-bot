@@ -24,9 +24,25 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
     session.close()
 
 async def welcome_settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_admin(update, context): return
+    if update.effective_chat.type == "private":
+        await update.effective_message.reply_text("🛡 تنظیمات خوشامدگویی فقط داخل گروه قابل استفاده است.")
+        raise ApplicationHandlerStop()
+    if not await is_admin(update, context):
+        await update.effective_message.reply_text("❌ این بخش فقط برای مدیران گروه است.")
+        raise ApplicationHandlerStop()
     text = update.effective_message.text
 
+    if text == "🔘 فعال/غیرفعال سازی خوشامدگویی":
+        session = get_session()
+        try:
+            group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+            group.welcome_enabled = not bool(group.welcome_enabled)
+            session.commit()
+            status = "فعال" if group.welcome_enabled else "غیرفعال"
+        finally:
+            session.close()
+        await update.effective_message.reply_text(f"👋 پیام خوشامدگویی {status} شد.")
+        raise ApplicationHandlerStop()
     if text == "📝 تغییر متن خوشامدگویی":
         await update.effective_message.reply_text("💡 برای تغییر متن خوشامدگویی بنویسید:\n\n/setwelcome [متن شما]\n\nمثال: /setwelcome سلام {mention} عزیز به گروه {title} خوش آمدی!")
         raise ApplicationHandlerStop()
@@ -48,6 +64,6 @@ async def set_welcome_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_welcome_handlers():
     return [
         MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member),
-        MessageHandler(filters.TEXT & filters.Regex("^📝 تغییر متن خوشامدگویی$"), welcome_settings_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(🔘 فعال/غیرفعال سازی خوشامدگویی|📝 تغییر متن خوشامدگویی)$"), welcome_settings_handler),
         CommandHandler("setwelcome", set_welcome_cmd),
     ]

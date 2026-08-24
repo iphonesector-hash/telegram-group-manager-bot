@@ -285,6 +285,47 @@ async def menu_navigation_handler(update: Update, context: ContextTypes.DEFAULT_
         elif await is_admin(update, context):
             title, markup = admin_only[text]
             await update.effective_message.reply_text(title, reply_markup=markup)
+        else:
+            await update.effective_message.reply_text("❌ این بخش فقط برای مدیران گروه است.")
+        raise ApplicationHandlerStop()
+
+    admin_actions = {
+        "💰 تنظیمات اقتصاد": ("economy_enabled", "💰 اقتصاد گروه"),
+        "🔗 ضد لینک": ("lock_links", "🔗 فیلتر لینک"),
+    }
+    if text in admin_actions:
+        if update.effective_chat.type == "private":
+            await update.effective_message.reply_text("🛡 این تنظیم فقط داخل گروه قابل استفاده است.", reply_markup=get_main_menu())
+            raise ApplicationHandlerStop()
+        if not await is_admin(update, context):
+            await update.effective_message.reply_text("❌ این بخش فقط برای مدیران گروه است.")
+            raise ApplicationHandlerStop()
+        attr, label = admin_actions[text]
+        session = get_session()
+        try:
+            group = get_group(session, update.effective_chat.id, update.effective_chat.title or "")
+            enabled = not bool(getattr(group, attr))
+            setattr(group, attr, enabled)
+            session.commit()
+        finally:
+            session.close()
+        await update.effective_message.reply_text(f"{label} {'فعال' if enabled else 'غیرفعال'} شد.", reply_markup=get_admin_menu())
+        raise ApplicationHandlerStop()
+
+    if text == "⚙️ تنظیمات عمومی":
+        if update.effective_chat.type == "private":
+            await update.effective_message.reply_text("🛡 تنظیمات عمومی فقط داخل گروه قابل استفاده است.", reply_markup=get_main_menu())
+        elif await is_admin(update, context):
+            await update.effective_message.reply_text("⚙️ تنظیمات عمومی گروه", reply_markup=get_group_settings_menu())
+        else:
+            await update.effective_message.reply_text("❌ این بخش فقط برای مدیران گروه است.")
+        raise ApplicationHandlerStop()
+
+    if text == "🤖 تنظیمات هوش مصنوعی":
+        await update.effective_message.reply_text(
+            "🤖 دستیار هوشمند فعال است. سؤال را مستقیم در خصوصی بفرست؛ در گروه ربات را منشن کن یا روی پیامش پاسخ بده.",
+            reply_markup=get_settings_menu(),
+        )
         raise ApplicationHandlerStop()
 
 
@@ -293,6 +334,7 @@ def get_panel_handlers():
         "^(🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|⚙️ تنظیمات|"
         "🤖 دستیار هوشمند|🤖 سکتور کوچولو|سکتور کوچولو|🤝 پشتیبانی|🔒 قفل‌های گروه|"
         "🔒 قفل‌ها|👤 مدیریت اعضا|⚙️ تنظیمات گروه|👋 خوشامدگویی|📜 قوانین|"
+        "💰 تنظیمات اقتصاد|🔗 ضد لینک|⚙️ تنظیمات عمومی|🤖 تنظیمات هوش مصنوعی|"
         "🔙 بازگشت به مدیریت|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"
     )
     return [

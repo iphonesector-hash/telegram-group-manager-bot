@@ -31,9 +31,25 @@ async def set_rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raise ApplicationHandlerStop()
 
 async def rules_settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_admin(update, context): return
+    if update.effective_chat.type == "private":
+        await update.effective_message.reply_text("🛡 تنظیمات قوانین فقط داخل گروه قابل استفاده است.")
+        raise ApplicationHandlerStop()
+    if not await is_admin(update, context):
+        await update.effective_message.reply_text("❌ این بخش فقط برای مدیران گروه است.")
+        raise ApplicationHandlerStop()
     text = update.effective_message.text
 
+    if text == "🔘 فعال/غیرفعال سازی قوانین":
+        session = get_session()
+        try:
+            group = get_group(session, update.effective_chat.id, update.effective_chat.title)
+            group.rules_enabled = not bool(group.rules_enabled)
+            session.commit()
+            status = "فعال" if group.rules_enabled else "غیرفعال"
+        finally:
+            session.close()
+        await update.effective_message.reply_text(f"📜 نمایش قوانین {status} شد.")
+        raise ApplicationHandlerStop()
     if text == "📝 تغییر متن قوانین":
         await update.effective_message.reply_text("💡 برای تغییر قوانین بنویسید:\n\n/setrules [متن قوانین شما]")
         raise ApplicationHandlerStop()
@@ -44,5 +60,5 @@ def get_rules_handlers():
         CommandHandler("rules", rules_cmd),
         CommandHandler("setrules", set_rules_cmd),
         MessageHandler(filters.TEXT & filters.Regex(rules_triggers), rules_cmd),
-        MessageHandler(filters.TEXT & filters.Regex("^📝 تغییر متن قوانین$"), rules_settings_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(🔘 فعال/غیرفعال سازی قوانین|📝 تغییر متن قوانین)$"), rules_settings_handler),
     ]

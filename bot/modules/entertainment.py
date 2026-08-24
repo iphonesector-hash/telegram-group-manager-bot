@@ -106,6 +106,36 @@ async def ent_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await get_tod_action(update, "truth")
     elif text == "🎲 تصادفی":
         await get_tod_action(update, "random")
+    elif text == "🤝 پیوستن به بازی":
+        players = context.chat_data.setdefault("tod_players", [])
+        user = update.effective_user
+        if not any(item["id"] == user.id for item in players):
+            players.append({"id": user.id, "name": user.first_name})
+            message = f"✅ {user.first_name} به بازی پیوست. تعداد بازیکنان: {len(players)}"
+        else:
+            message = "ℹ️ قبلاً به بازی پیوسته‌ای."
+        await update.effective_message.reply_text(message, reply_markup=get_tod_menu())
+    elif text == "🏁 شروع بازی":
+        players = context.chat_data.get("tod_players", [])
+        if not players:
+            await update.effective_message.reply_text("اول با دکمه «پیوستن به بازی» بازیکن‌ها را اضافه کنید.", reply_markup=get_tod_menu())
+        else:
+            context.chat_data["tod_turn"] = 0
+            await update.effective_message.reply_text(f"🏁 بازی شروع شد؛ نوبت {players[0]['name']} است.", reply_markup=get_tod_menu())
+            await get_tod_action(update, "random")
+    elif text == "🔄 نوبت بعدی":
+        players = context.chat_data.get("tod_players", [])
+        if not players:
+            await update.effective_message.reply_text("بازی فعالی وجود ندارد.", reply_markup=get_tod_menu())
+        else:
+            turn = (int(context.chat_data.get("tod_turn", -1)) + 1) % len(players)
+            context.chat_data["tod_turn"] = turn
+            await update.effective_message.reply_text(f"🔄 نوبت {players[turn]['name']} است.", reply_markup=get_tod_menu())
+            await get_tod_action(update, "random")
+    elif text == "🛑 توقف":
+        context.chat_data.pop("tod_players", None)
+        context.chat_data.pop("tod_turn", None)
+        await update.effective_message.reply_text("🛑 بازی متوقف شد.", reply_markup=get_entertainment_menu())
     elif text == "💡 دانستنی":
         await get_new_fact(update, context)
     elif text == "📜 فال حافظ":
@@ -138,5 +168,5 @@ def get_handlers():
     return [
         CommandHandler("riddle", get_riddle_cmd),
         MessageHandler(filters.TEXT & filters.Regex("^(جواب معما|جوابش|جوابش؟)$"), reveal_riddle_answer),
-        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|🎲 تاس|🪙 پرتاب سکه|🎯 چالش|📜 فال حافظ|🎮 بازی‌ها|🎭 جرات و حقیقت|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه|🎯 جرات|💬 حقیقت|🎲 تصادفی|🎯 چالش تصادفی|⚡ چالش سخت|😂 چالش خنده‌دار|🧠 چالش ذهنی|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"), ent_button_handler),
+        MessageHandler(filters.TEXT & filters.Regex("^(😂 جوک|💡 دانستنی|❓ معما|📖 داستان|🎯 چالش|📜 فال حافظ|🎮 بازی‌ها|🎭 جرات و حقیقت|😂 خنده‌دار|😈 شیطنتی|🧠 هوشمندانه|🤣 کوتاه|🎯 جرات|💬 حقیقت|🎲 تصادفی|🤝 پیوستن به بازی|🏁 شروع بازی|🔄 نوبت بعدی|🛑 توقف|🎯 چالش تصادفی|⚡ چالش سخت|😂 چالش خنده‌دار|🧠 چالش ذهنی|🔙 بازگشت به منوی اصلی|🔙 بازگشت به سرگرمی)$"), ent_button_handler),
     ]
