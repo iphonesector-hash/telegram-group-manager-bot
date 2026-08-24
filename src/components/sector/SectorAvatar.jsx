@@ -40,5 +40,56 @@ export default function SectorAvatar({pet,previewItem,compact=false}){
  if(previewItem?.slot)appearance[previewItem.slot]=previewItem.id
  const mood=pet?.mood?.id||pet?.mood?.key||'happy', eye=mood.includes('sad')?'sad':mood.includes('angry')?'angry':mood.includes('sleep')?'sleep':mood.includes('love')?'love':'happy'
  const eyePath=eye==='sad'?['M148 160q10-7 20 0','M192 160q10-7 20 0']:eye==='angry'?['M147 164l21-8','M192 156l21 8']:eye==='sleep'?['M148 161h20','M192 161h20']:eye==='love'?['M147 160l8-8 8 8-8 8z','M192 160l8-8 8 8-8 8z']:['M148 157q10 10 20 0','M192 157q10 10 20 0']
- return <div style={{width:'100%',aspectRatio:'1/1',maxHeight:compact?250:370,borderRadius:22,overflow:'hidden',background:'radial-gradient(circle at 50% 40%,rgba(85,216,255,.08),#080b12 72%)'}}><svg viewBox="0 0 360 360" width="100%" height="100%"><defs><linearGradient id="sa-metal" x1="0" x2="1"><stop stopColor="#f7f8fb"/><stop offset=".5" stopColor={cfg.metal}/><stop offset="1" stopColor="#eef2f6"/></linearGradient><radialGradient id="sa-glow"><stop stopColor="#fff"/><stop offset=".2" stopColor={cfg.accent}/><stop offset="1" stopColor={cfg.accent} stopOpacity="0"/></radialGradient></defs><rect width="360" height="360" fill="#080b12"/><Wearable slot="background" id={appearance.background} accent={cfg.accent}/><circle cx="180" cy="177" r="132" fill="url(#sa-glow)" opacity={stage==='mythic'?'.17':'.08'}/><Wearable slot="aura" id={appearance.aura} accent={cfg.accent}/><ellipse cx="180" cy="322" rx="88" ry="18" fill="#000" opacity=".42"/><Wearable slot="back" id={appearance.back} accent={cfg.accent}/><path d="M129 207Q180 189 231 207L241 287Q180 310 119 287Z" fill="url(#sa-metal)" stroke="#242b35" strokeWidth="7"/><rect x="144" y="226" width="72" height="52" rx="14" fill={cfg.panel}/><circle cx="180" cy="252" r="12" fill={cfg.accent}/><rect x="114" y="228" width="24" height="59" rx="11" fill="url(#sa-metal)"/><rect x="222" y="228" width="24" height="59" rx="11" fill="url(#sa-metal)"/><rect x="135" y="286" width="28" height="41" rx="10" fill="url(#sa-metal)"/><rect x="197" y="286" width="28" height="41" rx="10" fill="url(#sa-metal)"/><rect x="113" y="112" width="134" height="101" rx="35" fill="url(#sa-metal)" stroke="#242b35" strokeWidth="7"/><rect x="132" y="137" width="96" height="51" rx="19" fill="#080d16" stroke={cfg.accent} strokeWidth="2" opacity=".97"/><path d={eyePath[0]} fill="none" stroke={eye==='love'?'#ff6dbd':cfg.accent} strokeWidth="7" strokeLinecap="round"/><path d={eyePath[1]} fill="none" stroke={eye==='love'?'#ff6dbd':cfg.accent} strokeWidth="7" strokeLinecap="round"/><line x1="141" y1="112" x2="134" y2="83" stroke="#8d98a7" strokeWidth="6"/><line x1="219" y1="112" x2="226" y2="83" stroke="#8d98a7" strokeWidth="6"/><circle cx="132" cy="76" r="9" fill={cfg.accent}/><circle cx="228" cy="76" r="9" fill={stage==='scrap'?'#cf6a49':cfg.accent}/>{cfg.rust&&<><circle cx="137" cy="128" r="9" fill="#8b5036" opacity=".7"/><path d="M116 173L95 160L88 182" fill="none" stroke="#8b5036" strokeWidth="6"/></>}{stage==='advanced'&&<><path d="M109 215L83 192M251 215l26-23" stroke="#7c7bff" strokeWidth="5" opacity=".6"/></>}{stage==='elite'&&<><path d="M105 219L70 190M255 219l35-29" stroke="#b779ff" strokeWidth="6" opacity=".7"/></>}{stage==='mythic'&&<><ellipse cx="180" cy="66" rx="48" ry="13" fill="none" stroke="#ffe16b" strokeWidth="5"/><path d="M104 218L62 181M256 218l42-37" stroke="#ffe16b" strokeWidth="7" opacity=".72"/></>}<Wearable slot="body" id={appearance.body} accent={cfg.accent}/><Wearable slot="face" id={appearance.face} accent={cfg.accent}/><Wearable slot="head" id={appearance.head} accent={cfg.accent}/><Wearable slot="hand" id={appearance.hand} accent={cfg.accent}/></svg></div>
+ const room=appearance.background||'crystal_room'
+ return <div className={`sector-room sector-room--${room} sector-stage--${stage}${compact?' sector-room--compact':''}`}>
+  <div className="sector-room__light"/>
+  <svg className="sector-avatar" viewBox="0 0 360 360" role="img" aria-label={`${pet?.name||'سکتور کوچولو'}، مرحله ${stage}`}>
+   <defs>
+    <linearGradient id="sa-metal" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffffff"/><stop offset=".22" stopColor="#cbd3df"/><stop offset=".55" stopColor={cfg.metal}/><stop offset=".78" stopColor="#f5f7fb"/><stop offset="1" stopColor="#7d8796"/></linearGradient>
+    <linearGradient id="sa-dark-metal" x1="0" x2="1"><stop stopColor="#111722"/><stop offset=".55" stopColor="#313b4a"/><stop offset="1" stopColor="#080b11"/></linearGradient>
+    <radialGradient id="sa-glow"><stop stopColor="#fff"/><stop offset=".18" stopColor={cfg.accent}/><stop offset="1" stopColor={cfg.accent} stopOpacity="0"/></radialGradient>
+    <filter id="sa-shadow"><feDropShadow dx="0" dy="8" stdDeviation="8" floodOpacity=".65"/></filter>
+    <filter id="sa-bloom"><feGaussianBlur stdDeviation="4"/></filter>
+   </defs>
+   <Wearable slot="aura" id={appearance.aura} accent={cfg.accent}/>
+   <circle cx="180" cy="180" r="122" fill="url(#sa-glow)" opacity={stage==='mythic'?'.3':'.15'} filter="url(#sa-bloom)"/>
+   <ellipse cx="180" cy="325" rx="82" ry="16" fill="#000" opacity=".58"/>
+   <g className="sector-avatar__float" filter="url(#sa-shadow)">
+    <Wearable slot="back" id={appearance.back} accent={cfg.accent}/>
+    <g>{/* articulated legs */}
+     <rect x="132" y="274" width="37" height="43" rx="14" fill="url(#sa-metal)" stroke="#303846" strokeWidth="5"/><rect x="191" y="274" width="37" height="43" rx="14" fill="url(#sa-metal)" stroke="#303846" strokeWidth="5"/>
+     <path d="M125 313h48l-5 22h-53q-8-13 10-22zM235 313h-48l5 22h53q8-13-10-22z" fill="url(#sa-dark-metal)" stroke="#707c8d" strokeWidth="4"/>
+    </g>
+    <g>{/* rounded core body */}
+     <path d="M121 205Q180 180 239 205L247 271Q235 297 180 304Q125 297 113 271Z" fill="url(#sa-metal)" stroke="#242b35" strokeWidth="7"/>
+     <path d="M132 215Q180 198 228 215L222 271Q180 289 138 271Z" fill={cfg.panel} stroke="#4a5565" strokeWidth="4"/>
+     <circle cx="180" cy="250" r="29" fill="#121726" stroke="#7b56d9" strokeWidth="6"/>
+     <path d="M180 225l17 19-17 29-17-29z" fill={cfg.accent} stroke="#e7fbff" strokeWidth="3"/>
+     <circle cx="180" cy="250" r="37" fill="none" stroke={cfg.accent} strokeWidth="3" opacity=".42"/>
+     <path d="M138 218l-12 53M222 218l12 53" stroke="#fff" strokeWidth="3" opacity=".35"/>
+    </g>
+    <g>{/* segmented arms */}
+     <circle cx="112" cy="222" r="17" fill="url(#sa-dark-metal)" stroke="#6e7887" strokeWidth="4"/><rect x="88" y="225" width="31" height="62" rx="15" transform="rotate(10 88 225)" fill="url(#sa-metal)" stroke="#303846" strokeWidth="5"/>
+     <circle cx="248" cy="222" r="17" fill="url(#sa-dark-metal)" stroke="#6e7887" strokeWidth="4"/><rect x="241" y="225" width="31" height="62" rx="15" transform="rotate(-10 241 225)" fill="url(#sa-metal)" stroke="#303846" strokeWidth="5"/>
+     <circle cx="94" cy="286" r="13" fill="url(#sa-dark-metal)"/><circle cx="266" cy="286" r="13" fill="url(#sa-dark-metal)"/>
+    </g>
+    <g>{/* helmet and glass face */}
+     <circle cx="102" cy="158" r="28" fill="url(#sa-dark-metal)" stroke="#697484" strokeWidth="5"/><circle cx="258" cy="158" r="28" fill="url(#sa-dark-metal)" stroke="#697484" strokeWidth="5"/>
+     <rect x="91" y="92" width="178" height="124" rx="59" fill="url(#sa-metal)" stroke="#222a35" strokeWidth="8"/>
+     <path d="M111 134Q180 104 249 134L244 184Q180 212 116 184Z" fill="#050913" stroke={cfg.accent} strokeWidth="4"/>
+     <path d="M121 134Q180 115 239 134" fill="none" stroke="#fff" strokeWidth="5" opacity=".22"/>
+     <path d={eyePath[0]} fill="none" stroke={eye==='love'?'#ff6dbd':cfg.accent} strokeWidth="10" strokeLinecap="round"/>
+     <path d={eyePath[1]} fill="none" stroke={eye==='love'?'#ff6dbd':cfg.accent} strokeWidth="10" strokeLinecap="round"/>
+     <path d="M129 103q51-28 102 0" fill="none" stroke="#fff" strokeWidth="4" opacity=".55"/>
+     <path d="M180 91V65" stroke="#737e8d" strokeWidth="7"/><path d="M180 48l12 15-12 18-12-18z" fill={cfg.accent} stroke="#e8ffff" strokeWidth="3"/>
+    </g>
+    {cfg.rust&&<><circle cx="126" cy="116" r="8" fill="#8b5036" opacity=".72"/><path d="M115 245l18 7" stroke="#8b5036" strokeWidth="6"/></>}
+    {stage==='advanced'&&<path d="M104 213L73 188M256 213l31-25" stroke="#7c7bff" strokeWidth="6" opacity=".7"/>}
+    {stage==='elite'&&<path d="M102 216L63 181M258 216l39-35" stroke="#b779ff" strokeWidth="7" opacity=".75"/>}
+    {stage==='mythic'&&<ellipse cx="180" cy="55" rx="49" ry="13" fill="none" stroke="#ffe16b" strokeWidth="6"/>}
+    <Wearable slot="body" id={appearance.body} accent={cfg.accent}/><Wearable slot="face" id={appearance.face} accent={cfg.accent}/><Wearable slot="head" id={appearance.head} accent={cfg.accent}/><Wearable slot="hand" id={appearance.hand} accent={cfg.accent}/>
+   </g>
+  </svg>
+  <div className="sector-room__stage"><span>{pet?.visual_stage?.title||'Sector Unit'}</span><i style={{background:cfg.accent}}/></div>
+ </div>
 }

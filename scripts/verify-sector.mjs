@@ -17,7 +17,7 @@ function expect(condition, message) {
   if (!condition) failures.push(message)
 }
 
-for (const name of ['koochooloo-hero-v2.webp', 'koochooloo-moods-v2.webp', 'rank-badges.webp']) {
+for (const name of ['koochooloo-hero-v2.webp', 'koochooloo-moods-v2.webp', 'rank-badges.webp', 'companion-room-v3.webp']) {
   const rel = `public/assets/sector/${name}`
   const full = path.join(root, rel)
   if (!fs.existsSync(full)) {
@@ -34,6 +34,8 @@ const splash = read('src/components/ui/SectorBootSplash.jsx')
 const home = read('src/pages/HomePage.jsx')
 const gate = read('src/App.jsx')
 const celebration = read('src/components/ui/SectorCelebration.jsx')
+const avatar = read('src/components/sector/SectorAvatar.jsx')
+const styles = read('src/styles/global.css')
 const manifestRaw = read('release/current.json')
 const stickers = read('bot/modules/stickers.py')
 
@@ -43,6 +45,11 @@ expect(home.includes('/assets/sector/koochooloo-moods-v2.webp'), 'home must use 
 expect(home.includes('/assets/sector/rank-badges.webp'), 'home must use production rank artwork')
 expect(gate.includes('/assets/sector/koochooloo-hero-v2.webp'), 'membership gate must use production hero artwork')
 expect(celebration.includes('/assets/sector/koochooloo-moods-v2.webp'), 'celebration must use production mood artwork')
+expect(avatar.includes('sector-room'), 'Sector avatar must render inside the interactive room')
+expect(styles.includes("/assets/sector/companion-room-v3.webp"), 'interactive room must use production room artwork')
+for (const slot of ['aura', 'back', 'body', 'face', 'head', 'hand']) {
+  expect(avatar.includes(`slot=\"${slot}\"`), `Sector avatar must render the ${slot} equipment slot`)
+}
 expect(!stickers.includes('mascot-emotions.webp'), 'sticker generator must not depend on corrupted webp sheet')
 
 try {
