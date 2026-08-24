@@ -30,7 +30,7 @@ for (const name of ['koochooloo-hero-v2.webp', 'koochooloo-moods-v2.webp', 'rank
   expect(body.subarray(8, 12).toString('ascii') === 'WEBP', `invalid webp signature: ${rel}`)
 }
 
-for (const [dir, minimum] of [['stages-v3', 6], ['actions-v3', 8], ['equipment-v3', 28], ['rooms-v3', 4]]) {
+for (const [dir, minimum] of [['stages-v3', 6], ['actions-v3', 8], ['equipment-v3', 28], ['rooms-v3', 4], ['missions-v3', 8], ['story-v3', 8], ['social-v3', 8], ['emotions-v3', 12]]) {
   const full = path.join(root, 'public/assets/sector', dir)
   if (!fs.existsSync(full)) {
     failures.push(`missing art pack: ${dir}`)

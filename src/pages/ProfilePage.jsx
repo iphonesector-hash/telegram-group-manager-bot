@@ -52,7 +52,7 @@ export default function ProfilePage() {
   return (
     <div className="page fade-up">
       <div className="glass" style={{padding:0,overflow:'hidden',marginBottom:12,border:'1px solid rgba(112,88,255,.3)'}}>
-        <img src="/assets/sector/koochooloo-hero-v2.webp" alt="Sector profile" style={{display:'block',width:'100%',maxHeight:160,objectFit:'cover',objectPosition:'center 43%'}} />
+        <img src="/assets/sector/social-v3/profile.webp" alt="Sector profile" style={{display:'block',width:'100%',maxHeight:190,objectFit:'cover',objectPosition:'center 35%'}} />
       </div>
 
       <div className="glass" style={{padding:24,textAlign:'center',marginBottom:16,background:'radial-gradient(circle at 50% 0%,rgba(99,77,255,.2),transparent 48%),linear-gradient(135deg,rgba(79,123,255,.14),rgba(162,89,255,.09))'}}>

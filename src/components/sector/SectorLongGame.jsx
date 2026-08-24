@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { StickerArt } from './SectorVisuals'
+import SectorFeatureArt from './SectorFeatureArt'
 
 function TinyBar({value,max=100}){
   const pct=Math.max(0,Math.min(100,Number(value||0)/Math.max(1,Number(max||1))*100))
@@ -27,6 +28,7 @@ export default function SectorLongGame({meta,busy,onAttack,onClaim,onStory,onRef
     </div>
 
     <div className="glass" style={{padding:14,marginTop:10,background:'linear-gradient(160deg,rgba(45,17,28,.82),rgba(12,12,18,.96))'}}>
+      <SectorFeatureArt kind="boss"/>
       <div style={{display:'flex',alignItems:'center',gap:10}}><StickerArt kind="boss" compact/><div style={{flex:1}}><div style={{fontSize:9,color:'#c98596'}}>WORLD BOSS</div><b>{boss.title||'VOID WARDEN'}</b></div><span style={{fontSize:9,color:'var(--muted)'}}>Damage تو: {Number(boss.my_damage||0).toLocaleString('fa-IR')}</span></div>
       <div style={{marginTop:10}}><TinyBar value={boss.hp} max={boss.max_hp}/></div>
       <div style={{display:'flex',justifyContent:'space-between',fontSize:9,marginTop:6}}><span>{Number(boss.hp||0).toLocaleString('fa-IR')} HP</span><span>{hpPct.toFixed(0)}%</span></div>
@@ -35,13 +37,13 @@ export default function SectorLongGame({meta,busy,onAttack,onClaim,onStory,onRef
     </div>
 
     <div className="sec-title">ماموریت‌های فصل</div>
-    <div className="glass" style={{padding:12}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}><StickerArt kind="mission" compact/><div style={{fontSize:9,color:'var(--muted)'}}>ماموریت‌ها با مراقبت، بازی و تعامل اجتماعی جلو می‌روند.</div></div>{missions.map(m=><div key={m.id} style={{padding:'10px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:10}}><b style={{fontSize:10}}>{m.title}</b><span style={{fontSize:9}}>{m.progress}/{m.target}</span></div><TinyBar value={m.progress} max={m.target}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:7}}><span style={{fontSize:8,color:'var(--muted)'}}>+{m.reward?.coins} سکه • +{m.reward?.xp} XP • +{m.reward?.season} SP</span><button className="btn" disabled={!m.complete||m.claimed||!!busy} onClick={()=>onClaim('mission',m.id)}>{m.claimed?'گرفته شد':'دریافت'}</button></div></div>)}</div>
+    <div className="glass" style={{padding:12}}><SectorFeatureArt kind="mission"/><div style={{display:'flex',alignItems:'center',gap:8,margin:'8px 0 6px'}}><StickerArt kind="mission" compact/><div style={{fontSize:9,color:'var(--muted)'}}>ماموریت‌ها با مراقبت، بازی و تعامل اجتماعی جلو می‌روند.</div></div>{missions.map(m=><div key={m.id} style={{padding:'10px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:10}}><b style={{fontSize:10}}>{m.title}</b><span style={{fontSize:9}}>{m.progress}/{m.target}</span></div><TinyBar value={m.progress} max={m.target}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:7}}><span style={{fontSize:8,color:'var(--muted)'}}>+{m.reward?.coins} سکه • +{m.reward?.xp} XP • +{m.reward?.season} SP</span><button className="btn" disabled={!m.complete||m.claimed||!!busy} onClick={()=>onClaim('mission',m.id)}>{m.claimed?'گرفته شد':'دریافت'}</button></div></div>)}</div>
 
     <div className="sec-title">Quest / Story</div>
-    <div className="glass" style={{padding:12}}><button className="btn" style={{width:'100%',marginBottom:8}} disabled={!!busy} onClick={onStory}>ادامه داستان Sector</button>{quests.map(q=><div key={q.id} style={{padding:'9px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:8}}><div><b style={{fontSize:10}}>{q.title}</b><div style={{fontSize:8,color:'var(--muted)',marginTop:3}}>{q.hint}</div></div><button className="btn" disabled={!q.complete||q.claimed||!!busy} onClick={()=>onClaim('quest',q.id)}>{q.claimed?'گرفته شد':'جایزه'}</button></div></div>)}</div>
+    <div className="glass" style={{padding:12}}><SectorFeatureArt kind="story"/><button className="btn" style={{width:'100%',margin:'8px 0'}} disabled={!!busy} onClick={onStory}>ادامه داستان Sector</button>{quests.map(q=><div key={q.id} style={{padding:'9px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',gap:8}}><div><b style={{fontSize:10}}>{q.title}</b><div style={{fontSize:8,color:'var(--muted)',marginTop:3}}>{q.hint}</div></div><button className="btn" disabled={!q.complete||q.claimed||!!busy} onClick={()=>onClaim('quest',q.id)}>{q.claimed?'گرفته شد':'جایزه'}</button></div></div>)}</div>
 
     <div className="sec-title">Bond</div>
-    <div className="glass" style={{padding:12}}>{bonds.length===0?<div style={{display:'flex',alignItems:'center',gap:8}}><StickerArt kind="love" compact/><div style={{fontSize:10,color:'var(--muted)',padding:8}}>هنوز Bond فعالی نداری. ملاقات، هدیه و دوئل با کاربران دیگر پیوند می‌سازد.</div></div>:bonds.map(b=><div key={b.user_id} style={{padding:'8px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between'}}><b style={{fontSize:10}}>{b.name}</b><span style={{fontSize:9}}>Bond Lv.{b.level}</span></div><TinyBar value={b.xp%100} max={100}/><div style={{fontSize:8,color:'var(--muted)',marginTop:4}}>{b.interactions} تعامل • {b.gifts} هدیه • {b.battles} دوئل • {b.visits} ملاقات</div></div>)}</div>
+    <div className="glass" style={{padding:12}}>{bonds.length===0?<><SectorFeatureArt kind="bond"/><div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}><StickerArt kind="love" compact/><div style={{fontSize:10,color:'var(--muted)',padding:8}}>هنوز Bond فعالی نداری. ملاقات، هدیه و دوئل با کاربران دیگر پیوند می‌سازد.</div></div></>:bonds.map(b=><div key={b.user_id} style={{padding:'8px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between'}}><b style={{fontSize:10}}>{b.name}</b><span style={{fontSize:9}}>Bond Lv.{b.level}</span></div><TinyBar value={b.xp%100} max={100}/><div style={{fontSize:8,color:'var(--muted)',marginTop:4}}>{b.interactions} تعامل • {b.gifts} هدیه • {b.battles} دوئل • {b.visits} ملاقات</div></div>)}</div>
 
     <button className="btn" style={{width:'100%',marginTop:10}} onClick={onRefresh}>به‌روزرسانی فصل</button>
   </>
