@@ -17,6 +17,9 @@ function sectorAssetAliases() {
       for (const [legacyPath, stablePath] of SECTOR_ASSET_ALIASES) {
         next = next.split(legacyPath).join(stablePath)
       }
+      if (id.endsWith('/src/App.jsx')) {
+        next = next.split("./pages/SectorPetPage").join("./pages/SectorPetPersianPage")
+      }
       return next === code ? null : { code: next, map: null }
     },
   }
