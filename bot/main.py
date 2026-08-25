@@ -27,9 +27,15 @@ from bot.modules.entertainment import get_handlers as get_entertainment_handlers
 from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
+import bot.modules.sector_pet as sector_pet_module
 from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers, sector_command
 from bot.modules.sector_social import get_handlers as get_sector_social_handlers
 from bot.modules.stickers import get_handlers as get_sticker_handlers
+from bot.utils.animated_emoji import get_sector_emoji_ids
+
+# Sector chat text and inline buttons share one cached Premium-emoji lookup.
+# This replaces the old per-icon database reads without changing old handlers.
+sector_pet_module.sector_emoji_ids = get_sector_emoji_ids
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
