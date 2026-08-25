@@ -1,11 +1,45 @@
 const BASE = import.meta.env?.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
+const sectorSnapshotCache = new Map()
+const SECTOR_FAST_TTL = 900
+
+function exactSectorSnapshotKey(endpoint) {
+  const match = String(endpoint || '').match(/^\/api\/sector-v2\/(\d+)$/)
+  return match ? '/api/sector-v2/' + match[1] : null
+}
+
+function sectorSnapshotKeyFromMutation(endpoint) {
+  const match = String(endpoint || '').match(/^\/api\/(?:sector-v2|sector-meta|sector-pet)\/(\d+)(?:\/|$)/)
+  return match ? '/api/sector-v2/' + match[1] : null
+}
+
+function updateSectorSnapshotFromMutation(endpoint, payload) {
+  const key = sectorSnapshotKeyFromMutation(endpoint)
+  if (!key) return
+  const previous = sectorSnapshotCache.get(key)
+  const patchKeys = ['pet','daily','shop','expansion','narrative','clan','actions','memories','achievements','evolution_paths','jobs','story']
+  const hasPatch = payload && patchKeys.some(function(k){ return payload[k] !== undefined })
+  if (!hasPatch || !previous || !previous.data) {
+    sectorSnapshotCache.delete(key)
+    return
+  }
+  const merged = { ...previous.data }
+  patchKeys.forEach(function(k){ if (payload[k] !== undefined) merged[k] = payload[k] })
+  sectorSnapshotCache.set(key, { ts: Date.now(), data: merged })
+}
 
 async function request(endpoint, options, initData) {
-  const config=options||{},controller=new AbortController(),timeout=setTimeout(function(){controller.abort()},20000)
+  const config=options||{},method=String(config.method||'GET').toUpperCase(),snapshotKey=method==='GET'?exactSectorSnapshotKey(endpoint):null
+  if(snapshotKey){
+    const hit=sectorSnapshotCache.get(snapshotKey)
+    if(hit&&Date.now()-hit.ts<SECTOR_FAST_TTL)return {data:hit.data,error:null,cached:true}
+  }
+  const controller=new AbortController(),timeout=setTimeout(function(){controller.abort()},20000)
   try {
     const res = await fetch(BASE + endpoint, {...config, signal:controller.signal, headers: {'Content-Type': 'application/json','init-data': initData || '',...config.headers}})
     const payload = await res.json().catch(function() { return null })
     if (!res.ok) throw new Error((payload && payload.detail) || ('HTTP ' + res.status))
+    if(snapshotKey)sectorSnapshotCache.set(snapshotKey,{ts:Date.now(),data:payload})
+    else if(method!=='GET')updateSectorSnapshotFromMutation(endpoint,payload)
     return { data: payload, error: null }
   } catch (err) {
     console.warn('[API]', endpoint, err.message)
