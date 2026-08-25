@@ -24,7 +24,9 @@ expect(expansion.includes('key in dict(pet.appearance or {}).values()'),'equippe
 expect(meta.includes('if value==item_key:a.pop(slot,None)'),'sold gear must be removed from appearance')
 expect(reminders.includes('22*3600')&&reminders.includes('notifications_enabled.is_(True)'),'private reminders need opt-in and daily throttling')
 expect(page.includes('shopLimit')&&page.includes('content-visibility')===false,'shop pagination should be component-driven')
-expect(api.includes('AbortController')&&api.includes('20000'),'API calls need bounded network waits')
+const timeoutMatch=api.match(/setTimeout\([^,]+,(\d+)\)/)
+const timeoutMs=timeoutMatch?Number(timeoutMatch[1]):0
+expect(api.includes('AbortController')&&timeoutMs>0&&timeoutMs<=20000,`API calls need bounded network waits (found ${timeoutMs||'none'}ms)`)
 expect(!page.includes('۰۰:۰۰ UTC'),'UI must not expose confusing UTC reset text')
 expect(page.includes('Sector Koochooloo Beta')&&page.includes('گزارش مشکل'),'Beta status and issue reporting are required')
 expect(styles.includes('min-height:44px')&&styles.includes('content-visibility:auto'),'mobile touch targets and deferred shop rendering are required')
@@ -38,4 +40,4 @@ const baseCosts=[450,700,600,500,900]
 expect(Math.min(...baseCosts)>=400,'base upgrades are too cheap')
 
 if(failures.length){console.error('Sector hardening verification failed:');failures.forEach(x=>console.error('- '+x));process.exit(1)}
-console.log(`Sector hardening passed. Typical daily net: ${netTypical} coins.`)
+console.log(`Sector hardening passed. Typical daily net: ${netTypical} coins. API timeout: ${timeoutMs}ms.`)
