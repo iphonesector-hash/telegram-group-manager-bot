@@ -17,7 +17,7 @@ from bot.modules.required_membership import get_handlers as get_required_members
 from bot.modules.panel import get_panel_handlers
 from bot.modules.locks import get_handlers as get_lock_handlers
 from bot.modules.welcome import get_welcome_handlers
-from bot.modules.antispam import get_antispam_handlers
+from bot.modules.antispam import get_handlers as get_antispam_handlers
 from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
 from bot.modules.warnings import get_handlers as get_warning_handlers
@@ -27,6 +27,7 @@ from bot.modules.entertainment import get_handlers as get_entertainment_handlers
 from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
+from bot.modules.sector_emoji_library import get_handlers as get_sector_emoji_library_handlers
 import bot.modules.sector_pet as sector_pet_module
 from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers, sector_command
 from bot.modules.sector_social import get_handlers as get_sector_social_handlers
@@ -76,6 +77,7 @@ def build_application(*, initialize_database: bool = True) -> Application:
     for h in get_release_announcement_handlers(): app.add_handler(h, group=-20)
     for h in get_required_membership_handlers(): app.add_handler(h, group=-10)
     for h in get_sticker_handlers(): app.add_handler(h, group=-5)
+    for h in get_sector_emoji_library_handlers(): app.add_handler(h, group=-4)
 
     # Persistent composer buttons must win over stale Sector ForceReply flows.
     app.add_handler(MessageHandler(filters.Regex(r"^(?:🤖 سکتور کوچولو|سکتور کوچولو)$"), sector_menu_entry), group=-3)
