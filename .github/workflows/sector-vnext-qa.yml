@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   qa:
@@ -22,13 +22,10 @@ jobs:
           node-version: '20.20.2'
           cache: npm
 
-      - name: Install frontend dependencies
+      - name: Install locked frontend dependencies
         run: npm ci
 
-      - name: Upgrade isolated build toolchain
-        run: npm install --save-dev vite@^8.2.2 @vitejs/plugin-react@^6.1.0
-
-      - name: Block dependency vulnerabilities
+      - name: Dependency security audit
         run: npm audit
 
       - name: Sector regression gates
@@ -44,13 +41,3 @@ jobs:
 
       - name: Compile Python application
         run: python -m compileall -q api bot
-
-      - name: Persist dependency updates only after all QA passes
-        run: |
-          if ! git diff --quiet -- package-lock.json package.json; then
-            git config user.name "sectorland-ci"
-            git config user.email "actions@users.noreply.github.com"
-            git add package-lock.json package.json
-            git commit -m "chore(deps): upgrade verified Vite toolchain"
-            git push origin HEAD:sector-vnext-debug
-          fi
