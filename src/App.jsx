@@ -211,7 +211,15 @@ export default function App() {
   var apiCall = useCallback(function(method) {
     var args = Array.prototype.slice.call(arguments, 1)
     args.push(initData)
-    return api[method].apply(api, args)
+    return api[method].apply(api, args).then(function(result){
+      var payload=result&&result.data
+      if(payload&&payload.coins!==undefined){
+        setDbUser(function(user){return {...user,coins:Number(payload.coins||0)}})
+      } else if(payload&&payload.pet&&payload.pet.coins!==undefined){
+        setDbUser(function(user){return {...user,coins:Number(payload.pet.coins||0)}})
+      }
+      return result
+    })
   }, [initData])
 
   var refreshUser = useCallback(function() {
