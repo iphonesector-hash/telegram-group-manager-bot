@@ -13,4 +13,7 @@
 .sector-action-grid>.sector-action-card:nth-child(3) .sector-action-card__title b{font-size:0}
 .sector-action-grid>.sector-action-card:nth-child(3) .sector-action-card__title b::after{content:'تمرین رزمی';font-size:12px}
 
+/* Remove development-English from the player-facing Sector shell. */
+.sector-beta b{font-size:0}
+.sector-beta b::after{content:'سکتور کوچولو · نسخه آزمایشی';font-size:11px}
 html[dir='rtl'] .sector-narrative small,html[dir='rtl'] .sector-command small{letter-spacing:0}
