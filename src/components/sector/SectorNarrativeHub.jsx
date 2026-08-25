@@ -2,12 +2,13 @@ import {useState} from 'react'
 import SectorIcon from '../ui/SectorIcon'
 
 const ROUTE_ICON={identity:'sectorpet',care:'care',games:'games',command:'command',shop:'shop',season:'season',social:'social',growth:'growth',talk:'talk',home:'home'}
+const ROUTE_LABEL={identity:'هویت',care:'مراقبت',games:'چالش‌ها',command:'مرکز فرمان',shop:'قطعات',season:'فصل و باس',social:'اجتماع',growth:'رشد',talk:'گفتگو',home:'داستان'}
 
 export default function SectorNarrativeHub({narrative,pet,actions=[],busy,onNavigate,onAdvance,onRename}){
   const [name,setName]=useState(''),[help,setHelp]=useState(false),scene=narrative?.scene,chapter=narrative?.chapter_info,world=narrative?.world_info
   if(!scene||!chapter||!world)return null
-  const needsName=scene.action==='rename'&&!scene.ready,care=actions.find(x=>x.id===scene.target),cost=Number(care?.cost||0)
-  function primary(){if(scene.ready)return onAdvance();onNavigate(scene.route||'home')}
+  const needsName=scene.action==='rename'&&!scene.ready,care=actions.find(x=>x.id===scene.target),cost=Number(care?.cost||0),route=scene.route||'home',routeLabel=ROUTE_LABEL[route]||'بخش مربوط'
+  function primary(){if(scene.ready){onAdvance();return}onNavigate(route)}
   return <section className={'sector-narrative glass'+(scene.threat?' is-threat':'')} style={{'--world-color':world.color||'#54dfff'}}>
     <div className="sector-narrative__scan" aria-hidden="true"/>
     <header><div className="sector-narrative__world"><i/><SectorIcon name={scene.threat?'shield':'command'} size={27}/></div><div><small>WORLD {Number(narrative.world).toLocaleString('fa-IR')} · CHAPTER {Number(narrative.chapter).toLocaleString('fa-IR')}</small><h2>{world.title}</h2><span>{chapter.title} · {chapter.region}</span></div><b>{Number(narrative.progress_percent||0).toLocaleString('fa-IR')}٪</b></header>
@@ -17,8 +18,8 @@ export default function SectorNarrativeHub({narrative,pet,actions=[],busy,onNavi
     <article><small>صحنه {scene.number||1} از {scene.total||1}</small><h3>{scene.title}</h3><p>{scene.text}</p><blockquote><SectorIcon name="sectorpet" size={18}/><span><b>{pet.name}</b>«{scene.objective}»</span></blockquote></article>
     <div className="sector-narrative__reward"><span><SectorIcon name="coin" size={15}/>{Number(scene.reward?.coins||0).toLocaleString('fa-IR')} سکه</span><span><SectorIcon name="growth" size={15}/>{Number(scene.reward?.xp||0).toLocaleString('fa-IR')} XP</span><span className={scene.ready?'ready':''}>{scene.ready?'هدف انجام شده':'هدف در انتظار'}</span></div>
     {cost?<div className="sector-narrative__cost"><SectorIcon name="coin" size={15}/><span>هزینه این حرکت</span><b>{cost.toLocaleString('fa-IR')} سکه</b></div>:null}
-    {help?<div className="sector-narrative__help"><b>الان دقیقاً چه کار کنم؟</b><p>{scene.objective}</p><span>دکمه اصلی پایین تو را مستقیم به بخش درست می‌برد. پس از انجام هدف، صحنه بعدی خودکار باز می‌شود.</span></div>:null}
-    {needsName?<form className="sector-narrative__rename" onSubmit={function(e){e.preventDefault();if(name.trim())onRename(name.trim(),function(){setName('')})}}><label htmlFor="sector-first-name">اسم رفیق جدیدت</label><div><input id="sector-first-name" value={name} onChange={function(e){setName(e.target.value)}} minLength={2} maxLength={20} placeholder="مثلاً آریو"/><button disabled={!!busy||name.trim().length<2}>ثبت نام</button></div></form>:<button className={'sector-narrative__primary'+(scene.ready?' ready':'')} disabled={!!busy} onClick={primary}><SectorIcon name={scene.ready?'story':(ROUTE_ICON[scene.route]||'mission')} size={19}/><span>{scene.ready?'بازکردن بخش بعدی':`برو به ${scene.objective.length>34?'بخش مربوط':'هدف'}`}</span><b>‹</b></button>}
+    {help?<div className="sector-narrative__help"><b>الان دقیقاً چه کار کنم؟</b><p>{scene.objective}</p><span>دکمه اصلی تو را به «{routeLabel}» می‌برد. بعد از انجام هدف، به داستان برگرد تا وضعیت تازه بررسی شود.</span></div>:null}
+    {needsName?<form className="sector-narrative__rename" onSubmit={function(e){e.preventDefault();if(name.trim())onRename(name.trim(),function(){setName('')})}}><label htmlFor="sector-first-name">اسم رفیق جدیدت</label><div><input id="sector-first-name" value={name} onChange={function(e){setName(e.target.value)}} minLength={2} maxLength={20} placeholder="مثلاً آریو"/><button disabled={!!busy||name.trim().length<2}>ثبت نام</button></div></form>:<button className={'sector-narrative__primary'+(scene.ready?' ready':'')} disabled={!!busy} onClick={primary}><SectorIcon name={scene.ready?'story':(ROUTE_ICON[route]||'mission')} size={19}/><span>{scene.ready?'بازکردن بخش بعدی':`برو به ${routeLabel}`}</span><b>‹</b></button>}
     <footer><button onClick={()=>setHelp(v=>!v)}><SectorIcon name="mission" size={15}/> الان چه کار کنم؟</button><button onClick={function(){onNavigate('talk')}}><SectorIcon name="talk" size={15}/> گفت‌وگو با {pet.name}</button></footer>
   </section>
 }
