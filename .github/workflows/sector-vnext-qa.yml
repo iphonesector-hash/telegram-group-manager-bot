@@ -19,17 +19,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.20.2'
           cache: npm
 
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Repair dependency vulnerabilities in isolated runner
-        run: npm audit fix --force || true
+      - name: Upgrade isolated build toolchain
+        run: npm install --save-dev vite@^8.2.2 @vitejs/plugin-react@^6.1.0
 
-      - name: Block high severity dependency vulnerabilities
-        run: npm audit --audit-level=high
+      - name: Block dependency vulnerabilities
+        run: npm audit
 
       - name: Sector regression gates
         run: npm run verify:sector
@@ -51,6 +51,6 @@ jobs:
             git config user.name "sectorland-ci"
             git config user.email "actions@users.noreply.github.com"
             git add package-lock.json package.json
-            git commit -m "chore(deps): apply verified npm security fixes"
+            git commit -m "chore(deps): upgrade verified Vite toolchain"
             git push origin HEAD:sector-vnext-debug
           fi
