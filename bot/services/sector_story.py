@@ -31,7 +31,7 @@ CHAPTERS = {
     scene("ایستگاه شارژ","سکتور: «اگه ایستگاه شارژ بسازیم، دیگه هر طوفان منو از پا نمی‌اندازه.»","ایستگاه شارژ پایگاه را به سطح ۱ ارتقا بده.","base","charger",90,75),
     scene("مواد اولیه","برای تعمیر دیوارهای پایگاه به ضایعات هوشمند نیاز دارید.","یک قطعه اضافه را بازیافت کن یا ۳ ماده اولیه جمع کن.","material","scrap:3",70,65),
     scene("زره نخستین","ردپاهای شکارچی سیگنال نزدیک پایگاه دیده شده است.","یک قطعه زره یا بدنه روی سکتور نصب کن.","equip","armor",100,90,"احتمال حمله شکارچی سیگنال"),
-    scene("دفاع از خانه","شکارچی حمله می‌کند. قدرت پایگاه از مراقبت، تجهیزات و تمرین‌های تو ساخته شده است.","یک تمرین انجام بده و سلامت سکتور را بالای ۶۰ نگه دار.","train_ready",None,140,120,"حمله به پایگاه"),
+    scene("دفاع از خانه","شکارچی حمله می‌کند. قدرت پایگاه از مراقبت، تجهیزات و تمرین‌های تو ساخته شده است.","در بخش «مراقبت» یک تمرین انجام بده؛ اگر سلامت سکتور بالای ۶۰ باشد، هدف کامل می‌شود.","train_ready",None,140,120,"حمله به پایگاه"),
   ]},
   3:{"title":"معادن کریستالی","region":"دره لومِن","boss":"کرم بلورخوار","scenes":[
     scene("نقشه زیرزمینی","یک تراشه قدیمی محل کریستال‌های لازم برای باتری Mk-II را نشان می‌دهد.","پیام سکتور را بخوان و مسیر معدن را فعال کن."),
@@ -134,7 +134,7 @@ def objective_state(session,user_id,pet,item):
       "base":lambda:int(inv.get("base:"+str(target),0) or 0)>=1,"material":lambda:bool(material_key) and int(inv.get("material:"+material_key,0) or 0)>=material_goal,
       "equip":lambda:any(x.get("slot")==target for x in d["equipped"]),"rarity":lambda:any(x.get("rarity") in {"rare","epic","legendary","mythic"} for x in d["owned"]),
       "rarity_equipped":lambda:any(x.get("rarity") in {"legendary","mythic"} for x in d["equipped"]),"gear_level":lambda:max([int(inv.get("gear_level:"+str(k),1) or 1) for k in d["appearance"].values()] or [0])>=number(2),
-      "shop":lambda:any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":lambda:any(x.action=="train" for x in actions) and int(pet.health or 0)>=60,
+      "shop":lambda:any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":lambda:int(pet.health or 0)>=60 and (any(x.action=="train" for x in actions) or any(x.action=="train" for x in d["today_actions"])),
       "defense_ready":lambda:bool(d["equipped"]) and int(pet.health or 0)>=70,"core_ready":lambda:int(pet.health or 0)>=70 and int(pet.energy or 0)>=70,
       "event_progress":lambda:len(games)+care_count>=number(1),"boss_hit":boss_hit,"boss_ready":lambda:boss_hit() and int(pet.energy or 0)>=20,
       "battle":lambda:any(str(x.item_id)=="sector_tactical_battle" for x in purchases),"social":lambda:happened_after("story:social_done"),
