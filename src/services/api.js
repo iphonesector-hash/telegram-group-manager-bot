@@ -1,6 +1,6 @@
 const BASE = import.meta.env?.VITE_API_BASE_URL || 'https://telegram-group-manager-bot-iota.vercel.app'
 const sectorSnapshotCache = new Map()
-const SECTOR_FAST_TTL = 900
+const SECTOR_FAST_TTL = 700
 
 function exactSectorSnapshotKey(endpoint) {
   const match = String(endpoint || '').match(/^\/api\/sector-v2\/(\d+)$/)
@@ -15,10 +15,18 @@ function sectorSnapshotKeyFromMutation(endpoint) {
 function updateSectorSnapshotFromMutation(endpoint, payload) {
   const key = sectorSnapshotKeyFromMutation(endpoint)
   if (!key) return
+
+  // Story readiness can change after almost every Sector mutation. Keeping an
+  // old narrative beside a fresh pet state is worse than doing one extra GET:
+  // it is what made completed training look permanently "in progress".
+  if (!payload || payload.narrative === undefined) {
+    sectorSnapshotCache.delete(key)
+    return
+  }
+
   const previous = sectorSnapshotCache.get(key)
   const patchKeys = ['pet','daily','shop','expansion','narrative','clan','actions','memories','achievements','evolution_paths','jobs','story']
-  const hasPatch = payload && patchKeys.some(function(k){ return payload[k] !== undefined })
-  if (!hasPatch || !previous || !previous.data) {
+  if (!previous || !previous.data) {
     sectorSnapshotCache.delete(key)
     return
   }
@@ -33,7 +41,7 @@ async function request(endpoint, options, initData) {
     const hit=sectorSnapshotCache.get(snapshotKey)
     if(hit&&Date.now()-hit.ts<SECTOR_FAST_TTL)return {data:hit.data,error:null,cached:true}
   }
-  const controller=new AbortController(),timeout=setTimeout(function(){controller.abort()},20000)
+  const controller=new AbortController(),timeout=setTimeout(function(){controller.abort()},15000)
   try {
     const res = await fetch(BASE + endpoint, {...config, signal:controller.signal, headers: {'Content-Type': 'application/json','init-data': initData || '',...config.headers}})
     const payload = await res.json().catch(function() { return null })
