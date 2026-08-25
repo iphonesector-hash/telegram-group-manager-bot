@@ -13,6 +13,10 @@ const emoji = read('bot/utils/animated_emoji.py')
 const emojiLib = read('bot/modules/sector_emoji_library.py')
 const main = read('bot/main.py')
 const diagnostics = read('api/sector_diagnostics_routes.py')
+const coherence = read('bot/services/sector_coherence.py')
+const persian = read('src/pages/SectorPetPersianPage.jsx')
+const vite = read('vite.config.js')
+const apiBootstrap = read('api/__init__.py')
 
 const chapters = ['بیداری در مه آهنی','پایگاه خاموش','معادن کریستالی','شهر ربات‌های خاموش','مهاجمان نِبولا','اتحاد سکتورها','حافظه گمشده','هسته تاریک']
 for (const chapter of chapters) expect(story.includes(chapter), `missing story chapter: ${chapter}`)
@@ -38,10 +42,18 @@ expect(api.includes('sectorSnapshotCache.delete(key)'), 'mutations without narra
 expect(api.includes('SECTOR_FAST_TTL = 700'), 'Sector cache must remain short-lived')
 expect(api.includes('AbortController'), 'API calls must have bounded waits')
 
+expect(coherence.includes('_fresh_state') && coherence.includes('sector_story.advance'), 'coherence layer must advance completed story objectives in-transaction')
+for (const action of ['buy_item','equip_item','unequip_slot','command','tactical_battle','social_action','finish_minigame','choose_evolution','attack_boss']) expect(coherence.includes(`"${action}"`), `mutation coherence missing: ${action}`)
+expect(coherence.includes('result["narrative"]') && coherence.includes('result["shop"]') && coherence.includes('result["expansion"]'), 'coherent mutation payload must refresh narrative/shop/expansion')
+expect(apiBootstrap.includes('sector_coherence'), 'API bootstrap must activate coherence layer')
+
 expect(narrative.includes("scene.ready?'بازکردن بخش بعدی'"), 'story CTA must advance when ready')
 expect(narrative.includes('تمرین رزمی'), 'training story CTA must be explicit')
 expect(narrative.includes('requirements.map'), 'story requirements must be visible individually')
 expect(command.includes('همه سامانه‌ها') && command.includes('مرکز مأموریت'), 'command center user-facing labels must be Persian')
+expect(persian.includes('SECTOR INVENTORY') && persian.includes('دارایی‌های سکتور'), 'Sector visible English inventory label must be localized')
+expect(persian.includes("'تمرین رزمی'") || narrative.includes('تمرین رزمی'), 'training must be presented as combat training')
+expect(vite.includes('SectorPetPersianPage'), 'Sector page must pass through Persian-first UI wrapper')
 
 expect(emoji.includes('SECTOR_KOOCHOOLOO_EMOJI_KEY'), 'dedicated Koochooloo emoji key missing')
 expect(emoji.includes('LEGACY_SECTOR_EMOJI_KEY'), 'legacy emoji fallback must be preserved')
