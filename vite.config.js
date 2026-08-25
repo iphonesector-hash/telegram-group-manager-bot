@@ -25,6 +25,10 @@ function sectorAssetAliases() {
   }
 }
 
+function manualChunks(id) {
+  if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react'
+}
+
 export default defineConfig({
   plugins: [sectorAssetAliases(), react()],
   server: {
@@ -39,11 +43,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ['react', 'react-dom'],
-        }
-      }
+      output: { manualChunks }
     }
   }
 })
