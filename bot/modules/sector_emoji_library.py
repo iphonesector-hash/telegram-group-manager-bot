@@ -1,4 +1,8 @@
-"""Owner-only append-only management for Sector Koochooloo Premium emojis."""
+"""Owner-only append-only management for Sector Koochooloo Premium emojis.
+
+This library is isolated from the bot-wide legacy emoji setting; it only adds
+new Sector Koochooloo emoji IDs and never clears or rewrites the old library.
+"""
 import os
 
 from telegram import Update
