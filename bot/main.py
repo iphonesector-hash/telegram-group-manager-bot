@@ -17,7 +17,7 @@ from bot.modules.required_membership import get_handlers as get_required_members
 from bot.modules.panel import get_panel_handlers
 from bot.modules.locks import get_handlers as get_lock_handlers
 from bot.modules.welcome import get_welcome_handlers
-from bot.modules.antispam import get_handlers as get_antispam_handlers
+from bot.modules.antispam import get_antispam_handlers
 from bot.modules.profile import get_profile_handlers
 from bot.modules.registration import get_registration_handlers
 from bot.modules.warnings import get_handlers as get_warning_handlers
