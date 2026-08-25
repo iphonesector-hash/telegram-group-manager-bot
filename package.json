@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run verify:sector && vite build",
     "preview": "vite preview",
-    "verify:sector": "node scripts/verify-sector.mjs && node scripts/verify-sector-contracts.mjs && node scripts/verify-sector-hardening.mjs"
+    "verify:sector": "node scripts/verify-sector.mjs && node scripts/verify-sector-contracts.mjs && node scripts/verify-sector-hardening.mjs && node scripts/verify-sector-vnext.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
