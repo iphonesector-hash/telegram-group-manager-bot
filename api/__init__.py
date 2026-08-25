@@ -11,3 +11,4 @@ from bot.services import sector_mission_personalization  # noqa: F401,E402
 from bot.services import sector_relationship_memory  # noqa: F401,E402
 from api import sector_reminder_routes  # noqa: F401,E402
 from api import sector_action_intent_routes  # noqa: F401,E402
+from api import sector_diagnostics_routes  # noqa: F401,E402
