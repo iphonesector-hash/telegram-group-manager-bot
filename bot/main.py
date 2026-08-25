@@ -28,6 +28,7 @@ from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
 from bot.modules.sector_emoji_library import get_handlers as get_sector_emoji_library_handlers
+from bot.modules.sector_synced_actions import get_handlers as get_sector_synced_action_handlers
 import bot.modules.sector_pet as sector_pet_module
 from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers, sector_command
 from bot.modules.sector_social import get_handlers as get_sector_social_handlers
@@ -68,8 +69,6 @@ def build_application(*, initialize_database: bool = True) -> Application:
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is not configured")
 
-    # Schema creation/migrations must never run for every Telegram update.  The
-    # webhook runtime initializes it once; CLI polling keeps the old behaviour.
     if initialize_database:
         init_db()
     app = Application.builder().token(BOT_TOKEN).post_init(setup_telegram_ui).build()
@@ -78,6 +77,7 @@ def build_application(*, initialize_database: bool = True) -> Application:
     for h in get_required_membership_handlers(): app.add_handler(h, group=-10)
     for h in get_sticker_handlers(): app.add_handler(h, group=-5)
     for h in get_sector_emoji_library_handlers(): app.add_handler(h, group=-4)
+    for h in get_sector_synced_action_handlers(): app.add_handler(h, group=-3)
 
     # Persistent composer buttons must win over stale Sector ForceReply flows.
     app.add_handler(MessageHandler(filters.Regex(r"^(?:🤖 سکتور کوچولو|سکتور کوچولو)$"), sector_menu_entry), group=-3)
