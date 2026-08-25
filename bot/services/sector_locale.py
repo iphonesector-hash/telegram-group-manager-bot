@@ -24,6 +24,20 @@ _BOSS_TITLES = {
 
 _original_boss_snapshot = sector_meta.boss_snapshot
 _original_attack_boss = sector_meta.attack_boss
+_original_catalog_for = sector_v2.catalog_for
+
+
+def _localized_catalog_for(*args, **kwargs):
+    rows = _original_catalog_for(*args, **kwargs)
+    localized = []
+    for raw in rows or []:
+        item = dict(raw)
+        rarity_key = str(item.get("rarity") or "")
+        item["rarity_key"] = rarity_key
+        item["rarity"] = RARITY_LABELS.get(rarity_key, rarity_key)
+        item["rarity_label"] = item["rarity"]
+        localized.append(item)
+    return localized
 
 
 def _localized_boss_snapshot(*args, **kwargs):
@@ -50,6 +64,8 @@ def apply_sector_locale():
         stage_id = str(stage.get("id") or "")
         if stage_id in _STAGE_TITLES:
             stage["title"] = _STAGE_TITLES[stage_id]
+    # Internal rarity values stay English for game/story rules. Only serialized
+    # shop rows are translated by _localized_catalog_for.
     for item in getattr(sector_v2, "CATALOG", {}).values():
         item["rarity_label"] = RARITY_LABELS.get(str(item.get("rarity") or ""), str(item.get("rarity") or ""))
     quests = getattr(sector_meta, "QUEST_DEFS", {})
@@ -58,6 +74,7 @@ def apply_sector_locale():
     if "boss_hunter" in quests:
         quests["boss_hunter"]["title"] = "شکارچی خلأ"
         quests["boss_hunter"]["hint"] = "۵۰۰ آسیب به باس وارد کن"
+    sector_v2.catalog_for = _localized_catalog_for
     sector_meta.boss_snapshot = _localized_boss_snapshot
     sector_meta.attack_boss = _localized_attack_boss
 
