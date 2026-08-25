@@ -2,7 +2,7 @@ import sys
 import os
 from dotenv import load_dotenv
 from telegram import WebAppInfo, MenuButtonWebApp
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
@@ -27,12 +27,26 @@ from bot.modules.entertainment import get_handlers as get_entertainment_handlers
 from bot.modules.games import get_handlers as get_game_handlers
 from bot.modules.ai import get_handlers as get_ai_handlers
 from bot.modules.extra import get_extra_handlers
-from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers
+from bot.modules.sector_pet import get_handlers as get_sector_pet_handlers, sector_command
 from bot.modules.sector_social import get_handlers as get_sector_social_handlers
 from bot.modules.stickers import get_handlers as get_sticker_handlers
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
+MAIN_MENU_PATTERN = r"^(?:🛡 مدیریت|👤 حساب کاربری|🏦 بانک و اقتصاد|🎮 سرگرمی|🛠 کاربردی|🤖 دستیار هوشمند|🤖 سکتور کوچولو|سکتور کوچولو|⚙️ تنظیمات|🤝 پشتیبانی|🔙 بازگشت به منوی اصلی)$"
+
+
+async def sector_menu_entry(update, context):
+    """Make the persistent chat button open the exact same Sector panel."""
+    context.user_data.pop("sector_pending", None)
+    context.user_data.pop("sector_selected_target", None)
+    await sector_command(update, context)
+
+
+async def reset_sector_pending_for_main_menu(update, context):
+    """Do not let a stale rename/talk flow consume persistent menu buttons."""
+    context.user_data.pop("sector_pending", None)
+    context.user_data.pop("sector_selected_target", None)
 
 
 async def setup_telegram_ui(app: Application):
@@ -56,6 +70,10 @@ def build_application(*, initialize_database: bool = True) -> Application:
     for h in get_release_announcement_handlers(): app.add_handler(h, group=-20)
     for h in get_required_membership_handlers(): app.add_handler(h, group=-10)
     for h in get_sticker_handlers(): app.add_handler(h, group=-5)
+
+    # Persistent composer buttons must win over stale Sector ForceReply flows.
+    app.add_handler(MessageHandler(filters.Regex(r"^(?:🤖 سکتور کوچولو|سکتور کوچولو)$"), sector_menu_entry), group=-3)
+    app.add_handler(MessageHandler(filters.Regex(MAIN_MENU_PATTERN), reset_sector_pending_for_main_menu), group=-2)
 
     for h in get_registration_handlers(): app.add_handler(h, group=0)
     for h in get_sector_social_handlers(): app.add_handler(h, group=1)
