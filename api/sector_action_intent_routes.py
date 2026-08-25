@@ -10,6 +10,7 @@ from fastapi import Header, HTTPException
 
 from api.main import app
 from api.sector_v2_routes import _guard, sector_v2_talk
+from bot.database.models import User
 from bot.database.session import get_session
 from bot.services import sector_pet as legacy
 from bot.services import sector_story, sector_v2
@@ -31,8 +32,6 @@ def _intent(message: str):
     normalized = " ".join(str(message or "").strip().lower().split())
     if not normalized:
         return None
-    # Questions such as «تمرین چیه؟» should stay conversational. Commands and
-    # direct requests are treated as real actions.
     questionish = any(token in normalized for token in ("چیه", "چیست", "چطور", "چگونه", "کجاست", "کدوم"))
     for action, patterns in _ACTION_PATTERNS:
         if any(re.search(pattern, normalized) for pattern in patterns):
@@ -63,16 +62,22 @@ def _perform(session, user_id: int, action: str):
     pet = legacy.get_or_create_pet(session, user_id)
     before, narrative, advanced, story_result = _story_after_action(session, user_id, pet)
     pet = legacy.get_or_create_pet(session, user_id)
-    result["pet"] = sector_v2.serialize_pet(pet, int(result.get("coins") or 0))
+    user = session.query(User).filter(User.id == user_id).first()
+    final_coins = int(user.coins or 0) if user else int(result.get("coins") or 0)
+    result["coins"] = final_coins
+    result["pet"] = sector_v2.serialize_pet(pet, final_coins)
     result["daily"] = legacy.daily_progress(session, user_id)
     result["narrative"] = narrative
     result["story_advanced"] = advanced
+    clean_message = str(result.get("message") or "انجام شد").replace(" XP", " امتیاز تجربه")
     if advanced:
         next_text = narrative.get("scene", {}).get("objective") or "مرحله بعدی داستان آماده است."
         result["story_message"] = (story_result or {}).get("message")
-        result["message"] = f"{result.get('message','انجام شد')} · هدف داستان کامل شد. حالا: {next_text}"
-    elif before.get("scene", {}).get("requirements"):
-        result["story_message"] = before["scene"].get("objective")
+        result["message"] = f"{clean_message} · هدف داستان کامل شد. حالا: {next_text}"
+    else:
+        result["message"] = clean_message
+        if before.get("scene", {}).get("requirements"):
+            result["story_message"] = before["scene"].get("objective")
     return result
 
 
@@ -121,7 +126,7 @@ async def sector_smart_talk(user_id: int, request: dict, init_data: Optional[str
             response = f"{action_title} انجام شد و هدف داستان هم کامل شد. قدم بعدی: {scene.get('objective','داستان را ادامه بده.')}"
         else:
             response = f"{action_title} واقعاً ثبت شد. {scene.get('objective') or result.get('message','')}"
-        return {"status":"success","response":response,"pet":pet,"daily":result.get("daily"),"narrative":narrative,"action_executed":action,"story_advanced":bool(result.get("story_advanced"))}
+        return {"status":"success","response":response,"pet":pet,"daily":result.get("daily"),"narrative":narrative,"coins":result.get("coins"),"action_executed":action,"story_advanced":bool(result.get("story_advanced"))}
     except Exception:
         session.rollback()
         raise
