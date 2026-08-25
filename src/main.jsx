@@ -26,7 +26,7 @@ class AppErrorBoundary extends React.Component {
     console.error('Mini App render failure',error)
     const message=String(error?.message||error).slice(0,500)
     const stack=[String(error?.stack||''),String(info?.componentStack||'')].filter(Boolean).join('\n').slice(0,3500)
-    fetch(`${API_BASE}/api/miniapp-diagnostic`,{method:'POST',headers:diagnosticHeaders(),body:JSON.stringify({phase:'react-crash',message,stack,version:'sector-ui-2026.08.25-vnext',platform:window.Telegram?.WebApp?.platform||'unknown'})}).catch(()=>{})
+    fetch(`${API_BASE}/api/miniapp-diagnostic-v2`,{method:'POST',headers:diagnosticHeaders(),body:JSON.stringify({phase:'react-crash',message,stack,path:window.location.pathname,version:'sector-ui-2026.08.25-vnext',platform:window.Telegram?.WebApp?.platform||'unknown'})}).catch(()=>{})
     if(shouldAutoRecover()){
       this.setState({recovering:true})
       window.setTimeout(function(){window.location.replace(window.location.pathname+'?recover='+Date.now())},350)
