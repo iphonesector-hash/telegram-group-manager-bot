@@ -15,15 +15,10 @@ function sectorSnapshotKeyFromMutation(endpoint) {
 function updateSectorSnapshotFromMutation(endpoint, payload) {
   const key = sectorSnapshotKeyFromMutation(endpoint)
   if (!key) return
-
-  // Story readiness can change after almost every Sector mutation. Keeping an
-  // old narrative beside a fresh pet state is worse than doing one extra GET:
-  // it is what made completed training look permanently "in progress".
   if (!payload || payload.narrative === undefined) {
     sectorSnapshotCache.delete(key)
     return
   }
-
   const previous = sectorSnapshotCache.get(key)
   const patchKeys = ['pet','daily','shop','expansion','narrative','clan','actions','memories','achievements','evolution_paths','jobs','story']
   if (!previous || !previous.data) {
@@ -87,8 +82,8 @@ export const api = {
   claimMission: function(userId, missionId, initData) { return request('/api/missions/' + userId + '/' + encodeURIComponent(missionId) + '/claim', { method:'POST' }, initData) },
 
   getSectorPet: function(userId, initData) { return request('/api/sector-v2/' + userId, {}, initData) },
-  sectorPetAction: function(userId, action, initData) { return request('/api/sector-v2/' + userId + '/action/' + encodeURIComponent(action), { method:'POST' }, initData) },
-  talkSectorPet: function(userId, message, initData) { return request('/api/sector-v2/' + userId + '/talk', { method:'POST', body:JSON.stringify({message:message}) }, initData) },
+  sectorPetAction: function(userId, action, initData) { return request('/api/sector-v2/' + userId + '/action-smart/' + encodeURIComponent(action), { method:'POST' }, initData) },
+  talkSectorPet: function(userId, message, initData) { return request('/api/sector-v2/' + userId + '/talk-smart', { method:'POST', body:JSON.stringify({message:message}) }, initData) },
   buySectorShopItem: function(userId, itemKey, initData) { return request('/api/sector-v2/' + userId + '/shop/' + encodeURIComponent(itemKey) + '/buy', { method:'POST', body:'{}' }, initData) },
   equipSectorShopItem: function(userId, itemKey, initData) { return request('/api/sector-v2/' + userId + '/shop/' + encodeURIComponent(itemKey) + '/equip', { method:'POST', body:'{}' }, initData) },
   unequipSectorSlot: function(userId, slot, initData) { return request('/api/sector-v2/' + userId + '/shop/slot/' + encodeURIComponent(slot) + '/unequip', { method:'POST', body:'{}' }, initData) },
