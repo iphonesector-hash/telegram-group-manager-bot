@@ -2,6 +2,8 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 from telegram.ext import ContextTypes, CommandHandler, ApplicationHandlerStop
 from bot.utils.keyboards import get_main_menu
+from bot.utils.animated_emoji import animated_emoji, get_sector_emoji_ids
+
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://isectorland-miniapp.vercel.app").split("?", 1)[0]
 BOT_DEEP_LINK = os.getenv("BOT_DEEP_LINK", "https://t.me/iSectorlandbot?start=miniapp")
 
@@ -9,6 +11,8 @@ BOT_DEEP_LINK = os.getenv("BOT_DEEP_LINK", "https://t.me/iSectorlandbot?start=mi
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     is_private = bool(chat and chat.type == "private")
+    icons = get_sector_emoji_ids()
+    icon = lambda n: icons[n % len(icons)] if icons else None
 
     if is_private:
         try:
@@ -23,31 +27,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"Mini App menu button error: {e}")
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("سکتور کوچولو", callback_data="sector_pet", style="primary"),
-             InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL))]
+            [InlineKeyboardButton("سکتور کوچولو", callback_data="sector_pet", style="primary", icon_custom_emoji_id=icon(0)),
+             InlineKeyboardButton("sector", web_app=WebAppInfo(url=MINI_APP_URL), icon_custom_emoji_id=icon(1))]
         ])
     else:
-        # Telegram only provides trusted WebApp initData when the Mini App is
-        # launched through a WebApp/Menu button in the user's private chat.
-        # A raw https:// Mini App URL from a group can open without initData and
-        # then every authenticated API call correctly fails with 401/403.
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🤖 سکتور کوچولو", url="https://t.me/iSectorlandbot?start=sector")],
-            [InlineKeyboardButton("🚀 باز کردن Mini App در چت خصوصی", url=BOT_DEEP_LINK)]
+            [InlineKeyboardButton("سکتور کوچولو", url="https://t.me/iSectorlandbot?start=sector", icon_custom_emoji_id=icon(0))],
+            [InlineKeyboardButton("باز کردن Mini App در چت خصوصی", url=BOT_DEEP_LINK, icon_custom_emoji_id=icon(1))]
         ])
 
+    globe = animated_emoji(2, "🌐")
+    sparkle = animated_emoji(3, "✨")
+    tip = animated_emoji(4, "💡")
     await update.effective_message.reply_text(
-        "🌐 به iSectorLand خوش اومدی ✨\n\n"
-        "از اینجا می‌تونی وارد مینی‌اپ مدیریت خود ربات بشی و امکانات حساب، اقتصاد، بازی‌ها و مدیریت SectorLand رو باز کنی.\n\n"
-        "💡 برای همگام‌سازی امن حساب، Mini App باید از دکمه Web App داخل چت خصوصی ربات باز شود.",
+        f"{globe} <b>به iSectorLand خوش اومدی</b> {sparkle}\n\n"
+        "از اینجا می‌تونی وارد مینی‌اپ مدیریت ربات بشی و امکانات حساب، اقتصاد، بازی‌ها و SectorLand رو باز کنی.\n\n"
+        f"{tip} برای همگام‌سازی امن حساب، Mini App را از دکمه Web App داخل چت خصوصی ربات باز کن.",
+        parse_mode="HTML",
         reply_markup=keyboard,
     )
     if is_private:
-        # Inline keyboards cannot be combined with Telegram's persistent reply
-        # keyboard. Send the private-chat command panel as a second message so
-        # it always appears below the input field, including after /start.
+        home = animated_emoji(5, "🏠")
         await update.effective_message.reply_text(
-            "🏠 منوی اصلی ربات آماده است؛ یکی از دکمه‌های پایین چت را انتخاب کن.",
+            f"{home} <b>منوی اصلی آماده است</b>؛ یکی از دکمه‌های پایین چت را انتخاب کن.",
+            parse_mode="HTML",
             reply_markup=get_main_menu(),
         )
     raise ApplicationHandlerStop()
