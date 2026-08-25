@@ -31,13 +31,13 @@ CHAPTERS = {
     scene("ایستگاه شارژ","سکتور: «اگه ایستگاه شارژ بسازیم، دیگه هر طوفان منو از پا نمی‌اندازه.»","ایستگاه شارژ پایگاه را به سطح ۱ ارتقا بده.","base","charger",90,75),
     scene("مواد اولیه","برای تعمیر دیوارهای پایگاه به ضایعات هوشمند نیاز دارید.","یک قطعه اضافه را بازیافت کن یا ۳ ماده اولیه جمع کن.","material","scrap:3",70,65),
     scene("زره نخستین","ردپاهای شکارچی سیگنال نزدیک پایگاه دیده شده است.","یک قطعه زره یا بدنه روی سکتور نصب کن.","equip","armor",100,90,"احتمال حمله شکارچی سیگنال"),
-    scene("دفاع از خانه","شکارچی حمله می‌کند. قدرت پایگاه از مراقبت، تجهیزات و تمرین‌های تو ساخته شده است.","در بخش «مراقبت» یک تمرین انجام بده؛ اگر سلامت سکتور بالای ۶۰ باشد، هدف کامل می‌شود.","train_ready",None,140,120,"حمله به پایگاه"),
+    scene("دفاع از خانه","شکارچی حمله می‌کند. قدرت پایگاه از مراقبت، تجهیزات و تمرین‌های تو ساخته شده است.","سلامت را آماده نگه دار و یک تمرین رزمی ثبت کن.","train_ready",None,140,120,"حمله به پایگاه"),
   ]},
   3:{"title":"معادن کریستالی","region":"دره لومِن","boss":"کرم بلورخوار","scenes":[
     scene("نقشه زیرزمینی","یک تراشه قدیمی محل کریستال‌های لازم برای باتری Mk-II را نشان می‌دهد.","پیام سکتور را بخوان و مسیر معدن را فعال کن."),
     scene("کد دروازه","دروازه معدن با یک الگوی رمزگذاری‌شده محافظت می‌شود.","بازی رمز یا حافظه را انجام بده.","game",None,60,55),
     scene("طوفان کریستالی","کریستال‌ها فقط هنگام طوفان قابل برداشت‌اند و زمان محدود است.","در رویداد هفتگی پیشرفت ثبت کن.","event_progress",1,90,80,"طوفان زمان‌دار"),
-    scene("باتری Mk-II","سکتور: «این کریستال می‌تونه ظرفیت هسته‌ام رو دو برابر کنه؛ ولی باید قطعه مناسب داشته باشیم.»","یک قطعه Rare یا بهتر بخر یا بساز.","rarity","rare",120,100),
+    scene("باتری Mk-II","سکتور: «این کریستال می‌تونه ظرفیت هسته‌ام رو دو برابر کنه؛ ولی باید قطعه مناسب داشته باشیم.»","یک قطعه کمیاب یا بهتر بخر یا بساز.","rarity","rare",120,100),
     scene("بلورخوار","کرم بلورخوار منبع انرژی معدن را می‌بلعد.","به باس جهانی حمله کن.","boss_hit",None,180,140,"نبرد با کرم بلورخوار"),
   ]},
   4:{"title":"شهر ربات‌های خاموش","region":"نئوسیتی ۷","boss":"ویروس سایه","scenes":[
@@ -49,7 +49,7 @@ CHAPTERS = {
   ]},
   5:{"title":"مهاجمان نِبولا","region":"مدار بنفش","boss":"فرمانده وُید","scenes":[
     scene("آژیر قرمز","هشدار مرکز فرمان: ناوگان نِبولا پایگاه را شناسایی کرده است.","هشدار را تأیید و برنامه دفاعی را آغاز کن."),
-    scene("سپر یونی","بدون سپر، اولین موج دفاع پایگاه را می‌شکند.","یک قطعه دفاعی نصب و سلامت را بالای ۷۰ نگه دار.","defense_ready",None,100,90,"موج اول در راه است"),
+    scene("سپر یونی","بدون سپر، اولین موج دفاع پایگاه را می‌شکند.","یک قطعه دفاعی نصب کن و سلامت را بالای ۷۰ نگه دار.","defense_ready",None,100,90,"موج اول در راه است"),
     scene("جنگ الکترونیک","مهاجمان کانال فرمان را مختل کرده‌اند.","در یک بازی مهارتی امتیاز ۶۰ یا بیشتر ثبت کن.","game_score",60,120,110),
     scene("ضدحمله","سکتور: «این بار فرار نمی‌کنیم. من آماده‌ام؛ تو حرکت رو انتخاب کن.»","یک نبرد تاکتیکی با کاربر دیگر انجام بده.","battle",None,170,140),
     scene("فرمانده وُید","ناو فرماندهی وارد مدار شده است.","به باس جهانی حمله کن و انرژی را بالای ۲۰ نگه دار.","boss_ready",None,240,190,"نبرد نهایی مدار بنفش"),
@@ -57,7 +57,7 @@ CHAPTERS = {
   6:{"title":"اتحاد سکتورها","region":"پایتخت اُربیتال","boss":"قهرمان میدان","scenes":[
     scene("دروازه پایتخت","فقط سکتورهایی که هویت و قدرت مشخص دارند وارد پایتخت می‌شوند.","مسیر تخصصی نگهبان، کاوشگر یا مهندس را انتخاب کن.","branch",None,90,90),
     scene("بازار اتحاد","قطعات پایتخت کمیاب‌اند؛ اقتصاد درست بخشی از بقاست.","یک خرید یا ساخت قطعه ثبت کن.","shop",None,100,90),
-    scene("هم‌پیمان","یک ربات تنها نمی‌تواند تمام SectorLand را نجات دهد.","سطح Bond با یک کاربر را افزایش بده.","social",None,130,110),
+    scene("هم‌پیمان","یک ربات تنها نمی‌تواند تمام SectorLand را نجات دهد.","سطح پیوند با یک کاربر را افزایش بده.","social",None,130,110),
     scene("میدان رقابت","رقابت دوستانه قدرت واقعی تجهیزات را آشکار می‌کند.","یک نبرد تاکتیکی انجام بده.","battle",None,180,140),
     scene("نشان اتحاد","شورای پایتخت سکتور را به‌عنوان محافظ رسمی می‌پذیرد.","سه مأموریت فعال را کامل کن.","mission_complete",3,260,210),
   ]},
@@ -71,7 +71,7 @@ CHAPTERS = {
   8:{"title":"هسته تاریک","region":"دژ پایان","boss":"معمار تاریکی","scenes":[
     scene("دروازه پایان","تمام مسیرها به دژی می‌رسند که سیگنال نخست از آن‌جا ارسال شده بود.","برای ورود، سلامت و انرژی را بالای ۷۰ برسان.","core_ready",None,100,100),
     scene("محاصره","معمار تاریکی تمام دشمنان قبلی را دوباره فعال کرده است.","پنج فعالیت مراقبتی و بازی ثبت کن.","activity_total",5,180,150),
-    scene("زره افسانه‌ای","آخرین نبرد به قطعه‌ای Legendary یا Mythic نیاز دارد.","یک قطعه Legendary یا Mythic تجهیز کن.","rarity_equipped","legendary",250,200),
+    scene("زره افسانه‌ای","آخرین نبرد به قطعه‌ای افسانه‌ای یا اسطوره‌ای نیاز دارد.","یک قطعه افسانه‌ای یا اسطوره‌ای تجهیز کن.","rarity_equipped","legendary",250,200),
     scene("نبرد هسته‌ها","سکتور: «من دیگه اون ربات شکسته کارگاه نیستم. هرچی هستم، با انتخاب‌های تو ساخته شدم.»","به باس جهانی حمله کن.","boss_hit",None,350,280,"معمار تاریکی بیدار شد"),
     scene("دروازه دنیاهای بعد","دژ سقوط می‌کند و دروازه‌ای کوانتومی به جهانی ناشناخته باز می‌شود. پایان این دنیا، آغاز سفر بعدی است.","دروازه دنیای دوم را فعال کن.","continue",None,500,400),
   ]},
@@ -105,6 +105,10 @@ def _counts(session,user_id,pet):
     return {"actions":actions,"today_actions":[x for x in actions if (x.created_at.replace(tzinfo=None) if getattr(x.created_at,'tzinfo',None) else x.created_at)>=today],"games":games,"purchases":purchases,"inv":inv,"appearance":appearance,"owned":owned,"equipped":equipped,"power":power,"scene_start":start}
 
 
+def _requirement(label, done, detail=""):
+    return {"label":label,"done":bool(done),"detail":detail}
+
+
 def objective_state(session,user_id,pet,item):
     d=_counts(session,user_id,pet);action=item["action"];target=item.get("target");actions=d["actions"];games=d["games"];purchases=d["purchases"];inv=d["inv"]
     care_count=sum(1 for x in actions if x.action!="story");today_care=sum(1 for x in d["today_actions"] if x.action!="story")
@@ -127,6 +131,8 @@ def objective_state(session,user_id,pet,item):
             from bot.database.sector_meta_models import SectorBossHit
             return session.query(SectorBossHit.id).filter(SectorBossHit.user_id==user_id,SectorBossHit.created_at>=d["scene_start"]).first() is not None
         except Exception:return False
+    trained=any(x.action=="train" for x in actions)
+    health=int(pet.health or 0);energy=int(pet.energy or 0);has_equipped=bool(d["equipped"]);boss_done=boss_hit()
     validators={
       "continue":lambda:True,"rename":lambda:str(pet.name or "").strip() not in {"","سکتور","سکتور کوچولو"},
       "care":lambda:any(x.action==target for x in actions),"daily_care":lambda:today_care>=number(3),"game":lambda:len(games)>=1,
@@ -134,22 +140,44 @@ def objective_state(session,user_id,pet,item):
       "base":lambda:int(inv.get("base:"+str(target),0) or 0)>=1,"material":lambda:bool(material_key) and int(inv.get("material:"+material_key,0) or 0)>=material_goal,
       "equip":lambda:any(x.get("slot")==target for x in d["equipped"]),"rarity":lambda:any(x.get("rarity") in {"rare","epic","legendary","mythic"} for x in d["owned"]),
       "rarity_equipped":lambda:any(x.get("rarity") in {"legendary","mythic"} for x in d["equipped"]),"gear_level":lambda:max([int(inv.get("gear_level:"+str(k),1) or 1) for k in d["appearance"].values()] or [0])>=number(2),
-      "shop":lambda:any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":lambda:int(pet.health or 0)>=60 and (any(x.action=="train" for x in actions) or any(x.action=="train" for x in d["today_actions"])),
-      "defense_ready":lambda:bool(d["equipped"]) and int(pet.health or 0)>=70,"core_ready":lambda:int(pet.health or 0)>=70 and int(pet.energy or 0)>=70,
-      "event_progress":lambda:len(games)+care_count>=number(1),"boss_hit":boss_hit,"boss_ready":lambda:boss_hit() and int(pet.energy or 0)>=20,
+      "shop":lambda:any(str(x.item_id).startswith(("sector_cosmetic:","sector_forge","sector_gear")) for x in purchases),"train_ready":lambda:health>=60 and trained,
+      "defense_ready":lambda:has_equipped and health>=70,"core_ready":lambda:health>=70 and energy>=70,
+      "event_progress":lambda:len(games)+care_count>=number(1),"boss_hit":lambda:boss_done,"boss_ready":lambda:boss_done and energy>=20,
       "battle":lambda:any(str(x.item_id)=="sector_tactical_battle" for x in purchases),"social":lambda:happened_after("story:social_done"),
       "branch":lambda:bool(d["appearance"].get("story_branch") or pet.evolution_path),"chat":lambda:happened_after("story:chat_seen"),
       "mission_complete":lambda:int(inv.get("story:mission_completions",0) or 0)-int(inv.get("story:scene_mission_baseline",0) or 0)>=number(1),"power":lambda:d["power"]>=number(0),"activity_total":lambda:len(games)+care_count>=number(1),
     }
     validator=validators.get(action);ready=bool(validator()) if validator else False
-    return {"ready":ready,"route":ACTION_ROUTES.get(action,"home"),"action":action}
+    requirements=[];display=item.get("objective") or "هدف مرحله را کامل کن."
+    if action=="train_ready":
+        requirements=[_requirement("سلامت حداقل ۶۰٪",health>=60,f"سلامت فعلی: {health}٪"),_requirement("یک تمرین رزمی در بخش مراقبت",trained,"تمرین باید بعد از شروع همین صحنه ثبت شود")]
+        if ready:display="همه شرط‌های دفاع انجام شده‌اند؛ مسیر بعدی داستان آماده است."
+        elif health>=60:display=f"سلامت آماده است ({health}٪). فقط در بخش «مراقبت» روی «تمرین رزمی» بزن."
+        elif trained:display=f"تمرین رزمی ثبت شد. حالا سلامت را از {health}٪ به حداقل ۶۰٪ برسان."
+        else:display=f"دو کار باقی مانده: سلامت را به ۶۰٪ برسان و یک «تمرین رزمی» در بخش مراقبت انجام بده. سلامت فعلی {health}٪ است."
+    elif action=="defense_ready":
+        requirements=[_requirement("یک قطعه دفاعی تجهیز کن",has_equipped),_requirement("سلامت حداقل ۷۰٪",health>=70,f"سلامت فعلی: {health}٪")]
+        if ready:display="سپر و سلامت هر دو آماده‌اند؛ مرحله بعدی باز می‌شود."
+        elif has_equipped:display=f"قطعه دفاعی آماده است. فقط سلامت را از {health}٪ به ۷۰٪ برسان."
+        elif health>=70:display=f"سلامت آماده است ({health}٪). فقط یک قطعه دفاعی تجهیز کن."
+    elif action=="core_ready":
+        requirements=[_requirement("سلامت حداقل ۷۰٪",health>=70,f"{health}٪"),_requirement("انرژی حداقل ۷۰٪",energy>=70,f"{energy}٪")]
+        if ready:display="سلامت و انرژی هردو آماده‌اند؛ وارد مرحله بعد شو."
+        elif health>=70:display=f"سلامت آماده است. فقط انرژی را از {energy}٪ به ۷۰٪ برسان."
+        elif energy>=70:display=f"انرژی آماده است. فقط سلامت را از {health}٪ به ۷۰٪ برسان."
+    elif action=="boss_ready":
+        requirements=[_requirement("یک حمله به باس",boss_done),_requirement("انرژی حداقل ۲۰٪",energy>=20,f"انرژی فعلی: {energy}٪")]
+        if ready:display="حمله ثبت شده و انرژی کافی است؛ مرحله بعد آماده است."
+        elif boss_done:display=f"حمله به باس ثبت شد. فقط انرژی را از {energy}٪ به ۲۰٪ برسان."
+        elif energy>=20:display=f"انرژی کافی است ({energy}٪). حالا یک‌بار به باس حمله کن."
+    return {"ready":ready,"route":ACTION_ROUTES.get(action,"home"),"action":action,"objective":display,"requirements":requirements}
 
 
 def snapshot(session,user_id,pet=None):
     from bot.services import sector_pet
     pet=pet or sector_pet.get_or_create_pet(session,user_id);world=world_of(pet);chapter=max(1,min(8,int(pet.story_chapter or 1)));progress=max(0,int(pet.story_progress or 0))
     if world>1:
-        return {"world":world,"world_info":WORLDS.get(world,{"title":f"دنیای {world}","subtitle":"قلمرو ناشناخته","color":"#a66cff","chapters":8}),"chapter":1,"chapter_info":{"title":"دروازه کوانتومی","region":"مرز دنیاها","boss":"ناشناخته"},"scene":{"index":0,"total":1,"title":"ادامه دارد…","text":"دنیای نخست نجات پیدا کرده، اما سیگنال‌های تازه از آن‌سوی دروازه می‌رسند. موتور داستان برای فصل‌های آینده آماده است.","objective":"در فصل‌ها و رویدادهای جاری قدرت جمع کن تا دنیای بعدی باز شود.","action":"continue","route":"season","ready":False,"reward":{"coins":0,"xp":0}},"world_complete":False,"progress_percent":0}
+        return {"world":world,"world_info":WORLDS.get(world,{"title":f"دنیای {world}","subtitle":"قلمرو ناشناخته","color":"#a66cff","chapters":8}),"chapter":1,"chapter_info":{"title":"دروازه کوانتومی","region":"مرز دنیاها","boss":"ناشناخته"},"scene":{"index":0,"total":1,"title":"ادامه دارد…","text":"دنیای نخست نجات پیدا کرده، اما سیگنال‌های تازه از آن‌سوی دروازه می‌رسند. موتور داستان برای فصل‌های آینده آماده است.","objective":"در فصل‌ها و رویدادهای جاری قدرت جمع کن تا دنیای بعدی باز شود.","action":"continue","route":"season","ready":False,"requirements":[],"reward":{"coins":0,"xp":0}},"world_complete":False,"progress_percent":0}
     chapter_info=CHAPTERS[chapter];scenes=chapter_info["scenes"];index=min(progress,len(scenes)-1);item=dict(scenes[index]);state=objective_state(session,user_id,pet,item);item.update(state);item.update({"index":index,"number":index+1,"total":len(scenes)})
     return {"world":world,"world_info":WORLDS[world],"chapter":chapter,"chapter_info":{k:v for k,v in chapter_info.items() if k!="scenes"},"scene":item,"chapter_progress":progress,"progress_percent":round(((chapter-1)+(progress/max(1,len(scenes))))/8*100),"world_complete":False,"next_chapter":CHAPTERS.get(chapter+1,{}).get("title")}
 
