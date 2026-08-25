@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "env": {
+    "OWNER_ID": "5147526780"
+  },
   "crons": [
     { "path": "/api/cron/sector-reminders", "schedule": "0 14 * * *" }
   ],
