@@ -8,7 +8,7 @@ from telegram.ext import CommandHandler, TypeHandler
 from bot.services.release_publisher import maybe_publish_current_release
 
 LOGGER = logging.getLogger(__name__)
-OWNER_ID = int(os.getenv("OWNER_ID", "5147526780"))
+OWNER_ID = int(os.getenv("OWNER_ID") or "5147526780")
 _checked_release = False
 _lock = asyncio.Lock()
 
